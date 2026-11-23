@@ -1,10 +1,11 @@
+import { spawn } from "node:child_process";
 import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { indexPluginPackage } from "../src/daemon/plugin-index.js";
 // @ts-expect-error Plugin native modules are intentionally plain JavaScript.
-import { resolveRenpy, runRenpy, exportWeb, renpyErrors } from "../plugins/renpy/native/renpy.mjs";
+import { resolveRenpy, runRenpy, runWithIsolatedSaves, exportWeb, renpyErrors, waitForRenpyExit } from "../plugins/renpy/native/renpy.mjs";
 // @ts-expect-error Plugin native modules are intentionally plain JavaScript.
 import { activate } from "../plugins/renpy/native/index.mjs";
 
@@ -155,12 +156,43 @@ describe("Ren'Py execution and browser export", () => {
     expect(renpyErrors("starting\nI'm sorry, but an uncaught exception occurred.\nTraceback (most recent call last):\n"))
       .toContain("Traceback (most recent call last):");
   });
+
+  it("keeps a launched game's command open until the game exits", async () => {
+    const child = spawn(process.execPath, ["-e", "setTimeout(() => process.exit(7), 250)"], { stdio: "ignore" });
+    await new Promise((resolve) => child.once("spawn", resolve));
+    expect(await waitForRenpyExit(child)).toBe(7);
+  });
+
+  it("runs validation against a temporary save directory and removes it", async () => {
+    const fake = path.join(folder, "cli.cjs");
+    await writeFile(fake, 'process.stdout.write(process.argv.slice(2).join("|"));\n');
+    const result = await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      "C:/game",
+      ["lint", "--error-code"],
+      { cwd: folder },
+    );
+    const [flag, savedir, project, ...rest] = result.output.split("|");
+    expect(flag).toBe("--savedir");
+    expect(savedir).toContain("ohmygame-renpy-validation-");
+    expect(project).toBe("C:/game");
+    expect(rest).toEqual(["lint", "--error-code"]);
+    await expect(lstat(savedir!)).rejects.toThrow();
+  });
 });
 
 describe("OhMyGame plugin contracts", () => {
   it("passes the actual plugin manifest and package indexer", async () => {
     const result = await indexPluginPackage(path.resolve("plugins/renpy"));
     expect(result.ok, JSON.stringify(result)).toBe(true);
+  });
+
+  it("declares a native run that outlives the extension host's idle time", async () => {
+    const manifest = JSON.parse(await readFile(path.resolve("plugins/renpy/.ohmygame-plugin/plugin.json"), "utf8")) as {
+      contributes: { commands: Array<{ id: string; run: Record<string, unknown> }> };
+    };
+    const run = manifest.contributes.commands.find((command) => command.id === "run-in-renpy")?.run;
+    expect(run).toMatchObject({ native: "runInRenpy", changesFiles: false, timeoutSeconds: 3600 });
   });
 
   it("registers the expected typed project and native capabilities", () => {

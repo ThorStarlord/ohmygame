@@ -1,5 +1,5 @@
 // OhMyGame Ren'Py plugin entry point; runs in the project extension host.
-import { resolveRenpy, runRenpy, exportWeb, launchRenpy } from "./renpy.mjs";
+import { resolveRenpy, runWithIsolatedSaves, exportWeb, launchRenpy, waitForRenpyExit } from "./renpy.mjs";
 
 function requireProject(context) {
   if (!context.project?.folder) throw new Error("Ren'Py tools require an open game project");
@@ -41,17 +41,17 @@ export function activate(context) {
   });
 
   context.registerTool("renpy_lint", async (_input, call) =>
-    runRenpy(await requireSdk(call), [project(), "lint", "--error-code"], {
+    runWithIsolatedSaves(await requireSdk(call), project(), ["lint", "--error-code"], {
       cwd: project(), signal: call.signal, progress: call.progress, timeoutMs: 180_000,
     }));
 
   context.registerTool("renpy_compile", async (_input, call) =>
-    runRenpy(await requireSdk(call), [project(), "compile", "--keep-orphan-rpyc"], {
+    runWithIsolatedSaves(await requireSdk(call), project(), ["compile", "--keep-orphan-rpyc"], {
       cwd: project(), signal: call.signal, progress: call.progress, timeoutMs: 180_000,
     }));
 
   context.registerTool("renpy_test", async (_input, call) =>
-    runRenpy(await requireSdk(call), [project(), "test"], {
+    runWithIsolatedSaves(await requireSdk(call), project(), ["test"], {
       cwd: project(), signal: call.signal, progress: call.progress, timeoutMs: 300_000,
     }));
 
@@ -69,6 +69,10 @@ export function activate(context) {
     context.onDispose(() => {
       if (child.exitCode === null) child.kill();
     });
-    return { started: true };
+    call.progress("Ren'Py is running");
+    // A pending call keeps the project's extension host alive. Returning as
+    // soon as the game starts would let the host idle out and kill the game.
+    const exitCode = await waitForRenpyExit(child);
+    return { started: true, closed: true, exitCode };
   });
 }

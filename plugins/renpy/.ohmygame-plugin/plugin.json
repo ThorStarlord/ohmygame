@@ -93,7 +93,8 @@
         "title": "%command.run%",
         "run": {
           "native": "runInRenpy",
-          "changesFiles": false
+          "changesFiles": false,
+          "timeoutSeconds": 3600
         },
         "slots": [
           {
