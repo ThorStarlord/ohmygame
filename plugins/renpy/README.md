@@ -10,7 +10,7 @@ A development plugin for native Ren'Py visual novels. This lives in the user's O
 4. Create a **Ren'Py game** project or import an existing project containing game/options.rpy. Existing projects with only a script.rpy can use a General project and enable the plugin manually.
 5. Invoke renpy_status, renpy_lint and renpy_compile as appropriate; use **Run in Ren'Py** for the native game. The Game panel builds a Web export.
 
-The plugin **does not bundle Ren'Py**, download an engine, translate .rpy files to Playable Nodes, or silently change existing game source. It only uses the user's chosen SDK.
+The starter template intentionally does not set a shared save-directory identifier; choose a unique stable one before shipping a game.\n\nThe plugin **does not bundle Ren'Py**, download an engine, translate .rpy files to Playable Nodes, or silently change existing game source. It only uses the user's chosen SDK.
 
 ## Project and preview contract
 
