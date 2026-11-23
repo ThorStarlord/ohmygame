@@ -1,7 +1,7 @@
 // Resolves the user's Ren'Py SDK and provides bounded, cancellable CLI execution.
 // No shell is used. The SDK remains the authority for script parsing and exports.
 import { spawn } from "node:child_process";
-import { access, lstat, mkdir, mkdtemp, rename, rm, stat } from "node:fs/promises";
+import { access, lstat, mkdir, mkdtemp, readdir, rename, rm, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
@@ -165,15 +165,30 @@ export async function exportWeb(project, command, options = {}) {
     });
     if (result.exitCode !== 0)
       throw new Error("Ren'Py web export failed (exit " + result.exitCode + "): " + (result.errors.join("\n") || result.output.slice(-3000)));
-    const entry = await lstat(path.join(staging, "index.html")).catch(() => undefined);
-    if (!entry?.isFile() || entry.isSymbolicLink())
-      throw new Error("Ren'Py web export produced no safe index.html; verify Web support in the SDK");
+    // Ren'Py may place a named web directory alongside an archive.
+    // The destination parameter does not always name the serving root.
+    const validIndex = async (directory) => {
+      const entry = await lstat(path.join(directory, "index.html")).catch(() => undefined);
+      return Boolean(entry?.isFile() && !entry.isSymbolicLink());
+    };
+    let playable = staging;
+    if (!(await validIndex(staging))) {
+      const candidates = [];
+      for (const child of await readdir(staging, { withFileTypes: true })) {
+        if (!child.isDirectory() || child.isSymbolicLink()) continue;
+        const directory = path.join(staging, child.name);
+        if (await validIndex(directory)) candidates.push(directory);
+      }
+      if (candidates.length !== 1)
+        throw new Error("Ren'Py web export produced no unambiguous playable index.html; verify Web support in the SDK");
+      playable = candidates[0];
+    }
     if (existing) {
       await rename(destination, backup);
       movedOld = true;
     }
     try {
-      await rename(staging, destination);
+      await rename(playable, destination);
     } catch (error) {
       if (movedOld) await rename(backup, destination);
       movedOld = false;

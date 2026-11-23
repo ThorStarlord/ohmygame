@@ -23,7 +23,7 @@ The starter template intentionally does not set a shared save-directory identifi
 - Compile: project compile
 - Native run: project run
 - Web export: launcher web_build project --destination <staging>
-- Browser Game panel: .ohmygame/build/web/index.html, promoted only after successful export
+- Browser Game panel: .ohmygame/build/web/index.html, promoted only after successful export (accepts flat and single nested distribution layouts)
 
 Web export relies on SDK Web support and browser-compatible game features. Export may create/modify compiled .rpyc in the game tree; preserve these for Ren'Py save compatibility. A build that passes does not demonstrate scene behavior, media compatibility, or save behavior.
 

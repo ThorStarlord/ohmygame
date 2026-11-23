@@ -93,6 +93,35 @@ describe("Ren'Py execution and browser export", () => {
     expect(await readdir(path.dirname(web))).toEqual(["web"]);
   });
 
+  it("accepts Ren'Py's named web distribution folder beside its zip", async () => {
+    const command = { executable: "renpy", prefixArgs: [], sdkPath: folder };
+    await exportWeb(folder, command, { execute: async (_sdk: unknown, argv: string[]) => {
+      const staging = argv.at(-1)!;
+      const site = path.join(staging, "mygame-1.0-web");
+      await mkdir(site);
+      await writeFile(path.join(site, "index.html"), "nested-web-build");
+      await writeFile(path.join(staging, "mygame-1.0-web.zip"), "archive");
+      return { exitCode: 0, output: "built", errors: [] };
+    } });
+    const web = path.join(folder, ".ohmygame", "build", "web");
+    expect(await readFile(path.join(web, "index.html"), "utf8")).toBe("nested-web-build");
+    expect(await readdir(path.dirname(web))).toEqual(["web"]);
+  });
+
+  it("rejects ambiguous web distributions", async () => {
+    const command = { executable: "renpy", prefixArgs: [], sdkPath: folder };
+    await expect(exportWeb(folder, command, { execute: async (_sdk: unknown, argv: string[]) => {
+      const staging = argv.at(-1)!;
+      for (const name of ["a-web", "b-web"]) {
+        const site = path.join(staging, name);
+        await mkdir(site);
+        await writeFile(path.join(site, "index.html"), "ambiguous");
+      }
+      return { exitCode: 0, output: "built", errors: [] };
+    } })).rejects.toThrow(/unambiguous/);
+    expect(await readdir(path.join(folder, ".ohmygame", "build"))).toEqual([]);
+  });
+
   it("keeps the previous preview intact when Ren'Py fails to export", async () => {
     const web = path.join(folder, ".ohmygame", "build", "web");
     await mkdir(web, { recursive: true });
