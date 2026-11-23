@@ -50,6 +50,11 @@ export function activate(context) {
       cwd: project(), signal: call.signal, progress: call.progress, timeoutMs: 180_000,
     }));
 
+  context.registerTool("renpy_test", async (_input, call) =>
+    runRenpy(await requireSdk(call), [project(), "test"], {
+      cwd: project(), signal: call.signal, progress: call.progress, timeoutMs: 300_000,
+    }));
+
   context.registerTool("renpy_export_web", async (_input, call) => build(call));
 
   context.registerCommand("settingsStatus", async (_input, call) => {

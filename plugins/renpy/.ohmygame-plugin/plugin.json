@@ -75,6 +75,12 @@
         "output": "./tools/run-output.json"
       },
       {
+        "name": "renpy_test",
+        "description": "Run automated Ren'Py testcases declared by the project with the installed Ren'Py SDK.",
+        "input": "./tools/empty.json",
+        "output": "./tools/run-output.json"
+      },
+      {
         "name": "renpy_export_web",
         "description": "Build a Ren'Py Web distribution into the game's OhMyGame preview folder.",
         "input": "./tools/empty.json",

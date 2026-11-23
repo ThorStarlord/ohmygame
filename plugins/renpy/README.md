@@ -20,6 +20,7 @@ The starter template intentionally does not set a shared save-directory identifi
 - Windows CLI: lib/py3-windows-x86_64/python.exe renpy.py (or ARM64 interpreter if available)
 - Unix CLI: renpy.sh
 - Lint: project lint --error-code
+- Engine testcases: project test (requires the game to define Ren'Py tests)
 - Compile: project compile --keep-orphan-rpyc (protects existing save compatibility)
 - Native run: project run
 - Web export: launcher web_build project --destination <staging>

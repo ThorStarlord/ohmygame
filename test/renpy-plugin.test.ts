@@ -176,7 +176,7 @@ describe("OhMyGame plugin contracts", () => {
     });
     expect(Object.keys(types)).toEqual(["renpy-game"]);
     expect(typeof (types["renpy-game"] as { buildWeb: unknown }).buildWeb).toBe("function");
-    expect(tools.sort()).toEqual(["renpy_compile", "renpy_export_web", "renpy_lint", "renpy_status"].sort());
+    expect(tools.sort()).toEqual(["renpy_compile", "renpy_export_web", "renpy_lint", "renpy_status", "renpy_test"].sort());
     expect(commands.sort()).toEqual(["runInRenpy", "settingsStatus"]);
   });
 });
