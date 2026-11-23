@@ -11,7 +11,7 @@ Read the existing game/options.rpy, game/script.rpy, screens, labels, and asset 
 
 1. Call renpy_status. If the SDK is missing, ask for a local Ren'Py SDK directory in the plugin settings or set RENPY_SDK_PATH / RENPY_HOME.
 2. Edit .rpy and .py scripts with file tools. After edits, call renpy_lint. It uses --error-code, so an exitCode other than zero is a real failure; read the errors and repair introduced problems.
-3. Call renpy_compile when the changed script should be compiled. Preserve existing .rpyc files across distributable builds; Ren'Py may depend on them to load older saves.
+3. Call renpy_compile when the changed script should be compiled. It runs with --keep-orphan-rpyc to preserve legacy compiled scripts; preserve existing .rpyc files across distributable builds; Ren'Py may depend on them to load older saves.
 4. Use Run in Ren'Py for the native experience. The app's Game panel uses renpy_export_web to create a browser build. Web support must first be installed in this SDK through the Ren'Py launcher. Do not assume that a native feature, video codec, Python package, or persistent-save behavior works in the browser.
 5. Exercise a representative route with actual input and screenshots where available. Successful lint or build alone does not prove gameplay works.
 

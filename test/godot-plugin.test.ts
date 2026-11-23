@@ -1,4 +1,4 @@
-import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -119,5 +119,36 @@ describe("finding Godot", () => {
     expect(await findGodot(undefined, options)).toBeUndefined();
     const godot = await executable("bin", "godot4");
     expect(await findGodot(undefined, options)).toBe(godot);
+  });
+
+  it("pins a Godot plugin that recognizes Godot projects and builds browser previews", async () => {
+    const pinned = JSON.parse(await readFile("config/preinstalled-plugins.json", "utf8")) as {
+      plugins: Array<{ pluginId: string; id: string; version: string }>;
+    };
+    const pin = pinned.plugins.find((entry) => entry.pluginId === "godot");
+    expect(pin).toMatchObject({ id: "ohmygame/godot", version: "1.0.3" });
+    const manifest = JSON.parse(await readFile(
+      ".runtime/preinstalled-plugin-sources/godot/.ohmygame-plugin/plugin.json", "utf8",
+    )) as {
+      id: string;
+      version: string;
+      contributes: {
+        projectTypes: Array<{ id: string; recognize?: { files: string[] }; preview: string; playtest?: string }>;
+        tools: Array<{ name: string }>;
+      };
+    };
+    expect(manifest.id).toBe("ohmygame/godot");
+    expect(manifest.version).toBe(pin?.version);
+    expect(manifest.contributes.projectTypes).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: "godot-game",
+        recognize: { files: ["project.godot"] },
+        preview: "web-build",
+        playtest: "web",
+      }),
+    ]));
+    expect(manifest.contributes.tools.map((tool) => tool.name)).toEqual(expect.arrayContaining([
+      "godot_status", "run_headless", "export_web",
+    ]));
   });
 });

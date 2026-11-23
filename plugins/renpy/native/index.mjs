@@ -46,7 +46,7 @@ export function activate(context) {
     }));
 
   context.registerTool("renpy_compile", async (_input, call) =>
-    runRenpy(await requireSdk(call), [project(), "compile"], {
+    runRenpy(await requireSdk(call), [project(), "compile", "--keep-orphan-rpyc"], {
       cwd: project(), signal: call.signal, progress: call.progress, timeoutMs: 180_000,
     }));
 
