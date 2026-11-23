@@ -343,14 +343,12 @@ export async function adoptTypedProject({
       throw error;
     }
   }
-  // Choosing the type is the person's choice for this folder: its plugin is
-  // allowed here at the pinned version. Other plugins the file asks for still
-  // wait for approval, and install consent still applies.
-  await services.grants.approve(
-    key,
-    owner,
-    capabilityGrants(services.index.get(owner, version)!.manifest),
-  );
+  // Choosing the type is the person's choice: its plugin's capabilities are
+  // allowed for the app and, at the pinned version, for this folder. Other
+  // plugins the file asks for still wait for approval.
+  const granted = capabilityGrants(services.index.get(owner, version)!.manifest);
+  await services.grants.consent(owner, granted);
+  await services.grants.approve(key, owner, granted);
   await services.changed(folder);
 }
 

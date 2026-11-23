@@ -2009,6 +2009,35 @@ describe("project types", () => {
     }
   });
 
+  it("allows the chosen type's plugin when taking on an existing folder", async () => {
+    const data = await mkdtemp(path.join(tmpdir(), "ohmygame-adopt-consent-"));
+    const parent = await mkdtemp(path.join(tmpdir(), "ohmygame-adopt-"));
+    const services = new PluginServices({
+      directory: data,
+      hosts: { callTimeoutMs: 5_000, cancelGraceMs: 200 },
+    });
+    try {
+      const installed = await services.install(await boardPackage("good"));
+      if (!installed.ok) throw new Error(JSON.stringify(installed.issues));
+      // Nothing was allowed yet: the person chose the folder's type just now.
+      expect(services.grants.plugin("acme/board")).toBeUndefined();
+      const folder = path.join(parent, "existing");
+      await mkdir(folder);
+      await writeFile(path.join(folder, "board.txt"), "my board");
+      await adoptTypedProject({ folder, type: "acme/board:board", services });
+      const resolved = await services.resolve(folder);
+      expect(resolved.ok && resolved.plugins).toMatchObject([
+        { id: "acme/board", status: "active" },
+      ]);
+      expect(await buildWebPreview({ folder, services })).toMatchObject({
+        entry: "index.html",
+      });
+    } finally {
+      await services.close();
+      await Promise.all([data, parent].map((dir) => rm(dir, { recursive: true, force: true })));
+    }
+  });
+
   it("refuses a web build outside its project or without its page", async () => {
     for (const [build, message] of [
       ["outside", "is not in the project folder"],
