@@ -1,0 +1,11 @@
+{
+  "displayName": "Ren'Py",
+  "description": "使用脚本检查、编译、本地运行和浏览器预览来制作 Ren'Py 视觉小说。",
+  "longDescription": "使用本机 Ren'Py SDK 和 .rpy 源文件。插件识别 game/options.rpy，创建起始项目，执行 lint 检查、编译 .rpyc、运行原生游戏，并在 SDK 安装 Web 支持时构建网页预览。",
+  "type.title": "Ren'Py 游戏",
+  "type.description": "Ren'Py 视觉小说项目；游戏面板使用 Ren'Py Web 构建。",
+  "config.renpySdkPath": "Ren'Py SDK 文件夹或启动程序",
+  "config.renpySdkPath.description": "选择包含 renpy.py 和 renpy.sh 的 Ren'Py SDK 目录（Windows 推荐），或 renpy.sh。留空时使用 RENPY_SDK_PATH 或 RENPY_HOME。",
+  "command.run": "在 Ren'Py 中运行",
+  "command.status": "Ren'Py SDK 状态"
+}

@@ -1,0 +1,11 @@
+{
+  "displayName": "Ren'Py",
+  "description": "Build Ren'Py visual novels with script linting, automated tests, compilation, native launch and browser preview.",
+  "longDescription": "Use Ren'Py's own SDK and .rpy sources. The plugin recognizes an existing game/options.rpy, creates a starter game, checks scripts with lint, compiles .rpyc, launches the native game, and builds a Ren'Py Web preview when Web support is installed in that SDK. Existing projects can also use a General workspace with the plugin enabled.",
+  "type.title": "Ren'Py game",
+  "type.description": "A native Ren'Py visual novel project; the browser Game panel uses a Ren'Py Web build.",
+  "config.renpySdkPath": "Ren'Py SDK folder or launcher",
+  "config.renpySdkPath.description": "Select the Ren'Py SDK directory containing renpy.py and renpy.sh, or renpy.sh itself. On Windows, select the SDK directory; the plugin uses its bundled Python interpreter. Leave empty to use RENPY_SDK_PATH or RENPY_HOME.",
+  "command.run": "Run in Ren'Py",
+  "command.status": "Ren'Py SDK status"
+}

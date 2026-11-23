@@ -5,6 +5,10 @@ The [中文快速指引](contributing.zh-CN.md) summarizes the same workflow in 
 [maintaining.md](maintaining.md) covers triage, review, the `dev`/`main` transition,
 and release preparation.
 
+## Engine integrations in this fork
+
+The fork adds a locally installable [Ren'Py plugin](renpy-integration.md) with native scripting tools and a guarded Web preview. The official Godot integration remains a separately pinned package; [Ren'Py integration](renpy-integration.md#godot-qualification) records Godot's current qualification boundary.
+
 ## Where to change things
 
 The React renderer talks to a local Fastify daemon over HTTP and SSE. The daemon

@@ -1,0 +1,6 @@
+# Rename this file to .gitignore on install; OhMyGame restores template gitignore.
+.ohmygame/build/
+.renpy/
+game/cache/
+game/saves/
+*.bak
