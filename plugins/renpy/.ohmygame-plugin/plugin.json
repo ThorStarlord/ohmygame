@@ -1,0 +1,126 @@
+{
+  "$schema": "https://www.ohmygame.ai/schema/plugin-2.json",
+  "id": "thorstarlord/renpy",
+  "version": "0.1.0",
+  "engines": {
+    "ohmygame-api": "^2.35.0"
+  },
+  "displayName": "%displayName%",
+  "description": "%description%",
+  "longDescription": "%longDescription%",
+  "icon": "./assets/icon.svg",
+  "categories": [
+    "engine"
+  ],
+  "beta": true,
+  "activation": {
+    "files": [
+      "game/options.rpy",
+      "game/script.rpy"
+    ]
+  },
+  "appliesTo": [
+    "general",
+    "thorstarlord/renpy:renpy-game"
+  ],
+  "entrypoints": {
+    "native": "./native/index.mjs"
+  },
+  "capabilities": {
+    "native": true
+  },
+  "configuration": {
+    "renpySdkPath": {
+      "type": "path",
+      "title": "%config.renpySdkPath%",
+      "description": "%config.renpySdkPath.description%",
+      "default": ""
+    }
+  },
+  "contributes": {
+    "projectTypes": [
+      {
+        "id": "renpy-game",
+        "title": "%type.title%",
+        "description": "%type.description%",
+        "icon": "./assets/icon.svg",
+        "template": "./templates/renpy-game",
+        "recognize": {
+          "files": [
+            "game/options.rpy"
+          ]
+        },
+        "preview": "web-build",
+        "playtest": "web"
+      }
+    ],
+    "skills": "./skills/",
+    "tools": [
+      {
+        "name": "renpy_status",
+        "description": "Locate the Ren'Py SDK used for this project and report its command-line executable.",
+        "input": "./tools/empty.json",
+        "output": "./tools/status-output.json"
+      },
+      {
+        "name": "renpy_lint",
+        "description": "Run the Ren'Py script linter with --error-code and return its diagnostics.",
+        "input": "./tools/empty.json",
+        "output": "./tools/run-output.json"
+      },
+      {
+        "name": "renpy_compile",
+        "description": "Compile Ren'Py scripts to .rpyc using the installed SDK; keeps compiled files for save compatibility.",
+        "input": "./tools/empty.json",
+        "output": "./tools/run-output.json"
+      },
+      {
+        "name": "renpy_export_web",
+        "description": "Build a Ren'Py Web distribution into the game's OhMyGame preview folder.",
+        "input": "./tools/empty.json",
+        "output": "./tools/run-output.json"
+      }
+    ],
+    "commands": [
+      {
+        "id": "run-in-renpy",
+        "title": "%command.run%",
+        "run": {
+          "native": "runInRenpy",
+          "changesFiles": false
+        },
+        "slots": [
+          {
+            "slot": "project.toolbar",
+            "when": "project.plugin('thorstarlord/renpy')"
+          },
+          {
+            "slot": "game.start"
+          }
+        ]
+      },
+      {
+        "id": "settings-status",
+        "title": "%command.status%",
+        "run": {
+          "native": "settingsStatus",
+          "changesFiles": false
+        }
+      }
+    ],
+    "settings": {
+      "groups": [
+        {
+          "rows": [
+            {
+              "field": "renpySdkPath"
+            },
+            {
+              "widget": "status"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

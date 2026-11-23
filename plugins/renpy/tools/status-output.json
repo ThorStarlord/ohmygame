@@ -1,0 +1,29 @@
+{
+  "type": "object",
+  "properties": {
+    "found": {
+      "type": "boolean"
+    },
+    "executable": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sdkPath": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "problem": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "found",
+    "executable",
+    "sdkPath"
+  ],
+  "additionalProperties": false
+}
