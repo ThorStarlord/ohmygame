@@ -7,7 +7,7 @@ and release preparation.
 
 ## Engine integrations in this fork
 
-The fork adds a locally installable [Ren'Py plugin](renpy-integration.md) with native scripting tools and a guarded Web preview. The official Godot integration remains a separately pinned package; [Ren'Py integration](renpy-integration.md#godot-qualification) records Godot's current qualification boundary.
+The fork adds a locally installable [Ren'Py plugin](renpy-integration.md) with native scripting tools and a guarded Web preview. The official Godot integration remains a separately pinned package; [Ren'Py integration](renpy-integration.md#godot-qualification) records Godot's current qualification boundary. The [cross-engine integration pilot](pilots/2026-11-23-cross-engine-pilot.md) records the 2026-11-23 Atlas and Superhero-Netorare-Parody runs, their evidence, and the remaining defects.
 
 ## Where to change things
 
