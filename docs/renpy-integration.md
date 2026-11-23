@@ -8,7 +8,7 @@ The source lives at [plugins/renpy](../plugins/renpy/README.md). Install it in d
 
 - A proper Ren'Py project type, new-project template, and recognition of standard existing projects with game/options.rpy.
 - SDK discovery from user configuration, RENPY_SDK_PATH, RENPY_HOME and PATH.
-- Native Ren'Py CLI operations: lint --error-code, compile --keep-orphan-rpyc, automated Ren'Py testcases and interactive run.
+- Native Ren'Py CLI operations: lint --error-code, compile --keep-orphan-rpyc, automated Ren'Py testcases and interactive run. Lint, compile and tests run with a throwaway `--savedir`, because Ren'Py loads and can rewrite persistent data even for those checks; validation never touches the player's saves or unlocks.
 - A web-build project type: web export to an isolated staging directory and promotion to .ohmygame/build/web only after an index.html exists in the output root or one unambiguous nested web distribution.
 - Plugin project settings, localized names, tool schemas, a project-specific agent skill, and automated contract tests.
 

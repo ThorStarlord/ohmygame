@@ -19,9 +19,9 @@ The starter template intentionally does not set a shared save-directory identifi
 - SDK resolution: explicit configured folder or launcher first; RENPY_SDK_PATH, RENPY_HOME and PATH next
 - Windows CLI: lib/py3-windows-x86_64/python.exe renpy.py (or ARM64 interpreter if available)
 - Unix CLI: renpy.sh
-- Lint: project lint --error-code
-- Engine testcases: project test (requires the game to define Ren'Py tests)
-- Compile: project compile --keep-orphan-rpyc (protects existing save compatibility)
+- Lint: --savedir <temporary> project lint --error-code
+- Engine testcases: --savedir <temporary> project test (requires the game to define Ren'Py tests)
+- Compile: --savedir <temporary> project compile --keep-orphan-rpyc (protects existing save compatibility)
 - Native run: project run
 - Web export: launcher web_build project --destination <staging>
 - Browser Game panel: .ohmygame/build/web/index.html, promoted only after successful export (accepts flat and single nested distribution layouts)
@@ -37,7 +37,7 @@ Run the repository's plugin and source tests (after normal dependency setup):
     bun run plugin:check plugins/renpy
     bun run test -- test/renpy-plugin.test.ts
 
-This test slice validates SDK discovery, manifest, command wiring, cancellation, output handling and transactional Web-export behavior with a fake CLI. It does not launch the real Ren'Py SDK. A Windows/macOS native smoke and browser input/audio/save qualification remain required before production claims.
+This test slice validates SDK discovery, manifest, command wiring, cancellation, output handling, isolated validation saves and transactional Web-export behavior with a fake CLI. It does not launch the real Ren'Py SDK. A Windows/macOS native smoke and browser input/audio/save qualification remain required before production claims. Lint, compile and engine tests use a throwaway `--savedir`, because Ren'Py loads and can rewrite persistent data during those checks.
 
 ## Engine authority
 

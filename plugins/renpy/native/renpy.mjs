@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { access, lstat, mkdir, mkdtemp, readdir, rename, rm, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { randomUUID } from "node:crypto";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 const MAX_OUTPUT = 40_000;
@@ -85,6 +86,20 @@ export function renpyErrors(output) {
   return output.split(/\r?\n/)
     .filter((line) => /^\s*(?:error|exception|traceback|file ".*", line \d+|I'm sorry)/i.test(line))
     .map((line) => line.trim()).slice(0, 50);
+}
+
+/**
+ * Runs a read-only SDK task against a throwaway save directory. Ren'Py loads
+ * and can rewrite persistent data even for lint and compile; without this a
+ * check would touch the player's real saves and unlocks.
+ */
+export async function runWithIsolatedSaves(command, project, args, options = {}) {
+  const savedir = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-validation-"));
+  try {
+    return await runRenpy(command, ["--savedir", savedir, project, ...args], options);
+  } finally {
+    await rm(savedir, { recursive: true, force: true });
+  }
 }
 
 /** Execute an SDK CLI task; cancellation and timeout are distinguished from CLI failures. */
@@ -223,4 +238,14 @@ export function launchRenpy(command, project, signal) {
     });
     child.once("close", () => signal?.removeEventListener("abort", stop));
   });
+}
+
+/**
+ * The launch command stays pending while the game runs, so the project's
+ * extension host is not treated as idle and stopped (which would kill the
+ * game). It resolves when the person closes the game or the host stops.
+ */
+export function waitForRenpyExit(child) {
+  if (child.exitCode !== null) return Promise.resolve(child.exitCode);
+  return new Promise((resolve) => child.once("close", (code) => resolve(code)));
 }
