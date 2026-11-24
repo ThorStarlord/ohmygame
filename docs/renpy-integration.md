@@ -8,7 +8,7 @@ The source lives at [plugins/renpy](../plugins/renpy/README.md). Install it in d
 
 - A proper Ren'Py project type, new-project template, and recognition of standard existing projects with game/options.rpy.
 - SDK discovery from user configuration, RENPY_SDK_PATH, RENPY_HOME and PATH.
-- Native Ren'Py CLI operations: lint --error-code, compile --keep-orphan-rpyc, automated Ren'Py testcases and an interactive run owned by OhMyGame's managed native-session lifecycle. Lint, compile, tests and Web export run with a throwaway `--savedir`, because Ren'Py loads and can rewrite persistent data even for those operations; automated validation and builds never touch the player's saves or unlocks. Interactive play intentionally uses the project's chosen save namespace.
+- Native Ren'Py CLI operations: lint --error-code, compile --keep-orphan-rpyc, automated Ren'Py testcases and an interactive run owned by OhMyGame's managed native-session lifecycle. Lint, compile, tests and Web export run with a throwaway `--savedir` plus redirected persistent state, because Ren'Py loads and can rewrite persistent data even for those operations. They refuse a project whose `game/saves` already holds player data, and remove saves an automated run creates. Interactive play intentionally uses the project's chosen save namespace.
 - A web-build project type: web export to an isolated staging directory and promotion to .ohmygame/build/web only after an index.html exists in the output root or one unambiguous nested web distribution.
 - Plugin project settings, localized names, tool schemas, a project-specific agent skill, and automated contract tests.
 
@@ -36,16 +36,18 @@ The following remains a separate end-to-end qualification and must not be inferr
 
 ### Data safety
 
-| Operation | May change | Saved data |
+| Operation | May change | Player data |
 | --- | --- | --- |
-| `renpy_lint` | nothing in the project | Isolated `--savedir`, removed after the call |
-| `renpy_compile` | project `.rpyc`, expected for save compatibility | Isolated `--savedir`, removed after the call |
-| `renpy_test` | whatever the project's own tests do | Isolated `--savedir`, removed after the call |
-| Web export | `.ohmygame/build/web`, promoted after a valid `index.html`; the launcher may also write generated `game/saves/` and `progressive_download.txt` inside the project | Isolated `--savedir` and inherited `RENPY_PATH_TO_SAVES`; those generated files are build artifacts, not the player's save namespace. The installed SDK's Web support remains a separate qualification gate |
-| Run in Ren'Py | the game's own legitimate saves and persistent data | The project's chosen `config.save_directory`; OhMyGame does not override it |
-| Cancel/failure | staging and temporary savedirs are removed | No access to the player's save directory outside Run in Ren'Py |
+| `renpy_lint` | project `.rpyc`, `game/cache`, `log.txt`; `errors.txt` on failure | Temporary `--savedir`, `RENPY_PATH_TO_SAVES`, `RENPY_MULTIPERSISTENT`; backups disabled. Refuses a non-empty `game/saves`; removes a generated one. |
+| `renpy_compile` | project `.rpyc`, `game/cache`, `log.txt` | Same isolation and `game/saves` guard as lint |
+| `renpy_test` | whatever the project's tests write, plus `.rpyc`, cache, logs and test screenshots | Same isolation and `game/saves` guard; a test that saves uses the temporary savedir, not the player's namespace |
+| Web export | `.ohmygame/build/web` after a valid `index.html`; `.rpyc`, cache, `log.txt`, `progressive_download.txt`; a generated `game/saves` is removed | Same isolation and `game/saves` guard. The launcher may still write its own `%APPDATA%\RenPy\persistent\launcher.renpy.org` and SDK-launcher saves. The installed SDK's Web support remains a separate qualification gate. |
+| Run in Ren'Py | the game's own compiled files, cache and log | The game's real `config.save_directory` and, for a portable project, `game/saves`; this is deliberate play, not validation |
+| Cancel/failure | staging and temporary savedirs are removed; a generated `game/saves` is removed | A pre-existing non-empty `game/saves` is never touched |
 
-Ren'Py's launcher does not inherit `--savedir` into the project process it starts. The plugin therefore also sets `RENPY_PATH_TO_SAVES` for a build, which the child inherits; without it, a Web build rewrote a fixture persistent file. The generated `game/saves/` folder is a project artifact and is deliberately not deleted automatically, because a project without `config.save_directory` may legitimately use it for its own saves. The installed 8.5.2 SDK in this pilot had no complete Web assets, so the real Web-export output path remained unqualified even though package generation ran. Do not infer browser or save behavior from lint/compile.
+`--savedir` only replaces `config.savedir`. Ren'Py always adds `<project>/game/saves` as an active save location and writes persistent data to every active location. For a portable project without `config.save_directory`, Ren'Py ignores `RENPY_PATH_TO_SAVES` and `game/saves` is the real player namespace (`renpy.py` returns it before checking the environment). The plugin therefore checks `game/saves` before every automated operation: if it contains anything, the operation fails with an explanation instead of touching it; if it was absent or empty, the plugin removes what the run creates.
+
+`RENPY_PATH_TO_SAVES` redirects the project persistent and save slots for a standard project. `RENPY_MULTIPERSISTENT` redirects MultiPersistent files, and `RENPY_DISABLE_BACKUPS` stops script backups. Ren'Py still writes `.rpyc`, cache and logs in the project; those are build artifacts, not player data. A project's own `config.extra_savedirs` are outside this guard: a project that points them at real player data must be moved or validated another way. A standard project whose `game/saves` already contains an older generated `persistent` is conservatively refused until that folder is moved aside. The installed 8.5.2 SDK had no complete Web assets, so the real Web-export output path remained unqualified even though package generation ran. Do not infer browser or save behavior from lint/compile.
 
 The Ren'Py CLI is version-sensitive and web builds have feature restrictions. See https://www.renpy.org/doc/html/cli.html and https://www.renpy.org/doc/html/web.html for the engine's current authority.
 

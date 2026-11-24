@@ -16,7 +16,7 @@
 | A person or the owning project can stop a session deliberately | **PASS** |
 | Normal exit, crash, failed launch, deactivation, project close, app shutdown, and host failure clean up | **PASS** in automated lifecycle tests |
 | Another project cannot stop a session it does not own | **PASS** in automated tests; the real route returned 503 for a project without that host |
-| Ren'Py lint, compile, tests, and Web export preserve protected player data | **PASS** for lint/compile/tests; Web export preserves save data but the installed SDK cannot produce complete Web output |
+| Ren'Py lint, compile, tests, and Web export preserve protected player data | **PASS** for APPDATA saves and generated `game/saves`; Web export preserves saves but the installed SDK cannot produce complete Web output; a portable project with existing `game/saves` is refused rather than silently isolated |
 | Godot **Run in Godot** survives the host idle threshold with the pinned plugin | **FAIL/BLOCKED**: requires the upstream plugin change, a release, and a new OhMyGame pin |
 | Full cross-platform qualification | **NOT_TESTED** |
 
@@ -70,7 +70,7 @@ Contract notes:
 
 | Check | Result |
 | --- | --- |
-| `bun run test -- test/extension-hosts.test.ts test/renpy-plugin.test.ts test/project-frame.test.tsx test/godot-plugin.test.ts` | **90 passed, 2 skipped** (92 total) |
+| `bun run test -- test/extension-hosts.test.ts test/renpy-plugin.test.ts test/project-frame.test.tsx test/godot-plugin.test.ts` | **95 passed, 2 skipped** (97 total; includes the follow-up `game/saves` coverage) |
 | Native-session lifecycle tests | **8 passed** |
 | `bun run typecheck` | exit 0 |
 | `bun run lint` | exit 0 |
@@ -122,14 +122,39 @@ The protected fixture contained a valid `persistent` file and a real save slot c
 | `launcher web_build` with `--savedir` and `RENPY_PATH_TO_SAVES` | unchanged | 1 | Package generation ran to 578 files; the installed SDK lacks complete Web assets (`WEB_PATH` is `None`) |
 | Control: `lint` without `--savedir` in a disposable APPDATA | **changed** | 0 | Confirms the isolation is doing real work |
 
-Why `RENPY_PATH_TO_SAVES` is required: `launcher web_build` starts the project in a child process that does not inherit the parent's `--savedir`. Without the environment override, the first fixture run rewrote the protected persistent file. The plugin now sets a temporary saves root and removes it on success, failure, and cancellation.
+### Correction from the follow-up audit
 
-Generated files: Web export can leave `game/saves/` and `progressive_download.txt` inside the project. They are build artifacts, not the player's save namespace, and are deliberately not deleted automatically because a project without `config.save_directory` may legitimately use `game/saves`.
+The first pass hashed only the APPDATA namespace and overclaimed. `--savedir` replaces `config.savedir`, but Ren'Py always adds `<project>/game/saves` as an active save location and writes persistent data to every active location. For a portable project without `config.save_directory`, `game/saves` is the real player namespace, and `RENPY_PATH_TO_SAVES` is ignored because `renpy.py` returns `gamedir/saves` before checking the environment. Silent token upgrades can also rewrite save slots there.
+
+The plugin now:
+
+- refuses any automated lint, compile, test or Web export when `game/saves` already contains files;
+- removes a generated `game/saves` when the folder was absent or restores it to empty when it was empty;
+- sets `RENPY_PATH_TO_SAVES` and `RENPY_MULTIPERSISTENT` to temporary locations and sets `RENPY_DISABLE_BACKUPS`;
+- removes all temporary locations on success, failure, and cancellation.
+
+The corrected fixture (`renpy-data-fixture-v2`, evidence `renpy-safety-v2.json`) confirmed:
+
+| Scenario | Result |
+| --- | --- |
+| Standard project: lint, compile, Web build through the wrapper | APPDATA persistent and save slot byte-identical; APPDATA tree contains only the sentinel namespace; no `game/saves` left |
+| Portable project with a `game/saves/persistent` sentinel | refused before running; sentinel byte-identical |
+| Portable project with no `game/saves` | lint succeeded; no `game/saves` left behind |
+| Portable Web export with existing saves | refused before running |
+| Control lint without isolation | APPDATA persistent changed |
+
+Why `RENPY_PATH_TO_SAVES` is still required: `launcher web_build` starts the project in a child process that does not inherit the parent's `--savedir`. Without the environment override, the first fixture run rewrote the protected APPDATA persistent file. The preflight guard is what covers portable `game/saves`.
+
+Automated runs still write `.rpyc`, `game/cache` and `log.txt` in the project; `errors.txt` may appear on a lint failure. A generated `game/saves` is removed, but `progressive_download.txt` and `.ohmygame/build` remain as build output. A raw launcher invocation outside the plugin can still leave `game/saves`.
 
 Remaining risk:
 
 - The installed SDK cannot complete the final Web packaging step, so the full browser-export path is **NOT_TESTED**.
-- `RENPY_PATH_TO_SAVES` behavior is verified against Ren'Py 8.5.2 on Windows only.
+- `RENPY_PATH_TO_SAVES`, `RENPY_MULTIPERSISTENT` and the `game/saves` guard are verified against Ren'Py 8.5.2 on Windows only.
+- A portable project with existing `game/saves` is refused, not automatically isolated; the person must set `config.save_directory` or move the folder.
+- A standard project whose `game/saves` already contains an older generated `persistent` is conservatively refused until that folder is moved aside.
+- A project's own `config.extra_savedirs` are still active; a project that points them at real player data is outside this guard.
+- A hard host crash during validation can leave a generated `game/saves` that a later run will conservatively refuse.
 - Interactive **Run in Ren'Py** intentionally uses the project's configured save namespace; it is not isolated, and should not be described as validation-safe.
 
 ## Godot integration dependency

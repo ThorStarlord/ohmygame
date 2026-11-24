@@ -88,17 +88,89 @@ export function renpyErrors(output) {
     .map((line) => line.trim()).slice(0, 50);
 }
 
+const VALIDATION_BACKUPS = "I take responsibility for this.";
+
+/**
+ * Ren'Py always adds <project>/game/saves as an active save location. For a
+ * portable project that folder is the real player namespace; --savedir and
+ * RENPY_PATH_TO_SAVES do not redirect it. Refuse existing player data there,
+ * and remove whatever an automated run creates when it was absent or empty.
+ */
+async function projectSaves(project) {
+  const folder = path.join(project, "game", "saves");
+  const found = await lstat(folder).catch((error) => {
+    if (error.code === "ENOENT") return undefined;
+    throw error;
+  });
+  if (!found) return { folder, existed: false };
+  if (found.isSymbolicLink() || !found.isDirectory())
+    throw new Error("Refusing a non-directory or symbolic-link game/saves folder: " + folder);
+  if ((await readdir(folder)).length)
+    throw new Error(
+      "This Ren'Py project keeps player data in game/saves, which --savedir cannot isolate. " +
+      "Move that folder aside or set config.save_directory before running an automated Ren'Py operation.",
+    );
+  return { folder, existed: true };
+}
+
+async function removeProjectSaves(state) {
+  if (!state.existed) {
+    await rm(state.folder, { recursive: true, force: true });
+    return;
+  }
+  for (const entry of await readdir(state.folder))
+    await rm(path.join(state.folder, entry), { recursive: true, force: true });
+}
+
+/**
+ * A throwaway savedir and redirected save-like state. The project's own
+ * game/saves is checked before the run and cleaned after it.
+ */
+async function validationIsolation(project) {
+  const projectSavesState = await projectSaves(project);
+  const savedir = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-validation-"));
+  let savesBase;
+  let multipersistentBase;
+  try {
+    savesBase = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-validation-saves-"));
+    multipersistentBase = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-validation-multi-"));
+  } catch (error) {
+    await rm(savedir, { recursive: true, force: true });
+    if (savesBase) await rm(savesBase, { recursive: true, force: true });
+    throw error;
+  }
+  return {
+    savedir,
+    env: {
+      RENPY_PATH_TO_SAVES: savesBase,
+      RENPY_MULTIPERSISTENT: path.join(multipersistentBase, "multipersistent"),
+      RENPY_DISABLE_BACKUPS: VALIDATION_BACKUPS,
+    },
+    async cleanup() {
+      await removeProjectSaves(projectSavesState).catch(() => {});
+      await Promise.all([
+        rm(savedir, { recursive: true, force: true }),
+        rm(savesBase, { recursive: true, force: true }),
+        rm(multipersistentBase, { recursive: true, force: true }),
+      ]);
+    },
+  };
+}
+
 /**
  * Runs a read-only SDK task against a throwaway save directory. Ren'Py loads
  * and can rewrite persistent data even for lint and compile; without this a
  * check would touch the player's real saves and unlocks.
  */
 export async function runWithIsolatedSaves(command, project, args, options = {}) {
-  const savedir = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-validation-"));
+  const isolation = await validationIsolation(project);
   try {
-    return await runRenpy(command, ["--savedir", savedir, project, ...args], options);
+    return await runRenpy(command, ["--savedir", isolation.savedir, project, ...args], {
+      ...options,
+      env: { ...options.env, ...isolation.env },
+    });
   } finally {
-    await rm(savedir, { recursive: true, force: true });
+    await isolation.cleanup();
   }
 }
 
@@ -173,22 +245,25 @@ export async function exportWeb(project, command, options = {}) {
   });
   if (existing && (existing.isSymbolicLink() || !existing.isDirectory()))
     throw new Error("Refusing an unsafe existing web build path");
-  const staging = await mkdtemp(path.join(buildRoot, "renpy-web-"));
-  const savedir = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-web-"));
-  const savesBase = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-web-saves-"));
+  // Checked before the build starts, so a project with real game/saves
+  // player data fails before the launcher can touch it.
+  const isolation = await validationIsolation(project);
   const backup = path.join(buildRoot, "renpy-web-old-" + randomUUID());
+  let staging;
   let movedOld = false;
   try {
+    staging = await mkdtemp(path.join(buildRoot, "renpy-web-"));
     const execute = options.execute ?? runRenpy;
     // The launcher starts the project in its own process, which ignores the
     // parent's --savedir. RENPY_PATH_TO_SAVES is inherited and keeps the
-    // build from reading or rewriting the player's saves and unlocks.
-    const result = await execute(command, ["--savedir", savedir, "launcher", "web_build", project, "--destination", staging], {
+    // build from reading or rewriting the player's saves and unlocks; the
+    // preflight guard covers portable projects, where Ren'Py ignores it.
+    const result = await execute(command, ["--savedir", isolation.savedir, "launcher", "web_build", project, "--destination", staging], {
       cwd: command.sdkPath,
       signal: options.signal,
       progress: options.progress,
       timeoutMs: 600_000,
-      env: { RENPY_PATH_TO_SAVES: savesBase },
+      env: { ...options.env, ...isolation.env },
     });
     if (result.exitCode !== 0)
       throw new Error("Ren'Py web export failed (exit " + result.exitCode + "): " + (result.errors.join("\n") || result.output.slice(-3000)));
@@ -227,9 +302,8 @@ export async function exportWeb(project, command, options = {}) {
     }
     return result;
   } finally {
-    await rm(staging, { recursive: true, force: true });
-    await rm(savedir, { recursive: true, force: true });
-    await rm(savesBase, { recursive: true, force: true });
+    if (staging) await rm(staging, { recursive: true, force: true });
+    await isolation.cleanup();
     // If promotion failed before it could complete, do not delete a backup.
   }
 }
