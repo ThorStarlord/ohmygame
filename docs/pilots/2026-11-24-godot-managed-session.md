@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-24  
 **Status:** bounded fallback complete. The combined contributor plugin is installed as a **local development plugin** and verified against Atlas; no official Godot plugin release or OhMyGame pin change was made.  
-**OhMyGame:** `ThorStarlord/ohmygame`, `dev` `64188c90f99ef960fc2aee42f369bdeda739b34a`.  
+**OhMyGame:** `ThorStarlord/ohmygame`, `dev` `64188c90f99ef960fc2aee42f369bdeda739b34a` at qualification start; final `dev` after this report merged is `bddd1a6d2d80c7cfd1d7ec74fe33922733e576be`.
 **Official plugin repository:** `WhiteTowerAI/ohmygame-plugins`, `main` `28a78812bb86bd07ac93b754c79c40ebd5e51a4a`.  
 **Integrated contributor source:** `ThorStarlord/ohmygame-plugins`, branch `combined/godot-managed-web` at `3c696e8b9477bc9fb1ec41bd9d93c31ef833b117`.  
 **Atlas Midgard:** `main` `5aab42d03b16cb8467822f195a45daedb33c42cc`; qualification used a disposable worktree with a private Godot user-directory setting.
