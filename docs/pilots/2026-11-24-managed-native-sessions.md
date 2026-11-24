@@ -17,7 +17,7 @@
 | Normal exit, crash, failed launch, deactivation, project close, app shutdown, and host failure clean up | **PASS** in automated lifecycle tests |
 | Another project cannot stop a session it does not own | **PASS** in automated tests; the real route returned 503 for a project without that host |
 | Ren'Py lint, compile, tests, and Web export preserve protected player data | **PASS** for APPDATA saves and generated `game/saves`; Web export preserves saves but the installed SDK cannot produce complete Web output; a portable project with existing `game/saves` is refused rather than silently isolated |
-| Godot **Run in Godot** survives the host idle threshold with the pinned plugin | **FAIL/BLOCKED**: requires the upstream plugin change, a release, and a new OhMyGame pin |
+| Godot **Run in Godot** survives the host idle threshold with the pinned plugin | **FAIL/BLOCKED** for pinned 1.0.3; the combined contributor plugin is **PASS** as a local development install (see [Godot managed-session qualification](2026-11-24-godot-managed-session.md)) |
 | Full cross-platform qualification | **NOT_TESTED** |
 
 ## Architecture decision
@@ -164,7 +164,9 @@ The pinned `@ohmygame/godot` 1.0.3 still starts the editor itself; its extension
 - [`WhiteTowerAI/ohmygame-plugins#62`](https://github.com/WhiteTowerAI/ohmygame-plugins/pull/62): add `include_filter=""` to the generated Web preset.
 - [`WhiteTowerAI/ohmygame-plugins#63`](https://github.com/WhiteTowerAI/ohmygame-plugins/pull/63): use `context.nativeSessions` in **Run in Godot**, with the old spawn path as a fallback.
 
-Both are `action_required` because this is a first-time contributor to that repository; maintainers must approve the runs. Delivering the fix to users additionally requires an upstream version bump, an npm release, and a new pin in `config/preinstalled-plugins.json`. No pinned artifact, npm package, or release was modified here.
+Both are `action_required` because this is a first-time contributor to that repository; maintainers must approve the runs. Delivering the fix to users additionally requires an upstream version bump, a release, and a new pin in `config/preinstalled-plugins.json`. No pinned artifact, npm package, or release was modified here.
+
+On 2026-11-24 the combined contributor plugin was installed as a local development plugin in an isolated OhMyGame profile and verified with Atlas: the real Godot 4.7.2 editor stayed open for 7 m 09 s, Stop exited it with code 0, project closure and repeat launch cleaned up correctly, and the generated Web preset no longer logged the missing `include_filter` key. The official pin remains unchanged. See [Godot managed-session qualification](2026-11-24-godot-managed-session.md).
 
 ## Independent game follow-ups
 
