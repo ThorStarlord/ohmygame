@@ -82,20 +82,30 @@ describe("Ren'Py execution and browser export", () => {
     const command = { executable: "renpy", prefixArgs: [], sdkPath: folder };
     const args: string[][] = [];
     let savesBase: string | undefined;
+    let multipersistent: string | undefined;
+    let backups: string | undefined;
     const result = await exportWeb(folder, command, { execute: async (_sdk: unknown, argv: string[], options: { env?: Record<string, string> }) => {
       args.push(argv);
       savesBase = options.env?.RENPY_PATH_TO_SAVES;
+      multipersistent = options.env?.RENPY_MULTIPERSISTENT;
+      backups = options.env?.RENPY_DISABLE_BACKUPS;
+      await mkdir(path.join(folder, "game", "saves"), { recursive: true });
+      await writeFile(path.join(folder, "game", "saves", "persistent"), "generated");
       const destination = argv.at(-1)!;
       await writeFile(path.join(destination, "index.html"), "new-build");
       return { exitCode: 0, output: "built", errors: [] };
     } });
     expect(result.exitCode).toBe(0);
     expect(args[0]?.[0]).toBe("--savedir");
-    expect(args[0]?.[1]).toContain("ohmygame-renpy-web-");
+    expect(args[0]?.[1]).toContain("ohmygame-renpy-validation-");
     expect(args[0]?.slice(2, 6)).toEqual(["launcher", "web_build", folder, "--destination"]);
-    expect(savesBase).toContain("ohmygame-renpy-web-saves-");
+    expect(savesBase).toContain("ohmygame-renpy-validation-saves-");
+    expect(multipersistent).toContain("ohmygame-renpy-validation-multi-");
+    expect(backups).toBe("I take responsibility for this.");
     await expect(lstat(args[0]![1]!)).rejects.toThrow();
     await expect(lstat(savesBase!)).rejects.toThrow();
+    await expect(lstat(path.dirname(multipersistent!))).rejects.toThrow();
+    await expect(lstat(path.join(folder, "game", "saves"))).rejects.toThrow();
     expect(await readFile(path.join(web, "index.html"), "utf8")).toBe("new-build");
     expect(await readdir(path.dirname(web))).toEqual(["web"]);
   });
@@ -161,6 +171,17 @@ describe("Ren'Py execution and browser export", () => {
       execute: async () => ({ exitCode: 0, output: "", errors: [] }),
     })).rejects.toThrow(/index.html/);
     expect(await readdir(path.join(folder, ".ohmygame", "build"))).toEqual([]);
+  });
+
+  it("refuses a web export when the project keeps player data in game/saves", async () => {
+    const project = path.join(folder, "portable-web");
+    const saves = path.join(project, "game", "saves");
+    await mkdir(saves, { recursive: true });
+    await writeFile(path.join(saves, "persistent"), "player data");
+    await expect(exportWeb(project, { executable: "renpy", prefixArgs: [], sdkPath: folder }, {
+      execute: async () => { throw new Error("should not run"); },
+    })).rejects.toThrow(/game\/saves/);
+    expect(await readFile(path.join(saves, "persistent"), "utf8")).toBe("player data");
   });
 
   it("detects Ren'Py traceback markers", () => {
@@ -229,6 +250,88 @@ describe("Ren'Py execution and browser export", () => {
     await expect(running).rejects.toThrow(/cancelled/);
     const savedir = await readFile(seen, "utf8");
     await expect(lstat(savedir)).rejects.toThrow();
+  });
+
+  it("redirects persistent, MultiPersistent, and backups away from player data", async () => {
+    const seen = path.join(folder, "environment.json");
+    const fake = path.join(folder, "environment.cjs");
+    await writeFile(fake, `require("node:fs").writeFileSync(${JSON.stringify(seen)}, JSON.stringify({
+      savedir: process.argv[3],
+      saves: process.env.RENPY_PATH_TO_SAVES,
+      multi: process.env.RENPY_MULTIPERSISTENT,
+      backups: process.env.RENPY_DISABLE_BACKUPS,
+    }));\n`);
+    const project = path.join(folder, "environment-project");
+    await mkdir(path.join(project, "game"), { recursive: true });
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    const environment = JSON.parse(await readFile(seen, "utf8")) as Record<string, string>;
+    expect(environment.savedir).toContain("ohmygame-renpy-validation-");
+    expect(environment.saves).toContain("ohmygame-renpy-validation-saves-");
+    expect(environment.multi).toContain("ohmygame-renpy-validation-multi-");
+    expect(environment.backups).toBe("I take responsibility for this.");
+    await expect(lstat(environment.savedir!)).rejects.toThrow();
+    await expect(lstat(environment.saves!)).rejects.toThrow();
+    await expect(lstat(path.dirname(environment.multi!))).rejects.toThrow();
+  });
+
+  it("refuses an automated run when the project keeps player data in game/saves", async () => {
+    const project = path.join(folder, "portable-saved");
+    const saves = path.join(project, "game", "saves");
+    await mkdir(saves, { recursive: true });
+    await writeFile(path.join(saves, "persistent"), "player data");
+    const marker = path.join(folder, "should-not-run.txt");
+    const fake = path.join(folder, "should-not-run.cjs");
+    await writeFile(fake, `require("node:fs").writeFileSync(${JSON.stringify(marker)}, "ran");\n`);
+    await expect(runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    )).rejects.toThrow(/game\/saves/);
+    await expect(lstat(marker)).rejects.toThrow();
+    expect(await readFile(path.join(saves, "persistent"), "utf8")).toBe("player data");
+  });
+
+  it("removes project-local saves that an automated run creates", async () => {
+    const project = path.join(folder, "portable-fresh");
+    await mkdir(path.join(project, "game"), { recursive: true });
+    const fake = path.join(folder, "writes-saves.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const saves = path.join(process.argv[4], "game", "saves");
+      fs.mkdirSync(path.join(saves, "sync"), { recursive: true });
+      fs.writeFileSync(path.join(saves, "persistent"), "generated");
+      fs.writeFileSync(path.join(saves, "sync", "persistent"), "generated");\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    await expect(lstat(path.join(project, "game", "saves"))).rejects.toThrow();
+  });
+
+  it("keeps a project's pre-existing empty game/saves empty", async () => {
+    const project = path.join(folder, "portable-empty");
+    const saves = path.join(project, "game", "saves");
+    await mkdir(saves, { recursive: true });
+    const fake = path.join(folder, "writes-empty.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      fs.writeFileSync(path.join(process.argv[4], "game", "saves", "persistent"), "generated");\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect((await lstat(saves)).isDirectory()).toBe(true);
+    expect(await readdir(saves)).toEqual([]);
   });
 });
 

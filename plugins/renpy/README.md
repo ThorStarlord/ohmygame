@@ -19,14 +19,18 @@ The starter template intentionally does not set a shared save-directory identifi
 - SDK resolution: explicit configured folder or launcher first; RENPY_SDK_PATH, RENPY_HOME and PATH next
 - Windows CLI: lib/py3-windows-x86_64/python.exe renpy.py (or ARM64 interpreter if available)
 - Unix CLI: renpy.sh
-- Lint: --savedir <temporary> project lint --error-code
-- Engine testcases: --savedir <temporary> project test (requires the game to define Ren'Py tests)
-- Compile: --savedir <temporary> project compile --keep-orphan-rpyc (protects existing save compatibility)
+- Lint: --savedir <temporary> project lint --error-code, with a temporary RENPY_PATH_TO_SAVES and RENPY_MULTIPERSISTENT and backups disabled
+- Engine testcases: --savedir <temporary> project test (requires the game to define Ren'Py tests), with the same isolation
+- Compile: --savedir <temporary> project compile --keep-orphan-rpyc (protects existing save compatibility), with the same isolation
 - Native run: project run through OhMyGame's managed native session (the host owns the process; the command returns immediately; stop from the project top bar)
-- Web export: --savedir <temporary> launcher web_build project --destination <staging>
+- Web export: --savedir <temporary> launcher web_build project --destination <staging>, with the same isolation inherited by the launcher's project process
 - Browser Game panel: .ohmygame/build/web/index.html, promoted only after successful export (accepts flat and single nested distribution layouts)
 
-Web export relies on SDK Web support and browser-compatible game features. Export may create/modify compiled .rpyc in the game tree; preserve these for Ren'Py save compatibility. A build that passes does not demonstrate scene behavior, media compatibility, or save behavior.
+Web export relies on SDK Web support and browser-compatible game features. Export may create/modify compiled .rpyc and cache files in the game tree; preserve these for Ren'Py save compatibility. A build that passes does not demonstrate scene behavior, media compatibility, or save behavior.
+
+## Player data
+
+Ren'Py always treats `game/saves` as an active save location, and for a portable project without `config.save_directory` it is the real player namespace. `--savedir` and `RENPY_PATH_TO_SAVES` do not redirect it. Automated lint, compile, test and Web-export operations therefore refuse a non-empty `game/saves` instead of touching it, and remove saves they create when the folder was absent or empty. A standard project's persistent data, save slots, MultiPersistent files and script backups are redirected to temporary locations and removed afterwards. Interactive **Run in Ren'Py** deliberately uses the project's real save namespace.
 
 OhMyGame keeps project metadata in .ohmygame/, and its Canvas under canvas/. To make art, audio, and generated assets part of the Ren'Py game, copy selected files to game/images/ or game/audio/ and reference them from the .rpy scripts. Keep source files and licenses separately.
 
@@ -37,7 +41,7 @@ Run the repository's plugin and source tests (after normal dependency setup):
     bun run plugin:check plugins/renpy
     bun run test -- test/renpy-plugin.test.ts
 
-This test slice validates SDK discovery, manifest, command wiring, cancellation, output handling, isolated validation saves and transactional Web-export behavior with a fake CLI. It does not launch the real Ren'Py SDK. A Windows/macOS native smoke and browser input/audio/save qualification remain required before production claims. Lint, compile and engine tests use a throwaway `--savedir`, because Ren'Py loads and can rewrite persistent data during those checks.
+This test slice validates SDK discovery, manifest, command wiring, cancellation, output handling, isolated validation saves, the `game/saves` guard and transactional Web-export behavior with a fake CLI. It does not launch the real Ren'Py SDK. A Windows/macOS native smoke and browser input/audio/save qualification remain required before production claims. Lint, compile and engine tests use a throwaway `--savedir` plus redirected persistent state, because Ren'Py loads and can rewrite persistent data during those checks.
 
 ## Engine authority
 
