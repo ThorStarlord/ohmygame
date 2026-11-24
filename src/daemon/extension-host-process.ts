@@ -1,8 +1,12 @@
 import type { PluginSessionRequest, PluginSessionResults, PluginSessions } from "../shared/plugin-sessions.js";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { spawn, type ChildProcess } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { format } from "node:util";
+import { nativeSessionStartIssue, type NativeSessionStart, type NativeSessionView, type PluginNativeSession } from "../shared/native-sessions.js";
+import { terminateProjectProcess } from "./process-lifecycle.js";
 import {
   EXTENSION_HOST_PROTOCOL_VERSION,
   PROJECT_TYPE_HOOKS,
@@ -30,6 +34,15 @@ import type { GameUseSnapshot } from "../shared/playtest.js";
 // runs their tools. It is started by `ExtensionHosts` with an IPC channel and
 // owns nothing the daemon depends on; when the channel closes, it exits.
 
+interface HostedNativeSession {
+  id: string;
+  child: ChildProcess;
+  label: string;
+  startedAt: number;
+  stopRequested: boolean;
+  exited: Promise<{ code: number | null; signal: string | null }>;
+}
+
 interface LoadedPlugin {
   version: string;
   tools: Map<string, ToolHandler>;
@@ -38,6 +51,8 @@ interface LoadedPlugin {
   projectTypes: Map<string, ToolHandler>;
   /** Event hooks, by event. */
   hooks: Map<string, ToolHandler>;
+  /** Native engine processes this plugin started in this host. */
+  nativeSessions: Map<string, HostedNativeSession>;
   disposers: Array<() => void | Promise<void>>;
   deactivate?: () => void | Promise<void>;
   cancelRequests?: () => void;
@@ -269,6 +284,115 @@ const errorMessage = (error: unknown) => {
   }
 };
 
+function nativeSessionView(
+  plugin: string,
+  session: HostedNativeSession,
+  state: NativeSessionView["state"],
+  exit?: { code: number | null; signal: string | null },
+): NativeSessionView {
+  return {
+    id: session.id,
+    plugin,
+    label: session.label,
+    state,
+    ...(session.child.pid ? { pid: session.child.pid } : {}),
+    startedAt: session.startedAt,
+    ...(state === "exited" || state === "failed" ? { endedAt: Date.now() } : {}),
+    ...(exit ? { exitCode: exit.code, signal: exit.signal } : {}),
+    ...(state === "exited" || state === "failed" ? { stopped: session.stopRequested } : {}),
+    ...(state === "failed" && exit ? { error: `The native process exited with ${exit.signal ? `signal ${exit.signal}` : `code ${exit.code}`}` } : {}),
+  };
+}
+
+async function stopNativeSession(plugin: string, session: HostedNativeSession): Promise<void> {
+  if (session.stopRequested) {
+    await session.exited;
+    return;
+  }
+  session.stopRequested = true;
+  send({ type: "log", plugin, level: "info", text: `Stopping native session ${session.label} (pid ${session.child.pid})` });
+  send({ type: "native-session", plugin, session: nativeSessionView(plugin, session, "stopping") });
+  await terminateProjectProcess(session.child);
+  await session.exited;
+}
+
+function nativeSessions(plugin: string, project: string, loaded: LoadedPlugin): NonNullable<PluginContext["nativeSessions"]> {
+  return {
+    async start(options: NativeSessionStart): Promise<PluginNativeSession> {
+      if (leaving) throw new Error("The extension host is stopping");
+      const issue = nativeSessionStartIssue(options);
+      if (issue) throw new Error(issue);
+      if (loaded.nativeSessions.size)
+        throw new Error("A native engine session is already running for this plugin. Stop it before starting another.");
+      const id = randomUUID();
+      const label = options.label?.trim() || path.basename(options.executable);
+      const child = spawn(options.executable, options.args, {
+        cwd: options.cwd ?? project,
+        stdio: "ignore",
+        windowsHide: false,
+        detached: process.platform !== "win32",
+      });
+      let spawned = false;
+      let resolveExit!: (value: { code: number | null; signal: string | null }) => void;
+      const exited = new Promise<{ code: number | null; signal: string | null }>((resolve) => {
+        resolveExit = resolve;
+      });
+      const session: HostedNativeSession = {
+        id,
+        child,
+        label,
+        startedAt: Date.now(),
+        stopRequested: false,
+        exited,
+      };
+      child.once("close", (code, signal) => {
+        if (!spawned) {
+          resolveExit({ code, signal: signal ?? null });
+          return;
+        }
+        loaded.nativeSessions.delete(id);
+        const state = session.stopRequested || code === 0 ? "exited" : "failed";
+        send({
+          type: "native-session",
+          plugin,
+          session: nativeSessionView(plugin, session, state, { code, signal: signal ?? null }),
+        });
+        send({
+          type: "log",
+          plugin,
+          level: state === "failed" ? "error" : "info",
+          text: `Native session ${session.label} ${state} (${signal ? `signal ${signal}` : `code ${code}`})`,
+        });
+        resolveExit({ code, signal: signal ?? null });
+      });
+      try {
+        await new Promise<void>((resolve, reject) => {
+          child.once("spawn", resolve);
+          child.once("error", reject);
+        });
+      } catch (error) {
+        await terminateProjectProcess(child).catch(() => {});
+        throw new Error(`Could not start ${label}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      if (!child.pid) {
+        await terminateProjectProcess(child).catch(() => {});
+        throw new Error(`Could not start ${label}: no process id`);
+      }
+      spawned = true;
+      loaded.nativeSessions.set(id, session);
+      send({ type: "native-session", plugin, session: nativeSessionView(plugin, session, "running") });
+      send({ type: "log", plugin, level: "info", text: `Started native session ${label} (pid ${child.pid})` });
+      return {
+        id,
+        pid: child.pid,
+        label,
+        stop: () => stopNativeSession(plugin, session),
+        exited,
+      };
+    },
+  };
+}
+
 async function activate(id: number, plugin: ExtensionHostPlugin) {
   const started = performance.now();
   const entry = path.resolve(plugin.root, plugin.entry);
@@ -283,6 +407,7 @@ async function activate(id: number, plugin: ExtensionHostPlugin) {
     commands: new Map(),
     projectTypes: new Map(),
     hooks: new Map(),
+    nativeSessions: new Map(),
     disposers: [],
   };
   // Only what the manifest declares can be registered, so the index, the
@@ -318,6 +443,7 @@ async function activate(id: number, plugin: ExtensionHostPlugin) {
     configuration: Object.freeze(plugin.configuration ?? {}),
     ...(plugin.sessions && !project ? { sessions: pluginSessions(plugin.id, lifetime.signal) } : {}),
     ...(plugin.models ? { models: pluginModels(plugin.id, lifetime.signal) } : {}),
+    ...(project ? { nativeSessions: nativeSessions(plugin.id, project.folder, loaded) } : {}),
     registerTool: (name, handler) =>
       register("tool", plugin.tools, loaded.tools, name, handler),
     registerCommand: (name, handler) =>
@@ -359,7 +485,7 @@ async function activate(id: number, plugin: ExtensionHostPlugin) {
     await module.activate(context);
   } catch (error) {
     // Undo what it registered before it failed.
-    await disposeAll(loaded);
+    await disposeAll(plugin.id, loaded);
     throw error;
   }
   loaded.deactivate = module.deactivate;
@@ -373,8 +499,12 @@ async function activate(id: number, plugin: ExtensionHostPlugin) {
   });
 }
 
-async function disposeAll(loaded: LoadedPlugin) {
+async function disposeAll(pluginId: string, loaded: LoadedPlugin) {
   loaded.cancelRequests?.();
+  // A plugin's engine sessions end before the code that started them is
+  // disposed; the parent releases its holds as each close is reported.
+  await Promise.allSettled([...loaded.nativeSessions.values()].map((session) => stopNativeSession(pluginId, session)));
+  loaded.nativeSessions.clear();
   loaded.tools.clear();
   loaded.commands.clear();
   loaded.projectTypes.clear();
@@ -389,7 +519,7 @@ async function deactivate(pluginId: string) {
   const loaded = plugins.get(pluginId);
   if (!loaded) return;
   plugins.delete(pluginId);
-  await disposeAll(loaded);
+  await disposeAll(pluginId, loaded);
   await Promise.resolve()
     .then(() => loaded.deactivate?.())
     .catch(() => {});
@@ -510,6 +640,19 @@ process.on("message", (message: HostRequest) => {
           send({ type: "error", id: message.id, message: errorMessage(error) }),
       );
       return;
+    case "native-session-stop": {
+      const loaded = plugins.get(message.plugin);
+      const session = loaded?.nativeSessions.get(message.session);
+      if (!loaded || !session) {
+        send({ type: "error", id: message.id, message: "The native session is not running here" });
+        return;
+      }
+      void stopNativeSession(message.plugin, session).then(
+        () => send({ type: "result", id: message.id, value: { stopped: true } }),
+        (error: unknown) => send({ type: "error", id: message.id, message: error instanceof Error ? error.message : String(error) }),
+      );
+      return;
+    }
     case "shutdown":
       void leave();
       return;

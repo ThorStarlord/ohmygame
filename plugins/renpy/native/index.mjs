@@ -1,5 +1,5 @@
 // OhMyGame Ren'Py plugin entry point; runs in the project extension host.
-import { resolveRenpy, runWithIsolatedSaves, exportWeb, launchRenpy, waitForRenpyExit } from "./renpy.mjs";
+import { resolveRenpy, runWithIsolatedSaves, exportWeb, renpyLaunch } from "./renpy.mjs";
 
 function requireProject(context) {
   if (!context.project?.folder) throw new Error("Ren'Py tools require an open game project");
@@ -65,14 +65,11 @@ export function activate(context) {
   });
 
   context.registerCommand("runInRenpy", async (_input, call) => {
-    const child = await launchRenpy(await requireSdk(call), project(), call.signal);
-    context.onDispose(() => {
-      if (child.exitCode === null) child.kill();
-    });
+    if (!context.nativeSessions)
+      throw new Error("This OhMyGame version can't manage a native Ren'Py session. Update OhMyGame.");
+    const sdk = await requireSdk(call);
+    const session = await context.nativeSessions.start(renpyLaunch(sdk, project()));
     call.progress("Ren'Py is running");
-    // A pending call keeps the project's extension host alive. Returning as
-    // soon as the game starts would let the host idle out and kill the game.
-    const exitCode = await waitForRenpyExit(child);
-    return { started: true, closed: true, exitCode };
+    return { started: true, sessionId: session.id, pid: session.pid };
   });
 }

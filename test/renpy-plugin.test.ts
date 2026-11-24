@@ -1,11 +1,10 @@
-import { spawn } from "node:child_process";
 import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { indexPluginPackage } from "../src/daemon/plugin-index.js";
 // @ts-expect-error Plugin native modules are intentionally plain JavaScript.
-import { resolveRenpy, runRenpy, runWithIsolatedSaves, exportWeb, renpyErrors, waitForRenpyExit } from "../plugins/renpy/native/renpy.mjs";
+import { resolveRenpy, runRenpy, runWithIsolatedSaves, exportWeb, renpyErrors, renpyLaunch } from "../plugins/renpy/native/renpy.mjs";
 // @ts-expect-error Plugin native modules are intentionally plain JavaScript.
 import { activate } from "../plugins/renpy/native/index.mjs";
 
@@ -82,14 +81,21 @@ describe("Ren'Py execution and browser export", () => {
     await writeFile(path.join(web, "index.html"), "previous");
     const command = { executable: "renpy", prefixArgs: [], sdkPath: folder };
     const args: string[][] = [];
-    const result = await exportWeb(folder, command, { execute: async (_sdk: unknown, argv: string[]) => {
+    let savesBase: string | undefined;
+    const result = await exportWeb(folder, command, { execute: async (_sdk: unknown, argv: string[], options: { env?: Record<string, string> }) => {
       args.push(argv);
+      savesBase = options.env?.RENPY_PATH_TO_SAVES;
       const destination = argv.at(-1)!;
       await writeFile(path.join(destination, "index.html"), "new-build");
       return { exitCode: 0, output: "built", errors: [] };
     } });
     expect(result.exitCode).toBe(0);
-    expect(args[0]?.slice(0, 4)).toEqual(["launcher", "web_build", folder, "--destination"]);
+    expect(args[0]?.[0]).toBe("--savedir");
+    expect(args[0]?.[1]).toContain("ohmygame-renpy-web-");
+    expect(args[0]?.slice(2, 6)).toEqual(["launcher", "web_build", folder, "--destination"]);
+    expect(savesBase).toContain("ohmygame-renpy-web-saves-");
+    await expect(lstat(args[0]![1]!)).rejects.toThrow();
+    await expect(lstat(savesBase!)).rejects.toThrow();
     expect(await readFile(path.join(web, "index.html"), "utf8")).toBe("new-build");
     expect(await readdir(path.dirname(web))).toEqual(["web"]);
   });
@@ -127,11 +133,16 @@ describe("Ren'Py execution and browser export", () => {
     const web = path.join(folder, ".ohmygame", "build", "web");
     await mkdir(web, { recursive: true });
     await writeFile(path.join(web, "index.html"), "last-working-build");
+    let savesBase: string | undefined;
     await expect(exportWeb(folder, { executable: "renpy", prefixArgs: [], sdkPath: folder }, {
-      execute: async () => ({ exitCode: 2, output: "Error: export failed", errors: ["Error: export failed"] }),
+      execute: async (_sdk: unknown, _argv: string[], options: { env?: Record<string, string> }) => {
+        savesBase = options.env?.RENPY_PATH_TO_SAVES;
+        return { exitCode: 2, output: "Error: export failed", errors: ["Error: export failed"] };
+      },
     })).rejects.toThrow(/export failed/);
     expect(await readFile(path.join(web, "index.html"), "utf8")).toBe("last-working-build");
     expect(await readdir(path.dirname(web))).toEqual(["web"]);
+    await expect(lstat(savesBase!)).rejects.toThrow();
   });
 
   it("refuses a non-directory preview destination", async () => {
@@ -157,10 +168,16 @@ describe("Ren'Py execution and browser export", () => {
       .toContain("Traceback (most recent call last):");
   });
 
-  it("keeps a launched game's command open until the game exits", async () => {
-    const child = spawn(process.execPath, ["-e", "setTimeout(() => process.exit(7), 250)"], { stdio: "ignore" });
-    await new Promise((resolve) => child.once("spawn", resolve));
-    expect(await waitForRenpyExit(child)).toBe(7);
+  it("builds the launch request the managed host runs", () => {
+    expect(renpyLaunch(
+      { executable: "C:/sdk/python.exe", prefixArgs: ["C:/sdk/renpy.py"], sdkPath: "C:/sdk" },
+      "C:/game",
+    )).toEqual({
+      executable: "C:/sdk/python.exe",
+      args: ["C:/sdk/renpy.py", "C:/game", "run"],
+      cwd: "C:/sdk",
+      label: "Ren'Py",
+    });
   });
 
   it("runs validation against a temporary save directory and removes it", async () => {
@@ -179,6 +196,40 @@ describe("Ren'Py execution and browser export", () => {
     expect(rest).toEqual(["lint", "--error-code"]);
     await expect(lstat(savedir!)).rejects.toThrow();
   });
+
+  it("removes the temporary save directory when validation fails", async () => {
+    const seen = path.join(folder, "seen-failure.txt");
+    const fake = path.join(folder, "failed.cjs");
+    await writeFile(fake, `require("node:fs").writeFileSync(${JSON.stringify(seen)}, process.argv[3]); process.exit(2);\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      "C:/game",
+      ["lint", "--error-code"],
+      { cwd: folder },
+    );
+    const savedir = await readFile(seen, "utf8");
+    await expect(lstat(savedir)).rejects.toThrow();
+  });
+
+  it("removes the temporary save directory when validation is cancelled", async () => {
+    const seen = path.join(folder, "seen-cancelled.txt");
+    const fake = path.join(folder, "waiting.cjs");
+    await writeFile(fake, `require("node:fs").writeFileSync(${JSON.stringify(seen)}, process.argv[3]); setInterval(() => {}, 1000);\n`);
+    const controller = new AbortController();
+    const running = runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      "C:/game",
+      ["lint", "--error-code"],
+      { cwd: folder, signal: controller.signal },
+    );
+    await vi.waitFor(async () => {
+      expect((await lstat(seen).catch(() => undefined))?.isFile()).toBe(true);
+    });
+    controller.abort();
+    await expect(running).rejects.toThrow(/cancelled/);
+    const savedir = await readFile(seen, "utf8");
+    await expect(lstat(savedir)).rejects.toThrow();
+  });
 });
 
 describe("OhMyGame plugin contracts", () => {
@@ -187,12 +238,65 @@ describe("OhMyGame plugin contracts", () => {
     expect(result.ok, JSON.stringify(result)).toBe(true);
   });
 
-  it("declares a native run that outlives the extension host's idle time", async () => {
+  it("declares a native run that returns to the managed host", async () => {
     const manifest = JSON.parse(await readFile(path.resolve("plugins/renpy/.ohmygame-plugin/plugin.json"), "utf8")) as {
+      engines: Record<string, string>;
       contributes: { commands: Array<{ id: string; run: Record<string, unknown> }> };
     };
     const run = manifest.contributes.commands.find((command) => command.id === "run-in-renpy")?.run;
-    expect(run).toMatchObject({ native: "runInRenpy", changesFiles: false, timeoutSeconds: 3600 });
+    expect(run).toMatchObject({ native: "runInRenpy", changesFiles: false });
+    expect(run).not.toHaveProperty("timeoutSeconds");
+    expect(manifest.engines["ohmygame-api"]).toBe("^2.37.0");
+  });
+
+  it("starts Ren'Py through the project host's managed session", async () => {
+    const sdk = path.join(folder, "sdk");
+    await file("sdk", "renpy.py");
+    if (process.platform === "win32") await file("sdk", "lib", "py3-windows-x86_64", "python.exe");
+    else await file("sdk", "renpy.sh");
+    let run: ((input: unknown, call: unknown) => Promise<unknown>) | undefined;
+    const starts: unknown[] = [];
+    activate({
+      project: { folder: path.join(folder, "game") },
+      pluginId: "thorstarlord/renpy",
+      version: "0.1.0",
+      dataFolder: folder,
+      configuration: { renpySdkPath: sdk },
+      nativeSessions: {
+        start: async (options: unknown) => {
+          starts.push(options);
+          return {
+            id: "session-1",
+            pid: 1234,
+            label: "Ren'Py",
+            stop: async () => {},
+            exited: Promise.resolve({ code: 0, signal: null }),
+          };
+        },
+      },
+      registerProjectType: () => {},
+      registerTool: () => {},
+      registerCommand: (id: string, handler: (input: unknown, call: unknown) => Promise<unknown>) => {
+        if (id === "runInRenpy") run = handler;
+      },
+      onDispose: () => {},
+    });
+    const result = await run!({}, {
+      configuration: { renpySdkPath: sdk },
+      signal: new AbortController().signal,
+      progress: () => {},
+    });
+    expect(starts).toEqual([{
+      executable: process.platform === "win32"
+        ? path.join(sdk, "lib", "py3-windows-x86_64", "python.exe")
+        : path.join(sdk, "renpy.sh"),
+      args: process.platform === "win32"
+        ? [path.join(sdk, "renpy.py"), path.join(folder, "game"), "run"]
+        : [path.join(folder, "game"), "run"],
+      cwd: sdk,
+      label: "Ren'Py",
+    }]);
+    expect(result).toEqual({ started: true, sessionId: "session-1", pid: 1234 });
   });
 
   it("registers the expected typed project and native capabilities", () => {

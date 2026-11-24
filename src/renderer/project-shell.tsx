@@ -115,6 +115,8 @@ import {
   writePluginFile,
   setPluginPageValue,
   runPluginCommand,
+  listNativeSessions,
+  stopNativeSession as stopProjectNativeSession,
   pluginNetFetch,
   reportPluginPanelError,
   reportProjectPanelError,
@@ -171,7 +173,8 @@ import type { CodingView } from "./coding-workspace.js";
 import { ProjectRail, type RailConversations } from "./app-sidebar.js";
 import { refreshSidebarProject } from "./sidebar-projects.js";
 import { desktopSave } from "./desktop-save.js";
-import { ProjectFrame, ProjectTop, publishAction } from "./project-frame.js";
+import { NativeSessionChip, ProjectFrame, ProjectTop, publishAction } from "./project-frame.js";
+import type { NativeSessionView } from "../shared/native-sessions.js";
 import { Button, Dialog, DropdownMenu, Empty, IconButton, useToast, type Command, type MenuEntry } from "./ui/index.js";
 import { openPluginWorkspace } from "./plugin-builder-navigation.js";
 import { useCommands, useLeaveGuard } from "./command-menu.js";
@@ -439,6 +442,8 @@ export function ProjectShell({
   /** A link a plugin command offers, opened only once the person sees its host; `message` is the plugin's. */
   const [pluginLink, setPluginLink] = useState<{ url: URL; message?: string }>();
   const [pluginProgress, setPluginProgress] = useState<CommandProgress>();
+  // Native engine processes a plugin owns, kept current while the project is open.
+  const [nativeSessions, setNativeSessions] = useState<NativeSessionView[]>([]);
   /** The latest files the daemon saw change, for pages that read the project's files. */
   const [pluginFileChange, setPluginFileChange] = useState<{ paths: string[]; truncated?: boolean }>();
   /** Changes that arrived since pages last heard: several can come before one render. */
@@ -531,6 +536,22 @@ export function ProjectShell({
   const panelled = offered.includes("code") && !codeBeside;
   const designShown = visible.includes("canvas");
   useEffect(() => { if (view === "design" && panelled) revealPanel("canvas"); }, [view, panelled]);
+
+  // A session is owned by the daemon's project host, so state is read from it
+  // rather than inferred from the command that started it.
+  useEffect(() => {
+    const id = state.project?.id;
+    if (!id) { setNativeSessions([]); return; }
+    let disposed = false;
+    const load = () => {
+      void listNativeSessions(id).then((sessions) => {
+        if (!disposed) setNativeSessions(sessions);
+      }).catch(() => {});
+    };
+    load();
+    const timer = window.setInterval(load, 2_000);
+    return () => { disposed = true; window.clearInterval(timer); };
+  }, [state.project?.id]);
   useEffect(() => {
     if (layout && panelled && designShown !== (view === "design")) onViewChange?.(designShown ? "design" : "workspace", { replace: true });
   }, [designShown, panelled]);
@@ -1379,6 +1400,22 @@ export function ProjectShell({
       return { error };
     }
   }
+  /** Stops one native engine session this project owns, then refreshes its state. */
+  async function stopNativeEngineSession(session: NativeSessionView): Promise<void> {
+    const current = state.project;
+    if (!current) return;
+    try {
+      await stopProjectNativeSession(current.id, session.id);
+      setNativeSessions(await listNativeSessions(current.id));
+    } catch (cause) {
+      toast({
+        title: t("workspace.nativeSessionFailed", { label: session.label }),
+        description: errorMessage(cause),
+        tone: "danger",
+      });
+    }
+  }
+
   /** Turns a plugin off in this project, as from a panel that stopped responding. */
   function turnPluginOff(plugin: string): void {
     void setProjectPlugin(projectId, plugin, false).then(
@@ -1982,6 +2019,7 @@ export function ProjectShell({
     <ProjectFrame
       rail={workspace ? workspace.rail(railConversations) : <ProjectRail projectId={projectId} project={project} onNavigate={onNavigate} onLeave={leave} conversations={railConversations} />}
       top={workspace ? <span className="project-top-slot" ref={setWorkspaceTop} /> : <ProjectTop name={project?.name ?? ""} menu={projectMenu}>
+        {project && nativeSessions.length ? <NativeSessionChip sessions={nativeSessions} onStop={(session) => void stopNativeEngineSession(session)} /> : null}
         {project ? <PluginPanelToolbar commands={commandsForSlot(plugins.commands, "project.toolbar", plugins.when)} onRun={runProjectPluginCommand} /> : null}
         {/* Play stays in place from every view. A Web preview or a story fills
             the slot with Play in its own window; an external preview can only be shown. */}

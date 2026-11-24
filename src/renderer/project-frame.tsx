@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { ProjectState } from "../shared/contracts.js";
+import type { NativeSessionView } from "../shared/native-sessions.js";
 import { ChevronDown } from "./icons.js";
 import { DropdownMenu, type MenuEntry } from "./ui/index.js";
 import { t } from "./i18n.js";
@@ -37,6 +38,46 @@ export function ProjectTop({ name, icon, menu, status, children }: { name: strin
       <span className="project-top-spacer" />
       {children}
     </>
+  );
+}
+
+/**
+ * Native engine sessions the project's plugins own: a running game or editor
+ * stays visible here, with a deliberate stop. A just-ended session remains
+ * for a few seconds so its exit is observable.
+ */
+export function NativeSessionChip({ sessions, onStop }: {
+  sessions: readonly NativeSessionView[];
+  onStop: (session: NativeSessionView) => void;
+}) {
+  const now = Date.now();
+  const shown = sessions.filter((session) =>
+    session.state === "starting" || session.state === "running" || session.state === "stopping" ||
+    (session.endedAt !== undefined && now - session.endedAt < 10_000)
+  );
+  if (!shown.length) return null;
+  const text = (session: NativeSessionView): string => {
+    const values = { label: session.label };
+    if (session.state === "starting") return t("workspace.nativeSessionStarting", values);
+    if (session.state === "running") return t("workspace.nativeSessionRunning", values);
+    if (session.state === "stopping") return t("workspace.nativeSessionStopping", values);
+    if (session.state === "failed") return t("workspace.nativeSessionFailed", values);
+    return t("workspace.nativeSessionExited", values);
+  };
+  return (
+    <div className="native-session-chip" role="status" aria-live="polite">
+      {shown.map((session) => (
+        <span className={`native-session-pill is-${session.state}`} key={session.id} title={session.error}>
+          <span className="native-session-dot" aria-hidden="true" />
+          <span className="native-session-label">{text(session)}</span>
+          {session.state === "starting" || session.state === "running" ? (
+            <button type="button" className="native-session-stop" onClick={() => onStop(session)}>
+              {t("workspace.stopNativeSession")}
+            </button>
+          ) : null}
+        </span>
+      ))}
+    </div>
   );
 }
 

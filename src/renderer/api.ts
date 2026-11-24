@@ -2295,6 +2295,19 @@ export async function runPluginCommand(projectId: string, command: string, input
   return request(`/projects/${encodeURIComponent(projectId)}/plugin-commands`, { method: "POST", body: JSON.stringify({ command, input }) });
 }
 
+/** Native engine sessions a project's plugins own, including recently ended ones. */
+export async function listNativeSessions(projectId: string): Promise<import("../shared/native-sessions.js").NativeSessionView[]> {
+  const { sessions } = await request<{ sessions: import("../shared/native-sessions.js").NativeSessionView[] }>(
+    `/projects/${encodeURIComponent(projectId)}/native-sessions`,
+  );
+  return sessions;
+}
+
+/** Stops one of a project's native engine sessions and its process tree. */
+export async function stopNativeSession(projectId: string, sessionId: string): Promise<void> {
+  await request(`/projects/${encodeURIComponent(projectId)}/native-sessions/${encodeURIComponent(sessionId)}/stop`, { method: "POST" });
+}
+
 export function getQuestionSettings(): Promise<{ delaySeconds: number; problem?: string }> {
   return request("/settings/questions");
 }

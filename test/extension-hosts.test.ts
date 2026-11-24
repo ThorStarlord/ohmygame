@@ -210,6 +210,39 @@ const SOURCES: Record<string, string> = {
       context.registerTool("early", () => early);
     }
   `,
+  sessions: `
+    let session;
+    const request = () => ({
+      executable: process.execPath,
+      args: ["-e", "setInterval(() => {}, 1000)"],
+      label: "Test engine",
+    });
+    export function activate(context) {
+      context.registerTool("start", async () => {
+        session = await context.nativeSessions.start(request());
+        return { id: session.id, pid: session.pid };
+      });
+      context.registerTool("startAgain", async () => {
+        try { await context.nativeSessions.start(request()); return "started"; }
+        catch (error) { return error.message; }
+      });
+      context.registerTool("startMissing", async () => {
+        await context.nativeSessions.start({ executable: process.execPath + "-missing", args: [], label: "Missing" });
+        return "started";
+      });
+      context.registerTool("stop", async () => { await session.stop(); return session.id; });
+      context.registerTool("exit", async () => session.exited);
+      context.registerTool("exitSoon", async (input) => {
+        const code = Number(input?.code ?? 0);
+        session = await context.nativeSessions.start({
+          executable: process.execPath,
+          args: ["-e", "setTimeout(() => process.exit(" + code + "), 80)"],
+          label: "Brief engine",
+        });
+        return { id: session.id, pid: session.pid };
+      });
+    }
+  `,
 };
 
 const TOOLS: Record<string, string[]> = {
@@ -235,6 +268,7 @@ const TOOLS: Record<string, string[]> = {
   broken: ["anything"],
   player: ["play", "giveUp", "refused", "late", "hang"],
   "early-player": ["early"],
+  sessions: ["start", "startAgain", "startMissing", "stop", "exit", "exitSoon"],
 };
 
 let root: string;
@@ -263,6 +297,8 @@ beforeAll(async () => {
     await mkdir(path.join(root, name));
     await writeFile(path.join(root, name, "index.mjs"), source);
   }
+  await mkdir(path.join(root, "session-project"));
+  await mkdir(path.join(root, "session-project-b"));
   return () => rm(root, { recursive: true, force: true });
 });
 
@@ -288,6 +324,15 @@ const failure = async (promise: Promise<unknown>) => {
   );
   expect(error).toBeInstanceOf(ExtensionHostError);
   return error as ExtensionHostError;
+};
+
+const pidAlive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 describe("native model requests", () => {
@@ -1245,6 +1290,124 @@ describe("extension hosts", () => {
       async () => expect(await extensionHosts.status()).toEqual([]),
       { timeout: 3_000 },
     );
+  });
+});
+
+describe("native engine sessions", () => {
+  const scope = () => path.join(root, "session-project");
+  const start = (extensionHosts: ExtensionHosts) =>
+    extensionHosts.invoke({
+      scope: scope(),
+      project: scope(),
+      plugin: plugin("sessions"),
+      tool: "start",
+    }) as Promise<{ id: string; pid: number }>;
+
+  it("returns immediately, holds its host past idle, and stops on request", async () => {
+    const extensionHosts = hosts({ idleMs: 150 });
+    const started = await start(extensionHosts);
+    expect(started.pid).toBeGreaterThan(0);
+    expect(await extensionHosts.sessions(scope())).toMatchObject([
+      { id: started.id, plugin: "test/sessions", label: "Test engine", state: "running" },
+    ]);
+    // The command returned while the engine is still running.
+    expect(pidAlive(started.pid)).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(await extensionHosts.status()).toHaveLength(1);
+
+    await extensionHosts.stopSession(scope(), started.id);
+    await vi.waitFor(() => expect(pidAlive(started.pid)).toBe(false));
+    expect(await extensionHosts.sessions(scope())).toMatchObject([
+      { id: started.id, state: "exited", stopped: true },
+    ]);
+    await vi.waitFor(async () => expect(await extensionHosts.status()).toEqual([]), { timeout: 3_000 });
+  });
+
+  it("rejects a second launch and a missing executable without leaking ownership", async () => {
+    const extensionHosts = hosts();
+    const started = await start(extensionHosts);
+    expect(await extensionHosts.invoke({
+      scope: scope(),
+      project: scope(),
+      plugin: plugin("sessions"),
+      tool: "startAgain",
+    })).toMatch(/already running/i);
+    await extensionHosts.stopSession(scope(), started.id);
+    await vi.waitFor(() => expect(pidAlive(started.pid)).toBe(false));
+    await expect(extensionHosts.invoke({
+      scope: scope(),
+      project: scope(),
+      plugin: plugin("sessions"),
+      tool: "startMissing",
+    })).rejects.toThrow(/Could not start/);
+    expect((await extensionHosts.sessions(scope())).some((session) => session.state === "running")).toBe(false);
+  });
+
+  it("kills a session when its plugin is deactivated", async () => {
+    const extensionHosts = hosts();
+    const started = await start(extensionHosts);
+    await extensionHosts.deactivate(scope(), "test/sessions");
+    await vi.waitFor(() => expect(pidAlive(started.pid)).toBe(false));
+    expect(await extensionHosts.sessions(scope())).toEqual([]);
+  });
+
+  it("kills session trees when the host fails unexpectedly", async () => {
+    const extensionHosts = hosts();
+    const started = await start(extensionHosts);
+    const [status] = await extensionHosts.status();
+    process.kill(status!.pid!, "SIGKILL");
+    await vi.waitFor(() => expect(pidAlive(started.pid)).toBe(false), { timeout: 5_000 });
+    await vi.waitFor(async () => expect(await extensionHosts.status()).toEqual([]), { timeout: 5_000 });
+  });
+
+  it("kills a project's session when the project's host closes", async () => {
+    const extensionHosts = hosts();
+    const started = await start(extensionHosts);
+    await extensionHosts.stop(scope());
+    await vi.waitFor(() => expect(pidAlive(started.pid)).toBe(false));
+  });
+
+  it("kills sessions when the plugin host service shuts down", async () => {
+    const extensionHosts = hosts();
+    const started = await start(extensionHosts);
+    await extensionHosts.dispose();
+    await vi.waitFor(() => expect(pidAlive(started.pid)).toBe(false));
+  });
+
+  it("does not let another project stop a session it does not own", async () => {
+    const extensionHosts = hosts();
+    const started = await start(extensionHosts);
+    const other = path.join(root, "session-project-b");
+    await expect(extensionHosts.stopSession(other, started.id)).rejects.toThrow(/not running/);
+    expect(pidAlive(started.pid)).toBe(true);
+    expect(await extensionHosts.sessions(scope())).toMatchObject([{ id: started.id, state: "running" }]);
+    await extensionHosts.stopSession(scope(), started.id);
+  });
+
+  it("reports a normal engine exit and an unexpected crash", async () => {
+    const extensionHosts = hosts({ idleMs: 2_000 });
+    const exitSoon = (code: number) => extensionHosts.invoke({
+      scope: scope(),
+      project: scope(),
+      plugin: plugin("sessions"),
+      tool: "exitSoon",
+      input: { code },
+    }) as Promise<{ id: string; pid: number }>;
+    const normal = await exitSoon(0);
+    await vi.waitFor(async () => {
+      expect((await extensionHosts.sessions(scope())).find((session) => session.id === normal.id)).toMatchObject({
+        state: "exited",
+        exitCode: 0,
+      });
+    });
+    const crashed = await exitSoon(3);
+    await vi.waitFor(async () => {
+      expect((await extensionHosts.sessions(scope())).find((session) => session.id === crashed.id)).toMatchObject({
+        state: "failed",
+        exitCode: 3,
+        error: expect.stringContaining("code 3"),
+      });
+    });
   });
 });
 

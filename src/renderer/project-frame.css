@@ -77,6 +77,80 @@
   flex: 1;
 }
 
+/* A plugin's running native engine: visible, and stoppable on purpose. */
+.native-session-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.native-session-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 260px;
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.native-session-pill.is-failed {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.native-session-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+.native-session-pill.is-starting .native-session-dot,
+.native-session-pill.is-stopping .native-session-dot {
+  animation: native-session-pulse 1.2s ease-in-out infinite;
+}
+
+.native-session-pill.is-exited .native-session-dot {
+  background: var(--color-text-tertiary);
+}
+
+.native-session-pill.is-failed .native-session-dot {
+  background: var(--color-danger);
+}
+
+.native-session-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.native-session-stop {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-tertiary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.native-session-stop:hover {
+  color: var(--color-text);
+}
+
+@keyframes native-session-pulse {
+  50% { opacity: 0.35; }
+}
+
 /* A plugin workspace renders its own top bar here. */
 .project-top-slot {
   display: contents;

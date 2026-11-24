@@ -3,7 +3,7 @@
   "id": "thorstarlord/renpy",
   "version": "0.1.0",
   "engines": {
-    "ohmygame-api": "^2.35.0"
+    "ohmygame-api": "^2.37.0"
   },
   "displayName": "%displayName%",
   "description": "%description%",
@@ -93,8 +93,7 @@
         "title": "%command.run%",
         "run": {
           "native": "runInRenpy",
-          "changesFiles": false,
-          "timeoutSeconds": 3600
+          "changesFiles": false
         },
         "slots": [
           {
