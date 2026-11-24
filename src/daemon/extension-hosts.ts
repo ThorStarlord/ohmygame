@@ -18,8 +18,10 @@ import {
   type PluginModelsHostRequest,
 } from "../shared/extension-host-protocol.js";
 import type { PluginLogEntry } from "../shared/plugins.js";
+import { isNativeSessionView, type NativeSessionView } from "../shared/native-sessions.js";
 import {
   registerProjectProcess,
+  signalProcessTree,
   terminateProjectProcess,
 } from "./process-lifecycle.js";
 import { projectProcessEnvironment } from "./project-process.js";
@@ -163,6 +165,7 @@ const REPLIES: Record<HostRequest["type"], HostMessage["type"] | undefined> = {
   activate: "activated",
   invoke: "result",
   deactivate: "result",
+  "native-session-stop": "result",
   stats: "stats",
   cancel: undefined,
   shutdown: undefined,
@@ -181,6 +184,13 @@ interface Pending {
   /** Gives up on the call: cancels it, and stops the host if it doesn't settle. */
   giveUp(error: ExtensionHostError): void;
   onProgress?: (message: string, url?: string) => void;
+}
+
+interface NativeSessionRecord extends NativeSessionView {
+  /** Keeps the host from idling out while this session runs. */
+  releaseHold: () => void;
+  /** Forgets an ended session after the app has had time to show it. */
+  expire?: ReturnType<typeof setTimeout>;
 }
 
 interface Activation {
@@ -248,6 +258,8 @@ class ExtensionHost {
   #idle: ReturnType<typeof setTimeout> | undefined;
   /** Holds that keep the host from stopping while idle, such as an open game session. */
   #holds = 0;
+  /** Engine processes this host's plugins own, including recently ended ones. */
+  readonly #nativeSessions = new Map<string, NativeSessionRecord>();
   /** The host's `game` requests the daemon is answering, by the host's id. */
   readonly #sessionCalls = new Map<number, { plugin: string; controller: AbortController }>();
   readonly #browserCalls = new Map<number, { plugin: string; controller: AbortController }>();
@@ -342,6 +354,75 @@ class ExtensionHost {
       pending: this.#pending.size,
       plugins: Object.fromEntries(this.#loaded),
     };
+  }
+
+  /** The native engine sessions this host owns, newest first. */
+  nativeSessions(): NativeSessionView[] {
+    return [...this.#nativeSessions.values()]
+      .sort((left, right) => right.startedAt - left.startedAt)
+      .map(({ releaseHold: _hold, expire: _expire, ...session }) => ({ ...session }));
+  }
+
+  /** Stops one of this host's sessions, optionally only when `plugin` owns it. */
+  async stopSession(sessionId: string, plugin?: string): Promise<void> {
+    const record = this.#nativeSessions.get(sessionId);
+    if (!record) throw new ExtensionHostError("failed", "The native session is not running");
+    if (plugin && record.plugin !== plugin)
+      throw new ExtensionHostError("unavailable", `${plugin} does not own this native session`);
+    if (record.state === "exited" || record.state === "failed") return;
+    record.state = "stopping";
+    if (!this.alive || !record.pid) {
+      if (record.pid) await signalProcessTree(record.pid, true);
+      return;
+    }
+    try {
+      await this.#request(
+        { type: "native-session-stop", plugin: record.plugin, session: sessionId },
+        record.plugin,
+        15_000,
+      );
+    } catch (error) {
+      // The host may have lost the process or stopped before answering.
+      // Kill the engine tree directly rather than leave it unmanaged.
+      await signalProcessTree(record.pid, true).catch(() => {});
+      throw error;
+    }
+  }
+
+  #trackNativeSession(plugin: string, session: NativeSessionView): void {
+    if (!isNativeSessionView(session) || session.plugin !== plugin) return;
+    if (!(this.#loaded.has(plugin) || this.#activating === plugin)) return;
+    const ended = session.state === "exited" || session.state === "failed";
+    let record = this.#nativeSessions.get(session.id);
+    if (!record) {
+      if (this.#nativeSessions.size >= 64) return;
+      record = { ...session, releaseHold: this.hold() };
+      this.#nativeSessions.set(session.id, record);
+    } else {
+      clearTimeout(record.expire);
+      record.expire = undefined;
+      Object.assign(record, session);
+    }
+    if (ended) {
+      record.releaseHold();
+      record.releaseHold = () => {};
+      record.expire = setTimeout(() => {
+        if (this.#nativeSessions.get(session.id) === record) this.#nativeSessions.delete(session.id);
+      }, 60_000);
+      record.expire.unref?.();
+    }
+  }
+
+  /** Drops sessions for a plugin, or all, killing a tree that is still running. */
+  #forgetSessions(plugin?: string, kill = false): void {
+    for (const [id, record] of this.#nativeSessions) {
+      if (plugin && record.plugin !== plugin) continue;
+      clearTimeout(record.expire);
+      if (kill && record.pid && (record.state === "starting" || record.state === "running" || record.state === "stopping"))
+        void signalProcessTree(record.pid, true).catch(() => {});
+      record.releaseHold();
+      this.#nativeSessions.delete(id);
+    }
   }
 
   imported(plugin: string): boolean {
@@ -540,6 +621,7 @@ class ExtensionHost {
       clearTimeout(timer);
     }
     await terminateProjectProcess(this.#child);
+    this.#forgetSessions(undefined, true);
   }
 
   #enqueue(plugin: string, task: () => Promise<void>): Promise<void> {
@@ -570,6 +652,7 @@ class ExtensionHost {
    * still running are given up first, so none opens a session after.
    */
   #release(plugin?: string) {
+    this.#forgetSessions(plugin, true);
     for (const [id, call] of this.#browserCalls)
       if (!plugin || call.plugin === plugin) {
         this.#browserCalls.delete(id);
@@ -856,6 +939,10 @@ class ExtensionHost {
       );
       return;
     }
+    if (message.type === "native-session") {
+      this.#trackNativeSession(message.plugin, message.session);
+      return;
+    }
     if (message.type === "game") {
       this.#serveGame(message.id, message.plugin, message.request);
       return;
@@ -977,6 +1064,19 @@ export class ExtensionHosts {
   serveBrowser(service: HostBrowserService): void { this.#browser = service; }
 
   serveSessions(service: HostSessionService): void { this.#sessions = service; }
+
+  /** Native sessions a scope owns, or every host's when no scope is given. */
+  sessions(scope?: string): NativeSessionView[] {
+    if (scope !== undefined) return this.#hosts.get(scope)?.nativeSessions() ?? [];
+    return [...this.#hosts.values()].flatMap((host) => host.nativeSessions());
+  }
+
+  /** Stop a session in `scope`; the owner is checked by that host's record. */
+  async stopSession(scope: string, sessionId: string): Promise<void> {
+    const host = this.#hosts.get(scope);
+    if (!host) throw new ExtensionHostError("failed", "The project's plugin host is not running");
+    await host.stopSession(sessionId);
+  }
 
   serveModels(service: HostModelService): void { this.#models = service; }
 

@@ -4,6 +4,7 @@ import type { PluginSessionRequest } from "../shared/plugin-sessions.js";
 import { isPluginSettingsCommand, pluginSettingsView, readPluginSettingsStatus } from "../shared/plugin-settings.js";
 import { mkdir } from "node:fs/promises";
 import type { PluginGameBridge } from "./plugin-game-bridge.js";
+import type { NativeSessionView } from "../shared/native-sessions.js";
 import type {
   ExtensionHostPlugin,
   PluginBuild,
@@ -486,6 +487,16 @@ export class NativePlugins {
   /** Stops a project's host, as when the project is closed. */
   async closeProject(folder: string): Promise<void> {
     await this.#hosts.stop(await projectFolderKey(folder).catch(() => folder));
+  }
+
+  /** Native engine sessions a project's plugins currently own, or recently ended. */
+  async sessions(folder: string): Promise<NativeSessionView[]> {
+    return this.#hosts.sessions(await projectFolderKey(folder).catch(() => folder));
+  }
+
+  /** Stops a native session in a project; only that project's host owns it. */
+  async stopSession(folder: string, sessionId: string): Promise<void> {
+    await this.#hosts.stopSession(await projectFolderKey(folder).catch(() => folder), sessionId);
   }
 
   quarantined(id: string): boolean {

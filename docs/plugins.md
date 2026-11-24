@@ -226,6 +226,7 @@ and the format of an older major is then upgraded where it loads, as
 | 2.34.0 | Image models can declare `animationFrames`; only those models may return ordered multiple outputs for host-side GIF composition, bounded to 100 validated frames. Native code and commands can open a page in the Browser panel with `context.browser.open`. Any plugin with native code can show a Settings status section (`settings-status`), not only connection plugins. MCP servers can declare `setup` and `docs`, and their Settings tab tests them. |
 | 2.35.0 | Commands can go in the Game panel's `game.start` slot, which shows when the panel has no web build to play, such as an engine's project. Library sources can declare `collections`, their own ways to browse them, and `cacheSeconds`, how long their browses are shown again; audio results can carry a `preview` to listen to before adding, and any result an `embed` page from a host the plugin lists in `capabilities.network`, which its details load on request. [Tools a panel's page answers](#page-tools-and-context) (`tools[].panel`, `host.tools.handle`), and what a page says the person is looking at for the next message (`context.set`, with `composer`). A page's writes and deletes under the plugin's `projectFiles` wait while an agent works instead of being refused. Pages and native code ask the language models the person set up ([AI models](#ai-models): `capabilities.models`, `host.models`, `context.models`). Pages import the project's modules from the folders `ui.projectModules` names ([project modules](#project-modules), `host.modules.import`). Commands, pages (`host.panels.open`) and native code (`context.panels.open`) open a panel with a `state` its page hears ([opening a panel](#opening-a-panel): `host.opened`, the `open` event). Pages add what they make to the person's Library ([adding to the Library](#adding-to-the-library): `capabilities.library`, `host.library.add`). Pages `fetch` their own plugin's files ([plugin pages](#plugin-pages)). A panel's assistant runs the person's model with the plugin's tools and keeps its conversation ([panel assistant](#panel-assistant): `host.assistant`). |
 | 2.36.0 | Plugins can give [project templates](#project-templates) (`contributes.templates`). |
+| 2.37.0 | Native project plugins can start [managed native engine sessions](#native-engine-sessions) (`context.nativeSessions`); the project host owns the process, the app shows its state, and the person or project can stop it. |
 | 2.30.0 | Image models declare required references and a reference size limit; image adapters can return GIF and key-authenticated result downloads. |
 | 2.24.0 | Speech providers can bind their default voice to a non-secret plugin setting; explicit voices and prompt-audio reference choices remain independent. |
 | 2.23.0 | Recoverable audio can decode bounded JSON/JSON-lines Base64 responses, retain metadata/usage and generate request IDs only at the actual send boundary. |
@@ -325,6 +326,40 @@ command the app runs, every message arrives as `plugin.command.progress`;
 the project offers to open a link after showing its host, and the plugin's
 own pages get the message as their `progress` event. An agent's tool call
 shows it in the call's progress.
+
+### Native engine sessions
+
+API 2.37 adds `context.nativeSessions` in a project host. A native plugin starts
+an engine it resolved, such as Ren'Py or Godot, and returns at once; the host
+owns the process, not the command call. The host stays alive while a session
+runs, so the app's five-minute idle threshold cannot kill a legitimate game.
+The handle has `id`, `pid`, `label`, `stop()` and `exited`:
+
+```js
+const session = await context.nativeSessions.start({
+  executable: sdk.python,
+  args: [sdk.script, project.folder, "run"],
+  cwd: sdk.folder,
+  label: "Ren'Py",
+});
+return { started: true, sessionId: session.id };
+// Do not await session.exited in the command; the host reports the exit.
+```
+
+A project host allows one active session per plugin; a second start fails until
+the first is stopped. Stop, plugin deactivation, project closure, app shutdown
+and an extension-host failure kill the engine's process tree and release the
+host hold. The state is observable at
+`GET /projects/:id/native-sessions` and a person or the project can stop it at
+`POST /projects/:id/native-sessions/:id/stop`; the project top bar shows the
+same active sessions with a Stop control. States are `starting`, `running`,
+`stopping`, `exited` and `failed`; sessions that ended are kept for a minute so
+their exit can be observed.
+
+Only native plugins can start these sessions, and the executable and arguments
+come from the plugin's already fully trusted native code. A bounded tool or
+command, such as lint or an export, still belongs in a normal tool/command call
+with `timeoutSeconds`; it does not need a session.
 
 ### App sessions and persistent connections
 
@@ -2575,6 +2610,16 @@ for that plugin.
   still needs the setting.
   `native/godot.mjs` does that lookup for both the tools and the MCP server,
   which `native/mcp.mjs` starts through `npx` (Node.js with npx is needed).
+  **Run in Godot** in the pinned 1.0.3 starts the editor itself and returns;
+  the project's extension host still idles out after five minutes without
+  plugin calls. A proposed upstream change
+  ([ohmygame-plugins#63](https://github.com/WhiteTowerAI/ohmygame-plugins/pull/63))
+  uses `context.nativeSessions`, but it needs a new plugin release and an
+  updated pin in `config/preinstalled-plugins.json` before this app can rely
+  on it. Until then, use Web preview for a long-lived Godot session, or reopen
+  the editor after a host idle stop. The pinned 1.0.3 also omits
+  `include_filter=""` from a Web preset it creates, which Godot logs as a
+  missing-key warning; the export still succeeds.
   Check the actual engine version and import/run logs
   after testing. Viewport capture and gameplay input are not supplied by this
   MCP or the web `game_use` integration.

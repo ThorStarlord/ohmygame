@@ -3117,6 +3117,23 @@ export function createApp(options: AppOptions = {}) {
       return pluginChangeReply(reply, cause);
     }
   });
+  // Native engine processes a project's plugins own, and deliberate stop.
+  app.get<{ Params: { projectId: string } }>("/projects/:projectId/native-sessions", async (request, reply) => {
+    const project = projects.get(request.params.projectId);
+    if (!project) return reply.code(404).send({ error: "Project not found" });
+    return { sessions: await pluginServices.native.sessions(project.workspacePath) };
+  });
+  app.post<{ Params: { projectId: string; sessionId: string } }>("/projects/:projectId/native-sessions/:sessionId/stop", async (request, reply) => {
+    const project = projects.get(request.params.projectId);
+    if (!project) return reply.code(404).send({ error: "Project not found" });
+    try {
+      await pluginServices.native.stopSession(project.workspacePath, request.params.sessionId);
+      return { stopped: true };
+    } catch (cause) {
+      if (cause instanceof ExtensionHostError) return reply.code(cause.code === "unavailable" ? 409 : 503).send({ error: cause.message });
+      throw cause;
+    }
+  });
   app.get<{ Params: { projectId: string }; Querystring: { locale?: string } }>("/projects/:projectId/plugin-preview", async (request, reply) => {
     const project = projects.get(request.params.projectId);
     if (!project) return reply.code(404).send({ error: "Project not found" });

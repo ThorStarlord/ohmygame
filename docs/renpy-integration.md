@@ -8,7 +8,7 @@ The source lives at [plugins/renpy](../plugins/renpy/README.md). Install it in d
 
 - A proper Ren'Py project type, new-project template, and recognition of standard existing projects with game/options.rpy.
 - SDK discovery from user configuration, RENPY_SDK_PATH, RENPY_HOME and PATH.
-- Native Ren'Py CLI operations: lint --error-code, compile --keep-orphan-rpyc, automated Ren'Py testcases and interactive run. Lint, compile and tests run with a throwaway `--savedir`, because Ren'Py loads and can rewrite persistent data even for those checks; validation never touches the player's saves or unlocks.
+- Native Ren'Py CLI operations: lint --error-code, compile --keep-orphan-rpyc, automated Ren'Py testcases and an interactive run owned by OhMyGame's managed native-session lifecycle. Lint, compile, tests and Web export run with a throwaway `--savedir`, because Ren'Py loads and can rewrite persistent data even for those operations; automated validation and builds never touch the player's saves or unlocks. Interactive play intentionally uses the project's chosen save namespace.
 - A web-build project type: web export to an isolated staging directory and promotion to .ohmygame/build/web only after an index.html exists in the output root or one unambiguous nested web distribution.
 - Plugin project settings, localized names, tool schemas, a project-specific agent skill, and automated contract tests.
 
@@ -33,6 +33,19 @@ The following remains a separate end-to-end qualification and must not be inferr
 5. Install matching Ren'Py Web support, run the web build, inspect the Game panel and verify media, interaction, storage and error handling.
 6. Change a script, rebuild, and confirm updates. Introduce a web-build failure, confirm the previous successful preview remains available, and remove the fault.
 7. Exercise agent gameplay input/capture in the rendered web build. An automated screenshot requires the game_use desktop test environment.
+
+### Data safety
+
+| Operation | May change | Saved data |
+| --- | --- | --- |
+| `renpy_lint` | nothing in the project | Isolated `--savedir`, removed after the call |
+| `renpy_compile` | project `.rpyc`, expected for save compatibility | Isolated `--savedir`, removed after the call |
+| `renpy_test` | whatever the project's own tests do | Isolated `--savedir`, removed after the call |
+| Web export | `.ohmygame/build/web`, promoted after a valid `index.html`; the launcher may also write generated `game/saves/` and `progressive_download.txt` inside the project | Isolated `--savedir` and inherited `RENPY_PATH_TO_SAVES`; those generated files are build artifacts, not the player's save namespace. The installed SDK's Web support remains a separate qualification gate |
+| Run in Ren'Py | the game's own legitimate saves and persistent data | The project's chosen `config.save_directory`; OhMyGame does not override it |
+| Cancel/failure | staging and temporary savedirs are removed | No access to the player's save directory outside Run in Ren'Py |
+
+Ren'Py's launcher does not inherit `--savedir` into the project process it starts. The plugin therefore also sets `RENPY_PATH_TO_SAVES` for a build, which the child inherits; without it, a Web build rewrote a fixture persistent file. The generated `game/saves/` folder is a project artifact and is deliberately not deleted automatically, because a project without `config.save_directory` may legitimately use it for its own saves. The installed 8.5.2 SDK in this pilot had no complete Web assets, so the real Web-export output path remained unqualified even though package generation ran. Do not infer browser or save behavior from lint/compile.
 
 The Ren'Py CLI is version-sensitive and web builds have feature restrictions. See https://www.renpy.org/doc/html/cli.html and https://www.renpy.org/doc/html/web.html for the engine's current authority.
 

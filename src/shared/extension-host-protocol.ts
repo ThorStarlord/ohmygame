@@ -4,6 +4,7 @@
 import type { PluginSessionRequest, PluginSessions } from "./plugin-sessions.js";
 import type { PluginHook } from "./plugin-hooks.js";
 import type { PluginModelInfo, PluginModelRequest, PluginModelResult } from "./plugin-models.js";
+import { isNativeSessionView, type NativeSessionStart, type NativeSessionView, type PluginNativeSession } from "./native-sessions.js";
 
 import type { GameRecordingSaved } from "./game-recording.js";
 import type {
@@ -15,8 +16,8 @@ import type {
   PlaytestViewport,
 } from "./playtest.js";
 
-/** 4: project hosts can request the desktop Browser API. */
-export const EXTENSION_HOST_PROTOCOL_VERSION = 4;
+/** 5: a project host can own native engine sessions for its plugin. */
+export const EXTENSION_HOST_PROTOCOL_VERSION = 5;
 
 /** Results larger than this, serialized, fail instead of being sent. */
 export const HOST_RESULT_MAX_BYTES = 8 * 1024 * 1024;
@@ -126,6 +127,8 @@ export type HostRequest =
     }
   | { type: "cancel"; id: number }
   | { type: "deactivate"; id: number; plugin: string }
+  /** Stops the plugin-owned native session `session`, killing its process tree. */
+  | { type: "native-session-stop"; id: number; plugin: string; session: string }
   | { type: "stats"; id: number }
   /** Deactivate everything, then exit. */
   | { type: "shutdown"; id: number }
@@ -162,6 +165,8 @@ export type HostMessage =
   | { type: "models"; id: number; plugin: string; request: PluginModelsHostRequest }
   | { type: "browser"; id: number; plugin: string; request: PluginBrowserRequest }
   | { type: "sessions"; id: number; plugin: string; request: PluginSessionRequest }
+  /** A plugin's native session started, changed state, or exited. */
+  | { type: "native-session"; plugin: string; session: NativeSessionView }
   /** A line a plugin's code printed while it ran, through `console`. */
   | { type: "log"; plugin: string; level: "info" | "warn" | "error"; text: string };
 
@@ -237,6 +242,15 @@ export interface PluginContext {
   registerHook(event: PluginHook, handler: ToolHandler): Disposable;
   /** Run when the plugin is deactivated or its host stops. */
   onDispose(dispose: () => void | Promise<void>): void;
+  /**
+   * Starts a native engine process this project host owns. The host keeps
+   * itself alive while the session runs, reports its state to the app, and
+   * kills it on stop, plugin deactivation, project closure or host failure.
+   * Absent in the app host.
+   */
+  nativeSessions?: {
+    start(options: NativeSessionStart): Promise<PluginNativeSession>;
+  };
   /**
    * The project's game, as the agent's `game_use` plays it, when the
    * manifest asks for the `game` capability; undefined in the app host.
@@ -318,6 +332,8 @@ export function isHostMessage(value: unknown): value is HostMessage {
   if (message.type === "ready") return typeof message.protocol === "number";
   if (message.type === "log")
     return typeof message.plugin === "string" && typeof message.text === "string" && (message.level === "info" || message.level === "warn" || message.level === "error");
+  if (message.type === "native-session")
+    return typeof message.plugin === "string" && isNativeSessionView(message.session);
   if (typeof message.id !== "number") return false;
   switch (message.type) {
     case "result":

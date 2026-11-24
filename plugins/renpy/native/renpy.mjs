@@ -104,11 +104,14 @@ export async function runWithIsolatedSaves(command, project, args, options = {})
 
 /** Execute an SDK CLI task; cancellation and timeout are distinguished from CLI failures. */
 export function runRenpy(command, args, options = {}) {
-  const { cwd, signal, timeoutMs = DEFAULT_TIMEOUT, progress } = options;
+  const { cwd, signal, timeoutMs = DEFAULT_TIMEOUT, progress, env } = options;
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(new Error("Ren'Py command cancelled"));
     const child = spawn(command.executable, [...command.prefixArgs, ...args], {
-      cwd, windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
+      cwd,
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "pipe"],
+      ...(env ? { env: { ...process.env, ...env } } : {}),
     });
     let output = "";
     let timeout = false;
@@ -171,12 +174,21 @@ export async function exportWeb(project, command, options = {}) {
   if (existing && (existing.isSymbolicLink() || !existing.isDirectory()))
     throw new Error("Refusing an unsafe existing web build path");
   const staging = await mkdtemp(path.join(buildRoot, "renpy-web-"));
+  const savedir = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-web-"));
+  const savesBase = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-web-saves-"));
   const backup = path.join(buildRoot, "renpy-web-old-" + randomUUID());
   let movedOld = false;
   try {
     const execute = options.execute ?? runRenpy;
-    const result = await execute(command, ["launcher", "web_build", project, "--destination", staging], {
-      cwd: command.sdkPath, signal: options.signal, progress: options.progress, timeoutMs: 600_000,
+    // The launcher starts the project in its own process, which ignores the
+    // parent's --savedir. RENPY_PATH_TO_SAVES is inherited and keeps the
+    // build from reading or rewriting the player's saves and unlocks.
+    const result = await execute(command, ["--savedir", savedir, "launcher", "web_build", project, "--destination", staging], {
+      cwd: command.sdkPath,
+      signal: options.signal,
+      progress: options.progress,
+      timeoutMs: 600_000,
+      env: { RENPY_PATH_TO_SAVES: savesBase },
     });
     if (result.exitCode !== 0)
       throw new Error("Ren'Py web export failed (exit " + result.exitCode + "): " + (result.errors.join("\n") || result.output.slice(-3000)));
@@ -216,36 +228,18 @@ export async function exportWeb(project, command, options = {}) {
     return result;
   } finally {
     await rm(staging, { recursive: true, force: true });
+    await rm(savedir, { recursive: true, force: true });
+    await rm(savesBase, { recursive: true, force: true });
     // If promotion failed before it could complete, do not delete a backup.
   }
 }
 
-export function launchRenpy(command, project, signal) {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) return reject(new Error("Ren'Py launch cancelled"));
-    const child = spawn(command.executable, [...command.prefixArgs, project, "run"], {
-      cwd: command.sdkPath, stdio: "ignore", windowsHide: false,
-    });
-    const stop = () => { if (child.exitCode === null) child.kill(); };
-    signal?.addEventListener("abort", stop, { once: true });
-    child.once("error", (error) => {
-      signal?.removeEventListener("abort", stop);
-      reject(error);
-    });
-    child.once("spawn", () => {
-      if (signal?.aborted) { stop(); reject(new Error("Ren'Py launch cancelled")); return; }
-      resolve(child);
-    });
-    child.once("close", () => signal?.removeEventListener("abort", stop));
-  });
-}
-
-/**
- * The launch command stays pending while the game runs, so the project's
- * extension host is not treated as idle and stopped (which would kill the
- * game). It resolves when the person closes the game or the host stops.
- */
-export function waitForRenpyExit(child) {
-  if (child.exitCode !== null) return Promise.resolve(child.exitCode);
-  return new Promise((resolve) => child.once("close", (code) => resolve(code)));
+/** What the managed host session should run for `project run`. */
+export function renpyLaunch(command, project) {
+  return {
+    executable: command.executable,
+    args: [...command.prefixArgs, project, "run"],
+    cwd: command.sdkPath,
+    label: "Ren'Py",
+  };
 }

@@ -22,8 +22,8 @@ The starter template intentionally does not set a shared save-directory identifi
 - Lint: --savedir <temporary> project lint --error-code
 - Engine testcases: --savedir <temporary> project test (requires the game to define Ren'Py tests)
 - Compile: --savedir <temporary> project compile --keep-orphan-rpyc (protects existing save compatibility)
-- Native run: project run
-- Web export: launcher web_build project --destination <staging>
+- Native run: project run through OhMyGame's managed native session (the host owns the process; the command returns immediately; stop from the project top bar)
+- Web export: --savedir <temporary> launcher web_build project --destination <staging>
 - Browser Game panel: .ohmygame/build/web/index.html, promoted only after successful export (accepts flat and single nested distribution layouts)
 
 Web export relies on SDK Web support and browser-compatible game features. Export may create/modify compiled .rpyc in the game tree; preserve these for Ren'Py save compatibility. A build that passes does not demonstrate scene behavior, media compatibility, or save behavior.
