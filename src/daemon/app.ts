@@ -3140,7 +3140,7 @@ export function createApp(options: AppOptions = {}) {
   // A person-authorized capture from the desktop window, retained for the agent.
   app.post<{ Params: { projectId: string; sessionId: string }; Body: unknown }>(
     "/projects/:projectId/native-sessions/:sessionId/captures",
-    { bodyLimit: 12 * 1024 * 1024 },
+    { bodyLimit: 16 * 1024 * 1024 },
     async (request, reply) => {
       const project = projects.get(request.params.projectId);
       if (!project) return reply.code(404).send({ error: "Project not found" });

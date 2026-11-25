@@ -66,6 +66,7 @@ export type NativeWindowCaptureInput = Omit<NativeWindowCaptureSummary, "id" | "
 export function isNativeWindowCaptureInput(value: unknown): value is NativeWindowCaptureInput {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const item = value as Partial<NativeWindowCaptureInput>;
+  const analysis = item.analysis as Partial<PlaytestCapture["analysis"]> | undefined;
   return typeof item.width === "number" && Number.isSafeInteger(item.width) && item.width > 0 && item.width <= 16_384
     && typeof item.height === "number" && Number.isSafeInteger(item.height) && item.height > 0 && item.height <= 16_384
     && typeof item.title === "string" && item.title.length <= 500
@@ -73,7 +74,12 @@ export function isNativeWindowCaptureInput(value: unknown): value is NativeWindo
     && typeof item.pid === "number" && Number.isSafeInteger(item.pid) && item.pid > 0
     && item.mediaType === "image/png"
     && typeof item.data === "string" && item.data.length > 0 && item.data.length <= 12 * 1024 * 1024
-    && typeof item.analysis === "object" && item.analysis !== null;
+    && !!analysis && typeof analysis === "object"
+    && typeof analysis.sampledPixels === "number" && Number.isSafeInteger(analysis.sampledPixels) && analysis.sampledPixels >= 0
+    && typeof analysis.opaqueRatio === "number" && analysis.opaqueRatio >= 0 && analysis.opaqueRatio <= 1
+    && typeof analysis.luminanceMean === "number" && analysis.luminanceMean >= 0
+    && typeof analysis.luminanceVariance === "number" && analysis.luminanceVariance >= 0
+    && typeof analysis.likelyBlank === "boolean";
 }
 
 export interface EngineObservationSnapshot {

@@ -129,7 +129,7 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
           {session.output.stdout ? <><p>stdout</p><pre>{session.output.stdout}</pre></> : null}
           {session.output.stderr ? <><p>stderr</p><pre>{session.output.stderr}</pre></> : null}
         </details> : null}
-        {typeof window !== "undefined" && window.ohMyGameDesktop?.captureNativeWindow && session.state === "running" && session.pid ? (
+        {typeof window !== "undefined" && window.ohMyGameDesktop?.platform === "win32" && window.ohMyGameDesktop.captureNativeWindow && session.state === "running" && session.pid ? (
           <Button size="sm" disabled={capturing === session.id} onClick={() => void capture(session.id, session.pid!)}>
             {capturing === session.id ? t("engineObservations.capturing") : t("engineObservations.capture")}
           </Button>
