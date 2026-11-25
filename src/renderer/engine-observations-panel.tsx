@@ -91,6 +91,7 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
       {current.nativeSessions.length ? current.nativeSessions.map((session) => <div key={session.id}>
         <p>{session.label} · {nativeStatus(session.state)}{session.exitCode != null ? ` · ${session.exitCode}` : ""}</p>
         {session.error ? <pre>{session.error}</pre> : null}
+        {onAskAgent && session.output ? <Button size="sm" variant="ghost" onClick={() => onAskAgent("Inspect engine_observations for nativeSessionId " + session.id + " with includeOutput true. Explain the observed output, distinguish engine evidence from hypotheses, and do not treat the process state as visual or gameplay verification. Do not stop, launch, or modify the game just to read the observations.")}>{t("engineObservations.inspect")}</Button> : null}
         {session.output ? <details><summary>{t("engineObservations.raw")}</summary>
           <p>{t("engineObservations.omitted")}</p>
           {session.output.stdout ? <><p>stdout</p><pre>{session.output.stdout}</pre></> : null}
@@ -109,6 +110,7 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
         <p>{t("engineObservations.partial")}</p>
         {selected.comparison ? <p>{t("engineObservations.comparison", { newly: selected.comparison.newlyReported, recurring: selected.comparison.recurring, absent: selected.comparison.noLongerReported })}</p> : null}
         {onAskAgent ? <Button size="sm" variant="ghost" onClick={() => onAskAgent(`Inspect engine_observations for this project with runId ${selected.id}. Explain the observed findings, distinguish evidence from hypotheses, and use an explicit engine check to verify any authorized change. Do not treat absence of a reported diagnostic as proof of repair.`)}>{t("engineObservations.inspect")}</Button> : null}
+        {onAskAgent && selected.status === "failed" ? <Button size="sm" onClick={() => onAskAgent("Use engine_observations with runId " + selected.id + " and includeOutput true as the before-check evidence. Inspect the reported project source, identify a specific warranted repair, and make only that bounded change. Preserve existing player saves, unrelated game content and the validation mirror. Explicitly rerun the same engine check, retrieve the new observation, compare what was newly or no longer reported, and explain the evidence and remaining uncertainty. Do not claim success from a lower count alone. If the SDK or required tool is unavailable, state the blocker. Do not launch a native game or export just to repair a lint finding.")}>{t("engineObservations.repair")}</Button> : null}
         {selected.diagnostics.length ? selected.diagnostics.map((item, index) => <div key={index}>
           <p>{severity(item.severity)}{item.path ? ` · ${item.path}:${item.line}` : ""}</p>
           <pre>{item.message}</pre>

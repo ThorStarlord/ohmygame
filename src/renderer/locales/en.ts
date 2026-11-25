@@ -13,6 +13,7 @@ const en = {
     native: "Native sessions",
     nativeEmpty: "No managed native session observed.",
     inspect: "Inspect with agent",
+    repair: "Repair and recheck",
     openFile: "Open source file",
     raw: "Engine output excerpt",
     omitted: "Earlier output may be omitted or redacted.",

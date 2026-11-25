@@ -39,15 +39,19 @@ export async function renpyDiagnostics(output, mirror, project) {
   let diagnosticsTruncated = false;
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index].trim();
-    const location = /^File "([^"\r\n]+)", line (\d+)(?::.*)?$/i.exec(line);
-    const severity = /^warning\b/i.test(line) ? "warning"
-      : /^(?:error\b|[\w.]*Error:|exception\b|I'm sorry, but an uncaught exception)/i.test(line) ? "error" : "unknown";
+    const traceback = /^File "([^"\r\n]+)", line (\d+)(?::.*)?$/i.exec(line);
+    // Ren'Py lint also emits game/script.rpy:12 followed by its finding.
+    const lint = /^(.+?\.(?:rpy|rpym|py)):(\d+)(?:\s+|:\s*)(.*)$/i.exec(line);
+    const location = traceback ?? lint;
+    const severityText = lint?.[3] || line;
+    const severity = /^warning\b/i.test(severityText) ? "warning"
+      : /^(?:error\b|[\w.]*Error:|exception\b|I'm sorry, but an uncaught exception)/i.test(severityText) ? "error" : "unknown";
     if (!location && severity === "unknown" && !/^Traceback\b/i.test(line)) continue;
     if (diagnostics.length === MAX_DIAGNOSTICS) { diagnosticsTruncated = true; break; }
     const file = location ? await sourceLocation(location[1], mirror, project) : undefined;
     const lineNumber = location ? Number(location[2]) : undefined;
     // Preserve the original header and its immediate detail when present.
-    const detail = location && lines[index + 1]?.trim();
+    const detail = traceback && lines[index + 1]?.trim();
     const header = file ? line.replace(location[1], file) : line;
     const text = detail ? `${header}\n${detail}` : header;
     if (text.length > MAX_MESSAGE) diagnosticsTruncated = true;

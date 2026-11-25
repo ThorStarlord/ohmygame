@@ -904,7 +904,7 @@ describe("OhMyGame plugin contracts", () => {
 describe("Engine diagnostic observations", () => {
   it("returns project-relative findings from the validation mirror with legacy output intact", async () => {
     const fake = path.join(folder, "diagnostic.cjs");
-    await writeFile(fake, "const path = require(\"node:path\"); console.log('File \"' + path.join(process.cwd(), \"game\", \"script.rpy\") + '\", line 2:'); console.log(\"Error: fixture diagnostic\"); process.exitCode = 1;");
+    await writeFile(fake, "const path = require(\"node:path\"); console.log('File \"' + path.join(process.cwd(), \"game\", \"script.rpy\") + '\", line 2:'); console.log(\"Error: fixture diagnostic\"); console.log(\"game/script.rpy:3 Warning: fixture lint finding\"); process.exitCode = 1;");
     const result = await runWithIsolatedSaves({ executable: process.execPath, prefixArgs: [fake], sdkPath: folder }, folder, ["lint"]);
     expect(result.exitCode).toBe(1);
     expect(result.output).toContain("Error: fixture diagnostic");
@@ -913,6 +913,7 @@ describe("Engine diagnostic observations", () => {
     expect(result.diagnostics).toEqual(expect.arrayContaining([
       expect.objectContaining({ path: "game/script.rpy", line: 2 }),
       expect.objectContaining({ severity: "error", message: "Error: fixture diagnostic" }),
+      expect.objectContaining({ severity: "warning", path: "game/script.rpy", line: 3 }),
     ]));
     expect(result.validationCopy).toBe(true);
   });

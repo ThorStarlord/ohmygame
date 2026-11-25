@@ -14,6 +14,7 @@ const zhCN: typeof en = {
     native: "原生会话",
     nativeEmpty: "尚未观测到受管理的原生会话。",
     inspect: "请代理分析",
+    repair: "修复并重新检查",
     openFile: "打开源文件",
     raw: "引擎输出摘录",
     omitted: "较早的输出可能已省略或脱敏。",
