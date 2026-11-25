@@ -164,6 +164,21 @@ describe("Ren'Py execution and browser export", () => {
     await expect(lstat(savesBase!)).rejects.toThrow();
   });
 
+  it("returns a failed export result for the agent check history", async () => {
+    const result = await exportWeb(folder, { executable: "renpy", prefixArgs: [], sdkPath: folder }, {
+      throwOnFailure: false,
+      execute: async () => ({
+        exitCode: 2,
+        output: "game/script.rpy:4 Error: export failed\n",
+        errors: ["Error: export failed"],
+      }),
+    });
+    expect(result.exitCode).toBe(2);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ severity: "error", path: "game/script.rpy", line: 4 }),
+    ]);
+  });
+
   it("refuses a non-directory preview destination", async () => {
     const build = path.join(folder, ".ohmygame", "build");
     await mkdir(build, { recursive: true });
@@ -906,7 +921,7 @@ describe("OhMyGame plugin contracts", () => {
 describe("Engine diagnostic observations", () => {
   it("returns project-relative findings from the validation mirror with legacy output intact", async () => {
     const fake = path.join(folder, "diagnostic.cjs");
-    await writeFile(fake, "const path = require(\"node:path\"); console.log('File \"' + path.join(process.cwd(), \"game\", \"script.rpy\") + '\", line 2:'); console.log(\"Error: fixture diagnostic\"); console.log(\"game/script.rpy:3 Warning: fixture lint finding\"); process.exitCode = 1;");
+    await writeFile(fake, "const path = require(\"node:path\"); console.log('File \"' + path.join(process.cwd(), \"game\", \"script.rpy\") + '\", line 2, in <module>'); console.log(\"Error: fixture diagnostic\"); console.log(\"game/script.rpy:3 Warning: fixture lint finding\"); process.exitCode = 1;");
     const result = await runWithIsolatedSaves({ executable: process.execPath, prefixArgs: [fake], sdkPath: folder }, folder, ["lint"]);
     expect(result.exitCode).toBe(1);
     expect(result.output).toContain("Error: fixture diagnostic");

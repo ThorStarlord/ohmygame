@@ -17,10 +17,10 @@ export function activate(context) {
   let exporting = Promise.resolve();
   // Preview and explicit export share a destination; serialize them so neither
   // replaces the other's output while it is in use.
-  const build = (call) => {
+  const build = (call, throwOnFailure = true) => {
     const next = exporting.catch(() => {}).then(async () => {
       if (call.signal?.aborted) throw new Error("Ren'Py export cancelled");
-      return exportWeb(project(), await requireSdk(call), { signal: call.signal, progress: call.progress });
+      return exportWeb(project(), await requireSdk(call), { signal: call.signal, progress: call.progress, throwOnFailure });
     });
     exporting = next;
     return next;
@@ -59,7 +59,8 @@ export function activate(context) {
       cwd: project(), signal: call.signal, progress: call.progress, timeoutMs: 300_000,
     }));
 
-  context.registerTool("renpy_export_web", async (_input, call) => build(call));
+  // A failed export is a failed check with diagnostics, not a tool crash.
+  context.registerTool("renpy_export_web", async (_input, call) => build(call, false));
 
   context.registerCommand("settingsStatus", async (_input, call) => {
     const sdk = await resolveRenpy(call?.configuration?.renpySdkPath);
