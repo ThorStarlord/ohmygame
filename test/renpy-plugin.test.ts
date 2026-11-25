@@ -948,10 +948,29 @@ describe("Engine diagnostic observations", () => {
     const result = await runWithIsolatedSaves({ executable: process.execPath, prefixArgs: [fake], sdkPath: folder }, folder, ["lint"]);
     expect(result.exitCode).toBe(1);
     expect(result.diagnosticsTruncated).toBe(true);
-    expect(result.diagnostics.length).toBeLessThanOrEqual(50);
-    expect(result.diagnostics).toEqual(expect.arrayContaining([
-      expect.objectContaining({ severity: "error", message: "RecursionError: maximum recursion depth exceeded" }),
-    ]));
-    expect(result.diagnostics.at(-1)).toMatchObject({ severity: "error" });
+    expect(result.diagnostics).toHaveLength(46);
+    expect(result.diagnostics.at(-1)).toEqual(expect.objectContaining({
+      severity: "error",
+      message: "RecursionError: maximum recursion depth exceeded",
+    }));
+    const frames = result.diagnostics.filter((item: { message: string }) => item.message.includes("File \""));
+    expect(frames).toHaveLength(45);
+    expect(new Set(frames.map((item: { message: string }) => item.message)).size).toBe(45);
+  });
+
+  it("does not disable comparison for a short traceback with repeated frames", async () => {
+    const fake = path.join(folder, "short-traceback.cjs");
+    await writeFile(fake, [
+      "console.log(\"Traceback (most recent call last):\");",
+      "console.log('File \"' + require(\"node:path\").join(process.cwd(), \"game\", \"script.rpy\") + '\", line 10, in recurse');",
+      "console.log('File \"' + require(\"node:path\").join(process.cwd(), \"game\", \"script.rpy\") + '\", line 10, in recurse');",
+      "console.log('File \"' + require(\"node:path\").join(process.cwd(), \"game\", \"script.rpy\") + '\", line 10, in recurse');",
+      "console.log(\"RecursionError: maximum recursion depth exceeded\");",
+      "process.exitCode = 1;",
+    ].join("\n"));
+    const result = await runWithIsolatedSaves({ executable: process.execPath, prefixArgs: [fake], sdkPath: folder }, folder, ["lint"]);
+    expect(result.diagnosticsTruncated).toBe(false);
+    expect(result.diagnostics.filter((item: { message: string }) => item.message.includes("line 10"))).toHaveLength(1);
+    expect(result.diagnostics.at(-1)).toEqual(expect.objectContaining({ severity: "error" }));
   });
 });

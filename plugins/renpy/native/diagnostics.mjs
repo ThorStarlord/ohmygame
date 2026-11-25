@@ -49,10 +49,11 @@ export async function renpyDiagnostics(output, mirror, project) {
       : /^(?:error\b|[\w.]*Error:|exception\b|I'm sorry, but an uncaught exception)/i.test(severityText) ? "error" : "unknown";
     if (!location && severity === "unknown" && !/^Traceback\b/i.test(line)) continue;
     const lineNumber = location ? Number(location[2]) : undefined;
-    if (traceback && Number.isSafeInteger(lineNumber)) {
-      const key = `${location[1]}:${lineNumber}`;
-      if (seenFrames.has(key)) { diagnosticsTruncated = true; continue; }
-      seenFrames.add(key);
+    if (traceback) {
+      // Repeated frames are noise, not a lost diagnostic; comparison stays
+      // available. The full frame text keeps distinct functions on one line.
+      if (seenFrames.has(line)) continue;
+      seenFrames.add(line);
     }
     // Keep room for the exception at the end of a long recursion traceback.
     if (diagnostics.length >= MAX_DIAGNOSTICS - (severity === "error" ? 0 : 5)) {
