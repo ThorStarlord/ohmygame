@@ -3142,8 +3142,9 @@ export function createApp(options: AppOptions = {}) {
   // A person-authorized capture from the desktop window, retained for the agent.
   app.post<{ Params: { projectId: string; sessionId: string }; Body: unknown }>(
     "/projects/:projectId/native-sessions/:sessionId/captures",
-    { bodyLimit: 16 * 1024 * 1024 },
+    { bodyLimit: 20 * 1024 * 1024 },
     async (request, reply) => {
+      if (process.platform !== "win32") return reply.code(409).send({ error: "Native window capture is available on Windows only" });
       const project = projects.get(request.params.projectId);
       if (!project) return reply.code(404).send({ error: "Project not found" });
       const session = (await pluginServices.native.sessions(project.workspacePath))
