@@ -28,6 +28,8 @@ async function sessionWindows(rootPid: number): Promise<WindowOwner[]> {
   if (process.platform !== "win32") throw new Error("Native window capture is available on Windows only");
   const script = `
 $ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [Console]::OutputEncoding
 $root = ${rootPid}
 $procs = Get-CimInstance Win32_Process
 $ids = New-Object System.Collections.Generic.HashSet[int]
@@ -131,6 +133,11 @@ export async function captureNativeWindow(request: { rootPid: number; sessionId:
     throw new Error(`More than one window belongs to this managed session; close the extra windows and try again. Windows: ${listed}`);
   }
   const [{ source, owner, size }] = candidates;
+  // Re-query at the last moment: a closed window's handle can be reused by an
+  // unrelated process before desktopCapturer returns its source.
+  const current = (await sessionWindows(request.rootPid)).find((window) => window.hwnd === owner.hwnd);
+  if (!current || current.pid !== owner.pid)
+    throw new Error("The managed window changed while it was being captured. Restore the game and try again.");
   if (source.thumbnail.isEmpty()) throw new Error("The managed window returned an empty capture. Restore it and try again.");
   const analysis = analyzeBitmap(source.thumbnail.toBitmap(), size.width, size.height, "bgra");
   return {

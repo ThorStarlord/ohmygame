@@ -554,7 +554,8 @@ handle("ohmygame:select-project-directory", async (event) => {
   return result.canceled ? undefined : result.filePaths[0];
 });
 handle("ohmygame:capture-native-window", async (event, request: unknown) => {
-  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error("Invalid native capture source");
+  if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame)
+    throw new Error("Invalid native capture source");
   if (!request || typeof request !== "object") throw new Error("Invalid native capture request");
   const { rootPid, sessionId } = request as { rootPid?: unknown; sessionId?: unknown };
   if (typeof rootPid !== "number" || !Number.isSafeInteger(rootPid) || rootPid <= 0
