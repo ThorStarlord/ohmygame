@@ -1,8 +1,8 @@
 # Safe Ren'Py validation on a project with player saves
 
-**Date:** 2026-11-25  
-**Status:** bounded capability complete and qualified against the canonical Superhero-Netorare-Parody repository; desktop UI/daemon adoption remains a separate integration step.  
-**OhMyGame:** `ThorStarlord/ohmygame`, branch `fix/renpy-validation-mirror`, based on `dev` `6be054172c39d7ee356fb668a272921c9ad4a2e6`; candidate `736610d73d39ad03bb4d73d2a3c57993b60542ea`.  
+**Date:** 2026-11-25
+**Status:** bounded capability complete and qualified against the canonical Superhero-Netorare-Parody repository; desktop UI/daemon adoption remains a separate integration step.
+**OhMyGame:** `ThorStarlord/ohmygame`, branch `fix/renpy-validation-mirror`, based on `dev` `6be054172c39d7ee356fb668a272921c9ad4a2e6`; candidate `736610d73d39ad03bb4d73d2a3c57993b60542ea`.
 **Superhero-Netorare-Parody:** `ThorStarlord/Superhero-Netorare-Parody`, worktree at `work/m1-ch1-ch2-characterization-repair`; canonical source and player data were treated as read-only.
 
 ## Verdict
@@ -38,10 +38,10 @@ A project without populated `game/saves` still validates in place exactly as bef
 
 ## Evidence
 
-- Unit suite: `bun run test -- test/renpy-plugin.test.ts` — 27 passed (also passes under Node).
-- Host lifecycle suite: `bun run test -- test/renpy-plugin.test.ts test/extension-hosts.test.ts` — 89 passed, 2 skipped.
-- `bun run plugin:check plugins/renpy` — no problems.
-- `bun run typecheck` and `bun run lint` — exit 0.
+- Unit suite: `bun run test -- test/renpy-plugin.test.ts` â€” 27 passed (also passes under Node).
+- Host lifecycle suite: `bun run test -- test/renpy-plugin.test.ts test/extension-hosts.test.ts` â€” 89 passed, 2 skipped.
+- `bun run plugin:check plugins/renpy` â€” no problems.
+- `bun run typecheck` and `bun run lint` â€” exit 0.
 - Real lint: 11.9 s including copy, exit 1 with the project's existing Ren'Py diagnostics; no missing root file.
 - Real compile: exit 0, no missing root file.
 - Save/game/state tree hashes before and after: unchanged; mirror removed.
