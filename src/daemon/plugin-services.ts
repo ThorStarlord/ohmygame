@@ -1494,7 +1494,7 @@ export class PluginServices {
         ...(item.error ? { error: redact(item.error, item.plugin) } : {}),
         ...(output ? { output: { stdout: redact(output.stdout, item.plugin), stderr: redact(output.stderr, item.plugin), omitted: output.omitted } } : {}),
       })),
-      captures,
+      captures: captures.map((capture) => ({ ...capture, title: redact(capture.title) })),
       checks: folder ? this.#engineChecks.read(folder) : [],
     };
   }
