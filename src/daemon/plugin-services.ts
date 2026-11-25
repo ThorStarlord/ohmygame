@@ -1489,9 +1489,10 @@ export class PluginServices {
           ...(item.path ? { path: redact(item.path) } : {}),
         })),
       },
-      nativeSessions: (await this.native.sessions(project.workspacePath)).map((item) => ({
+      nativeSessions: (await this.native.sessions(project.workspacePath, true)).map(({ output, ...item }) => ({
         ...item, label: redact(item.label, item.plugin),
         ...(item.error ? { error: redact(item.error, item.plugin) } : {}),
+        ...(output ? { output: { stdout: redact(output.stdout, item.plugin), stderr: redact(output.stderr, item.plugin), omitted: output.omitted } } : {}),
       })),
       checks: folder ? this.#engineChecks.read(folder) : [],
     };

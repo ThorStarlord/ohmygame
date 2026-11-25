@@ -4,7 +4,7 @@
 import type { PluginSessionRequest, PluginSessions } from "./plugin-sessions.js";
 import type { PluginHook } from "./plugin-hooks.js";
 import type { PluginModelInfo, PluginModelRequest, PluginModelResult } from "./plugin-models.js";
-import { isNativeSessionView, type NativeSessionStart, type NativeSessionView, type PluginNativeSession } from "./native-sessions.js";
+import { isNativeSessionView, isNativeSessionOutput, type NativeSessionStart, type NativeSessionView, type NativeSessionOutput, type PluginNativeSession } from "./native-sessions.js";
 
 import type { GameRecordingSaved } from "./game-recording.js";
 import type {
@@ -167,6 +167,8 @@ export type HostMessage =
   | { type: "sessions"; id: number; plugin: string; request: PluginSessionRequest }
   /** A plugin's native session started, changed state, or exited. */
   | { type: "native-session"; plugin: string; session: NativeSessionView }
+  /** Bounded output of an existing managed child; never changes session state. */
+  | { type: "native-session-output"; plugin: string; sessionId: string; output: NativeSessionOutput }
   /** A line a plugin's code printed while it ran, through `console`. */
   | { type: "log"; plugin: string; level: "info" | "warn" | "error"; text: string };
 
@@ -334,6 +336,9 @@ export function isHostMessage(value: unknown): value is HostMessage {
     return typeof message.plugin === "string" && typeof message.text === "string" && (message.level === "info" || message.level === "warn" || message.level === "error");
   if (message.type === "native-session")
     return typeof message.plugin === "string" && isNativeSessionView(message.session);
+  if (message.type === "native-session-output")
+    return typeof message.plugin === "string" && typeof message.sessionId === "string" &&
+      message.sessionId.length > 0 && message.sessionId.length <= 100 && isNativeSessionOutput(message.output);
   if (typeof message.id !== "number") return false;
   switch (message.type) {
     case "result":

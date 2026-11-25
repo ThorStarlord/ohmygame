@@ -68,7 +68,7 @@ export function activate(context) {
     if (!context.nativeSessions)
       throw new Error("This OhMyGame version can't manage a native Ren'Py session. Update OhMyGame.");
     const sdk = await requireSdk(call);
-    const session = await context.nativeSessions.start(renpyLaunch(sdk, project()));
+    const session = await context.nativeSessions.start({ ...renpyLaunch(sdk, project()), captureOutput: true });
     call.progress("Ren'Py is running");
     return { started: true, sessionId: session.id, pid: session.pid };
   });

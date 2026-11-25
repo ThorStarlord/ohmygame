@@ -7,6 +7,7 @@ import { pathToFileURL } from "node:url";
 import { format } from "node:util";
 import { nativeSessionStartIssue, type NativeSessionStart, type NativeSessionView, type PluginNativeSession } from "../shared/native-sessions.js";
 import { terminateProjectProcess } from "./process-lifecycle.js";
+import { captureNativeOutput } from "./native-output.js";
 import {
   EXTENSION_HOST_PROTOCOL_VERSION,
   PROJECT_TYPE_HOOKS,
@@ -328,7 +329,7 @@ function nativeSessions(plugin: string, project: string, loaded: LoadedPlugin): 
       const label = options.label?.trim() || path.basename(options.executable);
       const child = spawn(options.executable, options.args, {
         cwd: options.cwd ?? project,
-        stdio: "ignore",
+        stdio: options.captureOutput ? ["ignore", "pipe", "pipe"] : "ignore",
         windowsHide: false,
         detached: process.platform !== "win32",
       });
@@ -345,6 +346,10 @@ function nativeSessions(plugin: string, project: string, loaded: LoadedPlugin): 
         stopRequested: false,
         exited,
       };
+      if (options.captureOutput) captureNativeOutput(child, (output, done) => {
+        if (!process.connected || !process.send || !spawned) { done(); return; }
+        process.send({ type: "native-session-output", plugin, sessionId: id, output } satisfies HostMessage, () => done());
+      });
       child.once("close", (code, signal) => {
         if (!spawned) {
           resolveExit({ code, signal: signal ?? null });

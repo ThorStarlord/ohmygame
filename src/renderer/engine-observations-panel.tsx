@@ -91,6 +91,11 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
       {current.nativeSessions.length ? current.nativeSessions.map((session) => <div key={session.id}>
         <p>{session.label} · {nativeStatus(session.state)}{session.exitCode != null ? ` · ${session.exitCode}` : ""}</p>
         {session.error ? <pre>{session.error}</pre> : null}
+        {session.output ? <details><summary>{t("engineObservations.raw")}</summary>
+          <p>{t("engineObservations.omitted")}</p>
+          {session.output.stdout ? <><p>stdout</p><pre>{session.output.stdout}</pre></> : null}
+          {session.output.stderr ? <><p>stderr</p><pre>{session.output.stderr}</pre></> : null}
+        </details> : null}
       </div>) : <p>{t("engineObservations.nativeEmpty")}</p>}
       <p><strong>{t("engineObservations.history")}</strong></p>
       {selected ? <>

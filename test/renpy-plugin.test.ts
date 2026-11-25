@@ -878,6 +878,7 @@ describe("OhMyGame plugin contracts", () => {
         : [path.join(folder, "game"), "run"],
       cwd: sdk,
       label: "Ren'Py",
+      captureOutput: true,
     }]);
     expect(result).toEqual({ started: true, sessionId: "session-1", pid: 1234 });
   });
@@ -903,7 +904,7 @@ describe("OhMyGame plugin contracts", () => {
 describe("Engine diagnostic observations", () => {
   it("returns project-relative findings from the validation mirror with legacy output intact", async () => {
     const fake = path.join(folder, "diagnostic.cjs");
-    await writeFile(fake, 'const path = require("node:path"); console.log("File \\"" + path.join(process.cwd(), "game", "script.rpy") + "\\", line 2:"); console.log("Error: fixture diagnostic"); process.exitCode = 1;');
+    await writeFile(fake, "const path = require(\"node:path\"); console.log('File \"' + path.join(process.cwd(), \"game\", \"script.rpy\") + '\", line 2:'); console.log(\"Error: fixture diagnostic\"); process.exitCode = 1;");
     const result = await runWithIsolatedSaves({ executable: process.execPath, prefixArgs: [fake], sdkPath: folder }, folder, ["lint"]);
     expect(result.exitCode).toBe(1);
     expect(result.output).toContain("Error: fixture diagnostic");

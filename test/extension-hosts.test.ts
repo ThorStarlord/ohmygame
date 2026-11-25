@@ -222,6 +222,14 @@ const SOURCES: Record<string, string> = {
         session = await context.nativeSessions.start(request());
         return { id: session.id, pid: session.pid };
       });
+      context.registerTool("startObserved", async () => {
+        session = await context.nativeSessions.start({
+          executable: process.execPath,
+          args: ["-e", "console.log('owned stdout'); console.error('owned stderr'); setInterval(() => {}, 1000)"],
+          label: "Observed engine", captureOutput: true,
+        });
+        return { id: session.id, pid: session.pid };
+      });
       context.registerTool("startAgain", async () => {
         try { await context.nativeSessions.start(request()); return "started"; }
         catch (error) { return error.message; }
@@ -268,7 +276,7 @@ const TOOLS: Record<string, string[]> = {
   broken: ["anything"],
   player: ["play", "giveUp", "refused", "late", "hang"],
   "early-player": ["early"],
-  sessions: ["start", "startAgain", "startMissing", "stop", "exit", "exitSoon"],
+  sessions: ["start", "startObserved", "startAgain", "startMissing", "stop", "exit", "exitSoon"],
 };
 
 let root: string;
@@ -1302,6 +1310,22 @@ describe("native engine sessions", () => {
       plugin: plugin("sessions"),
       tool: "start",
     }) as Promise<{ id: string; pid: number }>;
+
+  it("observes only the selected project's opted-in native output", async () => {
+    const extensionHosts = hosts({ idleMs: 150 });
+    const started = await extensionHosts.invoke({
+      scope: scope(), project: scope(), plugin: plugin("sessions"), tool: "startObserved",
+    }) as { id: string; pid: number };
+    await vi.waitFor(() => {
+      expect(extensionHosts.sessions(scope(), true).find((item) => item.id === started.id)?.output).toMatchObject({
+        stdout: expect.stringContaining("owned stdout"), stderr: expect.stringContaining("owned stderr"),
+      });
+    }, { timeout: 5_000 });
+    expect(extensionHosts.sessions(scope()).find((item) => item.id === started.id)?.output).toBeUndefined();
+    expect(extensionHosts.sessions(path.join(root, "session-project-b"), true)).toEqual([]);
+    await extensionHosts.stopSession(scope(), started.id);
+    expect(extensionHosts.sessions(scope(), true).find((item) => item.id === started.id)?.state).toBe("exited");
+  });
 
   it("returns immediately, holds its host past idle, and stops on request", async () => {
     const extensionHosts = hosts({ idleMs: 150 });

@@ -2734,3 +2734,7 @@ execution, a simulated OAuth provider, the session guard, and a simulated model
 making a real assistant tool call. `test/connections.test.ts` covers credential
 isolation and masks. `test:node-runtime` also exercises MCP connection in the
 compiled Node daemon.
+
+### Bounded native output observation
+
+Native session start accepts optional `captureOutput: true` for an explicitly launched, owned engine child. Existing launches without this option keep ignored stdio. The host drains stdout and stderr separately, keeps only the last 4,096 characters of each, and sends bounded updates without changing process state or holding the host independently of its session. A bounded final drain prevents inherited output pipes from indefinitely delaying a leader's close. Output is not a guarantee that a launcher-owned descendant has been observed; use capture on a process that owns the game lifetime. The local Ren'Py plugin opts in for Run in Ren'Py. Ordinary native-session lists exclude output; the project observation surface returns a redacted excerpt. Older hosts may ignore the optional request. No arbitrary process or desktop window is captured.
