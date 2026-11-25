@@ -32,6 +32,12 @@ Disposable fix:
 - Rechecked lint: 6 findings remained, 11 no longer reported, 0 newly reported. The comparison was displayed in history.
 - Reverted the disposable source edit and removed the old probe file after the exercise; canonical game content and saves were untouched.
 
+Godot observation:
+
+- Ran the disposable Atlas pilot with Godot 4.7.2 and a temporary user directory.
+- The same capture adapter produced a real 1920 x 1124 image of the Atlas title screen, `likelyBlank: false`, from the selected Godot process tree.
+- This was a direct adapter qualification, not yet a managed `Run in Godot` session: the official pinned Godot plugin still launches the editor, so the app-level native-session path remains Ren'Py-only.
+
 ## Verification
 
 - `bun run test -- test/preview.test.ts test/external-mcp.test.ts test/renpy-plugin.test.ts test/engine-check-history.test.ts test/native-output.test.ts test/native-window-captures.test.ts` - 81 passed, 2 skipped.
@@ -40,7 +46,7 @@ Disposable fix:
 - `bun run typecheck`, `bun run lint`, and `bun run plugin:check plugins/renpy` - pass.
 - `test/agent-tools.test.ts -t "reads only a person-authorized native capture"` - pass. Two unrelated existing Windows symlink fixtures in that file fail with `EPERM` in this environment.
 - Desktop capture and lint/source navigation were exercised through the actual built Electron app; evidence is local, not remote CI.
-- Evidence log: `H:\GithubRepositories\pilot-data\evidence\engine-observations-desktop.json.log` and capture `C:\Users\Admin\AppData\Local\Temp\ohmygame-native-capture-probe.png`.
+- Evidence log: `H:\GithubRepositories\pilot-data\evidence\engine-observations-desktop.json.log`, `renpy-native-capture.png` and `atlas-native-capture.png`.
 
 ## Limitations
 
