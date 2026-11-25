@@ -934,4 +934,24 @@ describe("Engine diagnostic observations", () => {
     ]));
     expect(result.validationCopy).toBe(true);
   });
+
+  it("keeps the final exception of a long recursion traceback", async () => {
+    const fake = path.join(folder, "traceback.cjs");
+    await writeFile(fake, [
+      "for (let index = 0; index < 60; index += 1) {",
+      "  console.log('File \"' + require(\"node:path\").join(process.cwd(), \"game\", \"script.rpy\") + '\", line ' + (index + 1) + ', in <module>');",
+      "  if (index % 2 === 1) console.log('File \"' + require(\"node:path\").join(process.cwd(), \"game\", \"script.rpy\") + '\", line ' + index + ', in <module>');",
+      "}",
+      "console.log(\"RecursionError: maximum recursion depth exceeded\");",
+      "process.exitCode = 1;",
+    ].join("\n"));
+    const result = await runWithIsolatedSaves({ executable: process.execPath, prefixArgs: [fake], sdkPath: folder }, folder, ["lint"]);
+    expect(result.exitCode).toBe(1);
+    expect(result.diagnosticsTruncated).toBe(true);
+    expect(result.diagnostics.length).toBeLessThanOrEqual(50);
+    expect(result.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ severity: "error", message: "RecursionError: maximum recursion depth exceeded" }),
+    ]));
+    expect(result.diagnostics.at(-1)).toMatchObject({ severity: "error" });
+  });
 });

@@ -36,6 +36,7 @@ async function sourceLocation(reported, mirror, project) {
 export async function renpyDiagnostics(output, mirror, project) {
   const lines = output.split(/\r?\n/);
   const diagnostics = [];
+  const seenFrames = new Set();
   let diagnosticsTruncated = false;
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index].trim();
@@ -47,11 +48,21 @@ export async function renpyDiagnostics(output, mirror, project) {
     const severity = /^warning\b/i.test(severityText) ? "warning"
       : /^(?:error\b|[\w.]*Error:|exception\b|I'm sorry, but an uncaught exception)/i.test(severityText) ? "error" : "unknown";
     if (!location && severity === "unknown" && !/^Traceback\b/i.test(line)) continue;
-    if (diagnostics.length === MAX_DIAGNOSTICS) { diagnosticsTruncated = true; break; }
-    const file = location ? await sourceLocation(location[1], mirror, project) : undefined;
     const lineNumber = location ? Number(location[2]) : undefined;
-    // Preserve the original header and its immediate detail when present.
-    const detail = traceback && lines[index + 1]?.trim();
+    if (traceback && Number.isSafeInteger(lineNumber)) {
+      const key = `${location[1]}:${lineNumber}`;
+      if (seenFrames.has(key)) { diagnosticsTruncated = true; continue; }
+      seenFrames.add(key);
+    }
+    // Keep room for the exception at the end of a long recursion traceback.
+    if (diagnostics.length >= MAX_DIAGNOSTICS - (severity === "error" ? 0 : 5)) {
+      diagnosticsTruncated = true;
+      continue;
+    }
+    const file = location ? await sourceLocation(location[1], mirror, project) : undefined;
+    // Preserve a detail line that is not another frame header.
+    const next = traceback ? lines[index + 1]?.trim() : undefined;
+    const detail = next && !next.startsWith('File "') && !/^Traceback\b/i.test(next) ? next : undefined;
     const header = file ? line.replace(location[1], file) : line;
     const text = detail ? `${header}\n${detail}` : header;
     if (text.length > MAX_MESSAGE) diagnosticsTruncated = true;
