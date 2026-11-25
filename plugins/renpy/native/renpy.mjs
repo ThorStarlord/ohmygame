@@ -164,13 +164,14 @@ async function validationMirror(project) {
   const link = process.platform === "win32" ? "junction" : "dir";
   try {
     // Copy the game tree by hand: a link that resolves into game/saves, or into
-    // an ancestor that contains it, is skipped rather than copied. This also
-    // stops a link back to game/ from recursing.
-    const copied = new Set();
-    const copyGame = async (source, target) => {
+    // an ancestor that contains it, is skipped rather than copied. The
+    // ancestor set stops a link back to game/ from recursing without hiding a
+    // second, legitimate link to the same folder.
+    const copyGame = async (source, target, ancestors) => {
       const sourceReal = await realpath(source).catch(() => source);
-      if (copied.has(sourceReal)) return;
-      copied.add(sourceReal);
+      if (ancestors.has(sourceReal)) return;
+      const nextAncestors = new Set(ancestors);
+      nextAncestors.add(sourceReal);
       await mkdir(target, { recursive: true });
       for (const entry of await readdir(source, { withFileTypes: true })) {
         if (GAME_EXCLUDES.has(entry.name.toLowerCase())) continue;
@@ -181,18 +182,18 @@ async function validationMirror(project) {
           const real = await realpath(from).catch(() => undefined);
           if (!real || playerDataAlias(real)) continue;
           const linked = await stat(real).catch(() => undefined);
-          if (linked?.isDirectory()) await copyGame(real, to);
+          if (linked?.isDirectory()) await copyGame(real, to, nextAncestors);
           else if (linked?.isFile()) await cp(real, to, { force: true });
           continue;
         }
         if (info.isDirectory()) {
-          await copyGame(from, to);
+          await copyGame(from, to, nextAncestors);
           continue;
         }
         if (info.isFile()) await cp(from, to, { force: true });
       }
     };
-    await copyGame(game, path.join(root, "game"));
+    await copyGame(game, path.join(root, "game"), new Set());
     if (stateFound)
       await cp(state, path.join(root, "state"), { recursive: true, force: true, dereference: true });
     for (const entry of await readdir(project, { withFileTypes: true })) {
@@ -281,16 +282,17 @@ async function promoteCompiledScripts(mirror, project, signal) {
       if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".rpyc")) continue;
       const to = path.join(targetRoot, next);
       const current = await readFile(from);
+      await checkTarget(to);
       const old = await readFile(to).catch((error) => {
         if (error.code === "ENOENT") return undefined;
         throw error;
       });
       if (old?.equals(current)) continue;
-      await checkTarget(to);
       plan.push({ from, to, old });
     }
   }
   await collect(sourceRoot);
+  if (signal?.aborted) throw new Error("Ren'Py command cancelled");
   const written = [];
   try {
     for (const { from, to, old } of plan) {

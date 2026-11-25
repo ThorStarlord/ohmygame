@@ -541,6 +541,35 @@ describe("Ren'Py execution and browser export", () => {
     expect(await readFile(path.join(saves, "persistent"), "utf8")).toBe("player data");
   });
 
+  it("copies both a real game folder and a separate link to it", async (context) => {
+    const project = path.join(folder, "game-link-alias");
+    await mkdir(path.join(project, "game", "assets"), { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(project, "game", "assets", "note.txt"), "asset");
+    try {
+      await symlink(path.join(project, "game", "assets"), path.join(project, "game", "alias"), process.platform === "win32" ? "junction" : "dir");
+    } catch {
+      context.skip();
+      return;
+    }
+    const marker = path.join(folder, "game-link-alias.json");
+    const fake = path.join(folder, "game-link-alias.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const game = path.join(process.argv[4], "game");
+      fs.writeFileSync(${JSON.stringify(marker)}, JSON.stringify({
+        assets: fs.readFileSync(path.join(game, "assets", "note.txt"), "utf8"),
+        alias: fs.readFileSync(path.join(game, "alias", "note.txt"), "utf8"),
+      }));\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(JSON.parse(await readFile(marker, "utf8"))).toEqual({ assets: "asset", alias: "asset" });
+  });
+
   it("skips a root link that resolves to player saves", async (context) => {
     const project = path.join(folder, "root-save-link");
     const saves = path.join(project, "game", "saves");
