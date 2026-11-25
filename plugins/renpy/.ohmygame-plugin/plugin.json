@@ -66,25 +66,29 @@
         "name": "renpy_lint",
         "description": "Run the Ren'Py script linter with --error-code and return its diagnostics.",
         "input": "./tools/empty.json",
-        "output": "./tools/run-output.json"
+        "output": "./tools/run-output.json",
+        "timeoutSeconds": 180
       },
       {
         "name": "renpy_compile",
         "description": "Compile Ren'Py scripts in a disposable mirror with the installed SDK, promote changed .rpyc files for save compatibility, and keep player saves untouched.",
         "input": "./tools/empty.json",
-        "output": "./tools/run-output.json"
+        "output": "./tools/run-output.json",
+        "timeoutSeconds": 180
       },
       {
         "name": "renpy_test",
         "description": "Run automated Ren'Py testcases declared by the project with the installed Ren'Py SDK.",
         "input": "./tools/empty.json",
-        "output": "./tools/run-output.json"
+        "output": "./tools/run-output.json",
+        "timeoutSeconds": 300
       },
       {
         "name": "renpy_export_web",
         "description": "Build a Ren'Py Web distribution from a disposable mirror into the game's OhMyGame preview folder.",
         "input": "./tools/empty.json",
-        "output": "./tools/run-output.json"
+        "output": "./tools/run-output.json",
+        "timeoutSeconds": 600
       }
     ],
     "commands": [
@@ -118,7 +122,8 @@
         "title": "%command.lint%",
         "run": {
           "native": "lintRenpy",
-          "changesFiles": false
+          "changesFiles": false,
+          "timeoutSeconds": 180
         },
         "slots": [
           {
