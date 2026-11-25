@@ -128,7 +128,7 @@ async function requireDirectory(folder, label) {
 
 function insideOrEqual(parent, child) {
   const relative = path.relative(parent, child);
-  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+  return relative === "" || (relative !== ".." && !relative.startsWith(".." + path.sep) && !path.isAbsolute(relative));
 }
 
 /** A root entry only needs skipping on platforms where it aliases game/ or state/. */
@@ -240,8 +240,7 @@ async function promoteCompiledScripts(mirror, project, signal) {
   const plan = [];
   const checkTarget = async (to) => {
     const resolved = path.resolve(to);
-    const inside = path.relative(realTargetRoot, resolved);
-    if (inside.startsWith("..") || path.isAbsolute(inside))
+    if (!insideOrEqual(realTargetRoot, resolved))
       throw new Error("Refusing to write a compiled script outside the game folder: " + to);
     // Find the nearest existing ancestor and resolve it. A missing directory
     // under a link outside game/ is rejected before mkdir can create anything.

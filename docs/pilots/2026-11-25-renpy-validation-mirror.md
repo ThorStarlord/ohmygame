@@ -11,15 +11,15 @@
 | --- | --- |
 | Canonical project has real `game/saves` | **YES**: 30 files, 793,335 bytes |
 | Previous automated lint/compile/test behavior | **BLOCKED** by the `game/saves` guard |
-| New lint on the canonical project | **PASS as a run**: exit 1 with the project's pre-existing diagnostics, `validationCopy: true`, 15.0 s |
-| Same lint through the real extension host | **PASS**: `renpy_lint` via `ExtensionHosts.invoke`, exit 1, `validationCopy: true`, 17.5 s, trees unchanged |
+| New lint on the canonical project | **PASS as a run**: exit 1 with the project's pre-existing diagnostics, `validationCopy: true`, 18.7 s |
+| Same lint through the real extension host | **PASS**: `renpy_lint` via `ExtensionHosts.invoke`, exit 1, `validationCopy: true`, 44.3 s, trees unchanged |
 | Original player saves changed | **NO**: 30 files, digest `e1a30f2aedf3cddec258cbd785e5663e8114281b5897373ea5d1600515805f52` |
 | Original `game` tree changed | **NO**: 666 files, digest `9c86d370a9367b29b82c5b1f8475d29376ef6c7c1eef3bd8fcafe550809adae0` |
 | Original `state` tree changed | **NO**: 666 files, digest `246db173a83d1f3857429f2837b64798b3497f71fa592e826a41894161ab142e` |
 | Original `Canon` and `assets` changed | **NO**: 1,309 and 821 files, same digests before and after |
 | Disposable mirror removed | **YES** |
 | Real compile promotion | **PASS on a disposable copy**: exit 0, `validationCopy: true`, 32 `.rpyc` files promoted, no `game/saves` created |
-| Same compile through the real extension host | **PASS**: `renpy_compile` via `ExtensionHosts.invoke`, exit 0, 32 `.rpyc` promoted, 28.6 s, no saves created |
+| Same compile through the real extension host | **PASS**: `renpy_compile` via `ExtensionHosts.invoke`, exit 0, 32 `.rpyc` promoted, 94.0 s, no saves created |
 
 ## Problem
 
@@ -43,15 +43,15 @@ Web export also builds from the mirror and promotes only `.ohmygame/build/web`, 
 
 ## Evidence
 
-- Unit suite: `node node_modules/vitest/vitest.mjs run test/renpy-plugin.test.ts` and `bun run test -- test/renpy-plugin.test.ts` - 39 passed.
-- Host-only suite: `bun run test -- test/extension-hosts.test.ts` - 62 passed, 2 skipped after `bun run prepare:preinstalled-plugins`. A combined run flaked twice in unrelated `native Browser requests` / `slowstart` timing tests; the single affected test passed on rerun and the host-only suite passed cleanly.
+- Unit suite: `node node_modules/vitest/vitest.mjs run test/renpy-plugin.test.ts` and `bun run test -- test/renpy-plugin.test.ts` - 42 passed.
+- Host-only suite: `bun run test -- test/extension-hosts.test.ts` - 62 passed, 2 skipped after `bun run prepare:preinstalled-plugins`. Earlier combined runs flaked in unrelated `native Browser requests` / `slowstart` timing tests; the affected single test and the final host-only suite passed.
 - `bun run plugin:check plugins/renpy` - no problems.
 - `bun run typecheck` and `bun run lint` - exit 0.
-- Canonical lint: 15.0 s including the game and state copy, exit 1 with the project's existing Ren'Py diagnostics; saves, game, state, Canon and assets trees unchanged.
+- Canonical lint: 18.7 s including the game and state copy, exit 1 with the project's existing Ren'Py diagnostics; saves, game, state, Canon and assets trees unchanged.
 - Real compile on a disposable copy of the canonical project: exit 0, 32 `.rpyc` files promoted, no `game/saves` created, mirror removed.
-- Canonical lint through the actual extension host: 17.5 s, `validationCopy: true`, exit 1, saves/game/state trees unchanged.
-- Compile through the actual extension host on a disposable copy: 28.6 s, exit 0, 32 `.rpyc` files promoted, no `game/saves` created.
-- Evidence logs: `H:\GithubRepositories\pilot-data\evidence\renpy-mirror-qualify-v5.json.log`, `renpy-host-qualify-v4.log`, and `renpy-host-compile-qualify-v4.log`. The host logs are local evidence, not a committed automated host test or remote CI run.
+- Canonical lint through the actual extension host: 44.3 s, `validationCopy: true`, exit 1, saves/game/state trees unchanged.
+- Compile through the actual extension host on a disposable copy: 94.0 s, exit 0, 32 `.rpyc` files promoted, no `game/saves` created.
+- Evidence logs: `H:\GithubRepositories\pilot-data\evidence\renpy-mirror-qualify-v6.json.log`, `renpy-host-qualify-v5.log`, and `renpy-host-compile-qualify-v5.log`. The host logs are local evidence, not a committed automated host test or remote CI run.
 
 ## Review findings addressed
 
@@ -67,6 +67,7 @@ An independent technical/security review of the earlier revision found blocking 
 - preflights every compile-promotion target before reading, `mkdir` or writing, writes each replacement atomically, and rolls back already-promoted files on failure or cancellation;
 - resolves a project opened through a junction to its real path before promotion;
 - excludes only top-level `game/saves` and `game/cache`, preserving ordinary nested `cache`/`saves` asset folders;
+- uses segment-aware path containment, so a save subdirectory such as `..backup` is still treated as inside saves while a legitimate `..name.rpyc` promotes;
 - removes the populated-saves web-export refusal by building from the mirror;
 - corrects the documentation claims from "read-only" and "never modified" to the actual path-based trust boundary.
 
@@ -76,8 +77,8 @@ An independent technical/security review of the earlier revision found blocking 
 - Save isolation is path-based. Player data kept under another name, or aliased through a nested link inside a linked root resource, is not detected and remains outside the guarantee.
 - A project's `config.extra_savedirs` can still point outside the mirror; this pre-existing limitation must be handled explicitly by the project.
 - The canonical lint and the disposable-copy compile were exercised through the real extension host and plugin tool path. The desktop project dialog, agent conversation, and Game panel were not automated; those remain a UI-level check.
-- Compile through the extension host takes longer (28.6 s on the canonical copy) because it copies the game and state trees before compiling. This is the safety cost, not a benchmark.
-- Promotion is atomic per file and rolls back completed replacements, but a process kill during the short write phase can still leave a mixed set.
+- Compile through the extension host takes longer (36 to 94 s across runs on the canonical copy) because it copies the game and state trees before compiling. This is the safety cost, not a benchmark.
+- Promotion is atomic per file and rolls back completed replacements. A cancellation that arrives during the final temp write or rename is not observed, and a process kill during the write phase can leave a mixed set.
 - The installed Ren'Py SDK lacks complete Web support; real Web export and browser playtesting remain unqualified.
 - Windows only in this run; macOS/Linux behavior, especially symlink handling, is not tested.
 - The mirror copies the `game` tree and root `state`; large projects incur that cost per check, and cancellation waits for an in-progress copy.

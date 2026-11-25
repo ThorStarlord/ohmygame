@@ -570,6 +570,79 @@ describe("Ren'Py execution and browser export", () => {
     expect(JSON.parse(await readFile(marker, "utf8"))).toEqual({ assets: "asset", alias: "asset" });
   });
 
+  it("skips a root link into a save subdirectory whose name starts with dots", async (context) => {
+    const project = path.join(folder, "dotdot-root-link");
+    const backup = path.join(project, "game", "saves", "..backup");
+    await mkdir(backup, { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(backup, "persistent"), "PLAYER BACKUP SAVE");
+    try {
+      await symlink(backup, path.join(project, "SharedBackup"), process.platform === "win32" ? "junction" : "dir");
+    } catch {
+      context.skip();
+      return;
+    }
+    const marker = path.join(folder, "dotdot-root.json");
+    const fake = path.join(folder, "dotdot-root.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const target = path.join(process.argv[4], "SharedBackup", "persistent");
+      const found = fs.existsSync(target);
+      if (found) fs.writeFileSync(target, "MUTATED");
+      fs.writeFileSync(${JSON.stringify(marker)}, String(found));\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(await readFile(marker, "utf8")).toBe("false");
+    expect(await readFile(path.join(backup, "persistent"), "utf8")).toBe("PLAYER BACKUP SAVE");
+  });
+
+  it("skips an inner game link into a save subdirectory whose name starts with dots", async (context) => {
+    const project = path.join(folder, "dotdot-inner-link");
+    const backup = path.join(project, "game", "saves", "..backup");
+    await mkdir(backup, { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(backup, "persistent"), "PLAYER BACKUP SAVE");
+    try {
+      await symlink(backup, path.join(project, "game", "shared"), process.platform === "win32" ? "junction" : "dir");
+    } catch {
+      context.skip();
+      return;
+    }
+    const marker = path.join(folder, "dotdot-inner.txt");
+    const fake = path.join(folder, "dotdot-inner.cjs");
+    await writeFile(fake, `require("node:fs").writeFileSync(${JSON.stringify(marker)}, String(require("node:fs").existsSync(require("node:path").join(process.argv[4], "game", "shared"))));\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(await readFile(marker, "utf8")).toBe("false");
+    expect(await readFile(path.join(backup, "persistent"), "utf8")).toBe("PLAYER BACKUP SAVE");
+  });
+
+  it("promotes a compiled script whose name starts with dots", async () => {
+    const project = path.join(folder, "dotdot-promotion");
+    const game = path.join(project, "game");
+    await mkdir(game, { recursive: true });
+    await writeFile(path.join(game, "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(game, "..extra.rpyc"), "old");
+    const fake = path.join(folder, "dotdot-promotion.cjs");
+    await writeFile(fake, `require("node:fs").writeFileSync(require("node:path").join(process.argv[4], "game", "..extra.rpyc"), "new");\n`);
+    const result = await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["compile", "--keep-orphan-rpyc"],
+      { cwd: folder },
+    );
+    expect(result.compiledArtifacts).toBe(1);
+    expect(await readFile(path.join(game, "..extra.rpyc"), "utf8")).toBe("new");
+  });
+
   it("promotes compiled scripts when the project itself is opened through a junction", async (context) => {
     const real = path.join(folder, "junction-project-real");
     const linked = path.join(folder, "junction-project-linked");
