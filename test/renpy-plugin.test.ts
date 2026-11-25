@@ -1,4 +1,4 @@
-import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,7 +9,11 @@ import { resolveRenpy, runRenpy, runWithIsolatedSaves, exportWeb, renpyErrors, r
 import { activate } from "../plugins/renpy/native/index.mjs";
 
 let folder: string;
-beforeEach(async () => { folder = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-")); });
+beforeEach(async () => {
+  folder = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-"));
+  await mkdir(path.join(folder, "game"), { recursive: true });
+  await writeFile(path.join(folder, "game", "script.rpy"), "label start:\n    return\n");
+});
 afterEach(async () => { await rm(folder, { recursive: true, force: true }); });
 
 async function file(...parts: string[]) {
@@ -89,20 +93,25 @@ describe("Ren'Py execution and browser export", () => {
       savesBase = options.env?.RENPY_PATH_TO_SAVES;
       multipersistent = options.env?.RENPY_MULTIPERSISTENT;
       backups = options.env?.RENPY_DISABLE_BACKUPS;
-      await mkdir(path.join(folder, "game", "saves"), { recursive: true });
-      await writeFile(path.join(folder, "game", "saves", "persistent"), "generated");
+      const project = argv[4]!;
+      await mkdir(path.join(project, "game", "saves"), { recursive: true });
+      await writeFile(path.join(project, "game", "saves", "persistent"), "generated");
       const destination = argv.at(-1)!;
       await writeFile(path.join(destination, "index.html"), "new-build");
       return { exitCode: 0, output: "built", errors: [] };
     } });
     expect(result.exitCode).toBe(0);
+    expect(result.validationCopy).toBe(true);
     expect(args[0]?.[0]).toBe("--savedir");
     expect(args[0]?.[1]).toContain("ohmygame-renpy-validation-");
-    expect(args[0]?.slice(2, 6)).toEqual(["launcher", "web_build", folder, "--destination"]);
+    expect(args[0]?.slice(2, 4)).toEqual(["launcher", "web_build"]);
+    expect(path.basename(args[0]![4]!)).toMatch(/^ohmygame-renpy-project-/);
+    expect(args[0]?.slice(5, 6)).toEqual(["--destination"]);
     expect(savesBase).toContain("ohmygame-renpy-validation-saves-");
     expect(multipersistent).toContain("ohmygame-renpy-validation-multi-");
     expect(backups).toBe("I take responsibility for this.");
     await expect(lstat(args[0]![1]!)).rejects.toThrow();
+    await expect(lstat(args[0]![4]!)).rejects.toThrow();
     await expect(lstat(savesBase!)).rejects.toThrow();
     await expect(lstat(path.dirname(multipersistent!))).rejects.toThrow();
     await expect(lstat(path.join(folder, "game", "saves"))).rejects.toThrow();
@@ -173,15 +182,25 @@ describe("Ren'Py execution and browser export", () => {
     expect(await readdir(path.join(folder, ".ohmygame", "build"))).toEqual([]);
   });
 
-  it("refuses a web export when the project keeps player data in game/saves", async () => {
+  it("builds a web export from a mirror when the project keeps player data in game/saves", async () => {
     const project = path.join(folder, "portable-web");
     const saves = path.join(project, "game", "saves");
     await mkdir(saves, { recursive: true });
+    await mkdir(path.join(project, "game"), { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
     await writeFile(path.join(saves, "persistent"), "player data");
-    await expect(exportWeb(project, { executable: "renpy", prefixArgs: [], sdkPath: folder }, {
-      execute: async () => { throw new Error("should not run"); },
-    })).rejects.toThrow(/game\/saves/);
+    const result = await exportWeb(project, { executable: "renpy", prefixArgs: [], sdkPath: folder }, {
+      execute: async (_sdk: unknown, argv: string[]) => {
+        expect(argv[4]).not.toBe(project);
+        expect(path.basename(argv[4]!)).toMatch(/^ohmygame-renpy-project-/);
+        await writeFile(path.join(argv.at(-1)!, "index.html"), "from-mirror");
+        return { exitCode: 0, output: "built", errors: [] };
+      },
+    });
+    expect(result.validationCopy).toBe(true);
     expect(await readFile(path.join(saves, "persistent"), "utf8")).toBe("player data");
+    expect(await readFile(path.join(project, ".ohmygame", "build", "web", "index.html"), "utf8")).toBe("from-mirror");
+    await expect(lstat(path.join(project, "game", "saves"))).resolves.toBeTruthy();
   });
 
   it("detects Ren'Py traceback markers", () => {
@@ -201,45 +220,51 @@ describe("Ren'Py execution and browser export", () => {
     });
   });
 
-  it("runs validation against a temporary save directory and removes it", async () => {
+  it("runs validation in a disposable project copy with a temporary save directory", async () => {
     const fake = path.join(folder, "cli.cjs");
     await writeFile(fake, 'process.stdout.write(process.argv.slice(2).join("|"));\n');
     const result = await runWithIsolatedSaves(
       { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
-      "C:/game",
+      folder,
       ["lint", "--error-code"],
       { cwd: folder },
     );
     const [flag, savedir, project, ...rest] = result.output.split("|");
     expect(flag).toBe("--savedir");
     expect(savedir).toContain("ohmygame-renpy-validation-");
-    expect(project).toBe("C:/game");
+    expect(project).not.toBe(folder);
+    expect(path.basename(project!)).toMatch(/^ohmygame-renpy-project-/);
     expect(rest).toEqual(["lint", "--error-code"]);
+    expect(result.validationCopy).toBe(true);
     await expect(lstat(savedir!)).rejects.toThrow();
+    await expect(lstat(project!)).rejects.toThrow();
   });
 
-  it("removes the temporary save directory when validation fails", async () => {
+  it("removes the temporary save directory and validation copy when validation fails", async () => {
     const seen = path.join(folder, "seen-failure.txt");
     const fake = path.join(folder, "failed.cjs");
-    await writeFile(fake, `require("node:fs").writeFileSync(${JSON.stringify(seen)}, process.argv[3]); process.exit(2);\n`);
-    await runWithIsolatedSaves(
+    await writeFile(fake, `require("node:fs").writeFileSync(${JSON.stringify(seen)}, JSON.stringify({ savedir: process.argv[3], project: process.argv[4] })); process.exit(2);\n`);
+    const result = await runWithIsolatedSaves(
       { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
-      "C:/game",
+      folder,
       ["lint", "--error-code"],
       { cwd: folder },
     );
-    const savedir = await readFile(seen, "utf8");
-    await expect(lstat(savedir)).rejects.toThrow();
+    const seenPaths = JSON.parse(await readFile(seen, "utf8")) as { savedir: string; project: string };
+    expect(result.exitCode).toBe(2);
+    expect(result.validationCopy).toBe(true);
+    await expect(lstat(seenPaths.savedir)).rejects.toThrow();
+    await expect(lstat(seenPaths.project)).rejects.toThrow();
   });
 
-  it("removes the temporary save directory when validation is cancelled", async () => {
+  it("removes the temporary save directory and validation copy when validation is cancelled", async () => {
     const seen = path.join(folder, "seen-cancelled.txt");
     const fake = path.join(folder, "waiting.cjs");
-    await writeFile(fake, `require("node:fs").writeFileSync(${JSON.stringify(seen)}, process.argv[3]); setInterval(() => {}, 1000);\n`);
+    await writeFile(fake, `require("node:fs").writeFileSync(${JSON.stringify(seen)}, JSON.stringify({ savedir: process.argv[3], project: process.argv[4] })); setInterval(() => {}, 1000);\n`);
     const controller = new AbortController();
     const running = runWithIsolatedSaves(
       { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
-      "C:/game",
+      folder,
       ["lint", "--error-code"],
       { cwd: folder, signal: controller.signal },
     );
@@ -248,8 +273,9 @@ describe("Ren'Py execution and browser export", () => {
     });
     controller.abort();
     await expect(running).rejects.toThrow(/cancelled/);
-    const savedir = await readFile(seen, "utf8");
-    await expect(lstat(savedir)).rejects.toThrow();
+    const seenPaths = JSON.parse(await readFile(seen, "utf8")) as { savedir: string; project: string };
+    await expect(lstat(seenPaths.savedir)).rejects.toThrow();
+    await expect(lstat(seenPaths.project)).rejects.toThrow();
   });
 
   it("redirects persistent, MultiPersistent, and backups away from player data", async () => {
@@ -279,27 +305,67 @@ describe("Ren'Py execution and browser export", () => {
     await expect(lstat(path.dirname(environment.multi!))).rejects.toThrow();
   });
 
-  it("refuses an automated run when the project keeps player data in game/saves", async () => {
+  it("validates a project with player saves in a disposable copy", async () => {
     const project = path.join(folder, "portable-saved");
     const saves = path.join(project, "game", "saves");
     await mkdir(saves, { recursive: true });
+    await mkdir(path.join(project, "game"), { recursive: true });
+    await mkdir(path.join(project, "state"), { recursive: true });
+    await mkdir(path.join(project, "Canon"), { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(project, "state", "registry.json"), "{}");
+    await writeFile(path.join(project, "Canon", "note.md"), "source");
     await writeFile(path.join(saves, "persistent"), "player data");
-    const marker = path.join(folder, "should-not-run.txt");
-    const fake = path.join(folder, "should-not-run.cjs");
-    await writeFile(fake, `require("node:fs").writeFileSync(${JSON.stringify(marker)}, "ran");\n`);
-    await expect(runWithIsolatedSaves(
+    const marker = path.join(folder, "validation-project.txt");
+    const fake = path.join(folder, "validation-copy.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const project = process.argv[4];
+      fs.readFileSync(path.join(project, "state", "registry.json"));
+      fs.readFileSync(path.join(project, "Canon", "note.md"));
+      fs.writeFileSync(${JSON.stringify(marker)}, project);
+      fs.writeFileSync(path.join(project, "game", "checked.txt"), "validated");\n`);
+    const result = await runWithIsolatedSaves(
       { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
       project,
       ["lint"],
       { cwd: folder },
-    )).rejects.toThrow(/game\/saves/);
-    await expect(lstat(marker)).rejects.toThrow();
+    );
+    const checked = await readFile(marker, "utf8");
+    expect(result.validationCopy).toBe(true);
+    expect(checked).not.toBe(project);
+    expect(path.basename(checked)).toMatch(/^ohmygame-renpy-project-/);
     expect(await readFile(path.join(saves, "persistent"), "utf8")).toBe("player data");
+    await expect(lstat(path.join(project, "game", "checked.txt"))).rejects.toThrow();
+    await expect(lstat(checked)).rejects.toThrow();
   });
 
-  it("removes project-local saves that an automated run creates", async () => {
+  it("removes the validation copy when validation fails", async () => {
+    const project = path.join(folder, "portable-saved-failure");
+    const saves = path.join(project, "game", "saves");
+    await mkdir(saves, { recursive: true });
+    await mkdir(path.join(project, "game"), { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(saves, "persistent"), "player data");
+    const marker = path.join(folder, "validation-failure-project.txt");
+    const fake = path.join(folder, "validation-failure.cjs");
+    await writeFile(fake, `require("node:fs").writeFileSync(${JSON.stringify(marker)}, process.argv[4]); process.exit(2);\n`);
+    const result = await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(result.exitCode).toBe(2);
+    expect(result.validationCopy).toBe(true);
+    expect(await readFile(path.join(saves, "persistent"), "utf8")).toBe("player data");
+    await expect(lstat(await readFile(marker, "utf8"))).rejects.toThrow();
+  });
+
+  it("keeps saves a run generates out of the original project", async () => {
     const project = path.join(folder, "portable-fresh");
     await mkdir(path.join(project, "game"), { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
     const fake = path.join(folder, "writes-saves.cjs");
     await writeFile(fake, `const fs = require("node:fs");
       const path = require("node:path");
@@ -332,6 +398,420 @@ describe("Ren'Py execution and browser export", () => {
     );
     expect((await lstat(saves)).isDirectory()).toBe(true);
     expect(await readdir(saves)).toEqual([]);
+  });
+
+  it("promotes compiled scripts from a successful compile but not after a failure", async () => {
+    const project = path.join(folder, "compile-project");
+    const game = path.join(project, "game");
+    await mkdir(game, { recursive: true });
+    await writeFile(path.join(game, "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(game, "script.rpyc"), "old-compiled");
+    const fake = path.join(folder, "compile.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const game = path.join(process.argv[4], "game");
+      fs.writeFileSync(path.join(game, "script.rpyc"), "new-compiled");
+      fs.writeFileSync(path.join(game, "added.rpyc"), "added-compiled");
+      fs.mkdirSync(path.join(game, "saves"), { recursive: true });
+      fs.writeFileSync(path.join(game, "saves", "persistent"), "generated");
+      process.exit(Number(process.env.COMPILE_EXIT || "0"));\n`);
+    const compile = () => runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["compile", "--keep-orphan-rpyc"],
+      { cwd: folder, env: { COMPILE_EXIT: "0" } },
+    );
+    const failed = () => runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["compile", "--keep-orphan-rpyc"],
+      { cwd: folder, env: { COMPILE_EXIT: "1" } },
+    );
+    const result = await compile();
+    expect(result.validationCopy).toBe(true);
+    expect(result.compiledArtifacts).toBe(2);
+    expect(await readFile(path.join(game, "script.rpyc"), "utf8")).toBe("new-compiled");
+    expect(await readFile(path.join(game, "added.rpyc"), "utf8")).toBe("added-compiled");
+    await expect(lstat(path.join(game, "saves"))).rejects.toThrow();
+    await rm(path.join(game, "added.rpyc"));
+    await writeFile(path.join(game, "script.rpyc"), "old-compiled");
+    const failure = await failed();
+    expect(failure.exitCode).toBe(1);
+    expect(failure.compiledArtifacts).toBeUndefined();
+    expect(await readFile(path.join(game, "script.rpyc"), "utf8")).toBe("old-compiled");
+    await expect(lstat(path.join(game, "added.rpyc"))).rejects.toThrow();
+  });
+
+  it("refuses a symbolic-link game folder instead of mirroring through it", async (context) => {
+    const real = path.join(folder, "real-project");
+    await mkdir(path.join(real, "game"), { recursive: true });
+    await writeFile(path.join(real, "game", "script.rpy"), "label start:\n    return\n");
+    const linked = path.join(folder, "linked-project");
+    await mkdir(linked, { recursive: true });
+    try {
+      await symlink(path.join(real, "game"), path.join(linked, "game"), process.platform === "win32" ? "junction" : "dir");
+    } catch {
+      context.skip();
+      return;
+    }
+    await expect(runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [], sdkPath: folder },
+      linked,
+      ["lint"],
+      { cwd: folder },
+    )).rejects.toThrow(/symbolic-link or non-directory game folder/);
+  });
+
+  it("excludes game/SAVES case-insensitively from the validation copy", async () => {
+    const project = path.join(folder, "uppercase-saves");
+    await mkdir(path.join(project, "game", "SAVES"), { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(project, "game", "SAVES", "persistent"), "player data");
+    const marker = path.join(folder, "uppercase.json");
+    const fake = path.join(folder, "uppercase.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const game = path.join(process.argv[4], "game");
+      fs.writeFileSync(${JSON.stringify(marker)}, JSON.stringify({
+        upper: fs.existsSync(path.join(game, "SAVES")),
+        lower: fs.existsSync(path.join(game, "saves")),
+      }));\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(JSON.parse(await readFile(marker, "utf8"))).toEqual({ upper: false, lower: false });
+    expect(await readFile(path.join(project, "game", "SAVES", "persistent"), "utf8")).toBe("player data");
+  });
+
+  it("ignores a case-variant root Game folder instead of copying its saves", async (context) => {
+    if (process.platform !== "win32" && process.platform !== "darwin") {
+      context.skip();
+      return;
+    }
+    const project = path.join(folder, "case-variant-root");
+    await mkdir(path.join(project, "Game", "SAVES"), { recursive: true });
+    await writeFile(path.join(project, "Game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(project, "Game", "SAVES", "persistent"), "player data");
+    const marker = path.join(folder, "case-variant.json");
+    const fake = path.join(folder, "case-variant.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const game = path.join(process.argv[4], "game");
+      fs.writeFileSync(${JSON.stringify(marker)}, JSON.stringify({
+        upper: fs.existsSync(path.join(game, "SAVES")),
+        lower: fs.existsSync(path.join(game, "saves")),
+      }));\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(JSON.parse(await readFile(marker, "utf8"))).toEqual({ upper: false, lower: false });
+    expect(await readFile(path.join(project, "Game", "SAVES", "persistent"), "utf8")).toBe("player data");
+  });
+
+  it("skips a link inside game that resolves to player saves", async (context) => {
+    const project = path.join(folder, "inner-save-link");
+    const saves = path.join(project, "game", "saves");
+    await mkdir(saves, { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(saves, "persistent"), "player data");
+    try {
+      await symlink(saves, path.join(project, "game", "shared"), process.platform === "win32" ? "junction" : "dir");
+    } catch {
+      context.skip();
+      return;
+    }
+    const marker = path.join(folder, "inner-link.txt");
+    const fake = path.join(folder, "inner-link.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      fs.writeFileSync(${JSON.stringify(marker)}, String(fs.existsSync(path.join(process.argv[4], "game", "shared"))));\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(await readFile(marker, "utf8")).toBe("false");
+    expect(await readFile(path.join(saves, "persistent"), "utf8")).toBe("player data");
+  });
+
+  it("copies both a real game folder and a separate link to it", async (context) => {
+    const project = path.join(folder, "game-link-alias");
+    await mkdir(path.join(project, "game", "assets"), { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(project, "game", "assets", "note.txt"), "asset");
+    try {
+      await symlink(path.join(project, "game", "assets"), path.join(project, "game", "alias"), process.platform === "win32" ? "junction" : "dir");
+    } catch {
+      context.skip();
+      return;
+    }
+    const marker = path.join(folder, "game-link-alias.json");
+    const fake = path.join(folder, "game-link-alias.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const game = path.join(process.argv[4], "game");
+      fs.writeFileSync(${JSON.stringify(marker)}, JSON.stringify({
+        assets: fs.readFileSync(path.join(game, "assets", "note.txt"), "utf8"),
+        alias: fs.readFileSync(path.join(game, "alias", "note.txt"), "utf8"),
+      }));\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(JSON.parse(await readFile(marker, "utf8"))).toEqual({ assets: "asset", alias: "asset" });
+  });
+
+  it("skips a root link into a save subdirectory whose name starts with dots", async (context) => {
+    const project = path.join(folder, "dotdot-root-link");
+    const backup = path.join(project, "game", "saves", "..backup");
+    await mkdir(backup, { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(backup, "persistent"), "PLAYER BACKUP SAVE");
+    try {
+      await symlink(backup, path.join(project, "SharedBackup"), process.platform === "win32" ? "junction" : "dir");
+    } catch {
+      context.skip();
+      return;
+    }
+    const marker = path.join(folder, "dotdot-root.json");
+    const fake = path.join(folder, "dotdot-root.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const target = path.join(process.argv[4], "SharedBackup", "persistent");
+      const found = fs.existsSync(target);
+      if (found) fs.writeFileSync(target, "MUTATED");
+      fs.writeFileSync(${JSON.stringify(marker)}, String(found));\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(await readFile(marker, "utf8")).toBe("false");
+    expect(await readFile(path.join(backup, "persistent"), "utf8")).toBe("PLAYER BACKUP SAVE");
+  });
+
+  it("skips an inner game link into a save subdirectory whose name starts with dots", async (context) => {
+    const project = path.join(folder, "dotdot-inner-link");
+    const backup = path.join(project, "game", "saves", "..backup");
+    await mkdir(backup, { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(backup, "persistent"), "PLAYER BACKUP SAVE");
+    try {
+      await symlink(backup, path.join(project, "game", "shared"), process.platform === "win32" ? "junction" : "dir");
+    } catch {
+      context.skip();
+      return;
+    }
+    const marker = path.join(folder, "dotdot-inner.txt");
+    const fake = path.join(folder, "dotdot-inner.cjs");
+    await writeFile(fake, `require("node:fs").writeFileSync(${JSON.stringify(marker)}, String(require("node:fs").existsSync(require("node:path").join(process.argv[4], "game", "shared"))));\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(await readFile(marker, "utf8")).toBe("false");
+    expect(await readFile(path.join(backup, "persistent"), "utf8")).toBe("PLAYER BACKUP SAVE");
+  });
+
+  it("promotes a compiled script whose name starts with dots", async () => {
+    const project = path.join(folder, "dotdot-promotion");
+    const game = path.join(project, "game");
+    await mkdir(game, { recursive: true });
+    await writeFile(path.join(game, "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(game, "..extra.rpyc"), "old");
+    const fake = path.join(folder, "dotdot-promotion.cjs");
+    await writeFile(fake, `require("node:fs").writeFileSync(require("node:path").join(process.argv[4], "game", "..extra.rpyc"), "new");\n`);
+    const result = await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["compile", "--keep-orphan-rpyc"],
+      { cwd: folder },
+    );
+    expect(result.compiledArtifacts).toBe(1);
+    expect(await readFile(path.join(game, "..extra.rpyc"), "utf8")).toBe("new");
+  });
+
+  it("promotes compiled scripts when the project itself is opened through a junction", async (context) => {
+    const real = path.join(folder, "junction-project-real");
+    const linked = path.join(folder, "junction-project-linked");
+    await mkdir(path.join(real, "game"), { recursive: true });
+    await writeFile(path.join(real, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(real, "game", "script.rpyc"), "old");
+    try {
+      await symlink(real, linked, process.platform === "win32" ? "junction" : "dir");
+    } catch {
+      context.skip();
+      return;
+    }
+    const fake = path.join(folder, "junction-project.cjs");
+    await writeFile(fake, `require("node:fs").writeFileSync(require("node:path").join(process.argv[4], "game", "script.rpyc"), "new");\n`);
+    const result = await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      linked,
+      ["compile", "--keep-orphan-rpyc"],
+      { cwd: folder },
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.compiledArtifacts).toBe(1);
+    expect(await readFile(path.join(real, "game", "script.rpyc"), "utf8")).toBe("new");
+    expect(await readFile(path.join(linked, "game", "script.rpyc"), "utf8")).toBe("new");
+  });
+
+  it("keeps ordinary nested cache and saves asset folders in the mirror", async () => {
+    const project = path.join(folder, "nested-assets");
+    await mkdir(path.join(project, "game", "story", "cache"), { recursive: true });
+    await mkdir(path.join(project, "game", "story", "saves"), { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(project, "game", "story", "cache", "asset.txt"), "cached asset");
+    await writeFile(path.join(project, "game", "story", "saves", "note.txt"), "story note");
+    const marker = path.join(folder, "nested-assets.json");
+    const fake = path.join(folder, "nested-assets.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const game = path.join(process.argv[4], "game");
+      fs.writeFileSync(${JSON.stringify(marker)}, JSON.stringify({
+        cache: fs.readFileSync(path.join(game, "story", "cache", "asset.txt"), "utf8"),
+        saves: fs.readFileSync(path.join(game, "story", "saves", "note.txt"), "utf8"),
+      }));\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(JSON.parse(await readFile(marker, "utf8"))).toEqual({ cache: "cached asset", saves: "story note" });
+  });
+
+  it("skips a root link that resolves to player saves", async (context) => {
+    const project = path.join(folder, "root-save-link");
+    const saves = path.join(project, "game", "saves");
+    await mkdir(saves, { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(saves, "persistent"), "player data");
+    try {
+      await symlink(saves, path.join(project, "SharedSaves"), process.platform === "win32" ? "junction" : "dir");
+    } catch {
+      context.skip();
+      return;
+    }
+    const marker = path.join(folder, "root-link.txt");
+    const fake = path.join(folder, "root-link.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const linked = path.join(process.argv[4], "SharedSaves", "persistent");
+      const found = fs.existsSync(linked);
+      if (found) fs.writeFileSync(linked, "MUTATED");
+      fs.writeFileSync(${JSON.stringify(marker)}, String(found));\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(await readFile(marker, "utf8")).toBe("false");
+    expect(await readFile(path.join(saves, "persistent"), "utf8")).toBe("player data");
+  });
+
+  it("rolls back completed promotions when a later atomic replace fails", async (context) => {
+    if (process.platform !== "win32") {
+      context.skip();
+      return;
+    }
+    const project = path.join(folder, "promotion-rollback");
+    const game = path.join(project, "game");
+    await mkdir(game, { recursive: true });
+    await writeFile(path.join(game, "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(game, "a.rpyc"), "old-a");
+    await writeFile(path.join(game, "b.rpyc"), "old-b");
+    await chmod(path.join(game, "b.rpyc"), 0o444);
+    const fake = path.join(folder, "rollback.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const game = path.join(process.argv[4], "game");
+      fs.chmodSync(path.join(game, "b.rpyc"), 0o644);
+      fs.writeFileSync(path.join(game, "a.rpyc"), "new-a");
+      fs.writeFileSync(path.join(game, "b.rpyc"), "new-b");\n`);
+    await expect(runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["compile", "--keep-orphan-rpyc"],
+      { cwd: folder },
+    )).rejects.toThrow(/EPERM|operation not permitted/);
+    expect(await readFile(path.join(game, "a.rpyc"), "utf8")).toBe("old-a");
+    expect(await readFile(path.join(game, "b.rpyc"), "utf8")).toBe("old-b");
+    expect((await readdir(game)).filter((name) => name.startsWith(".ohmygame-promote-"))).toEqual([]);
+  });
+
+  it("preflights every promoted script before writing any of them", async (context) => {
+    const project = path.join(folder, "promotion-preflight");
+    const game = path.join(project, "game");
+    const external = path.join(folder, "external-target");
+    await mkdir(game, { recursive: true });
+    await mkdir(external, { recursive: true });
+    await writeFile(path.join(game, "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(game, "a.rpyc"), "old-a");
+    await writeFile(path.join(game, "z.rpyc"), "old-z");
+    try {
+      await symlink(external, path.join(game, "linked"), process.platform === "win32" ? "junction" : "dir");
+    } catch {
+      context.skip();
+      return;
+    }
+    const fake = path.join(folder, "preflight.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const game = path.join(process.argv[4], "game");
+      fs.writeFileSync(path.join(game, "a.rpyc"), "new-a");
+      fs.writeFileSync(path.join(game, "z.rpyc"), "new-z");
+      fs.mkdirSync(path.join(game, "linked", "newdir"), { recursive: true });
+      fs.writeFileSync(path.join(game, "linked", "newdir", "outside.rpyc"), "outside");\n`);
+    await expect(runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["compile", "--keep-orphan-rpyc"],
+      { cwd: folder },
+    )).rejects.toThrow(/outside the game folder/);
+    expect(await readFile(path.join(game, "a.rpyc"), "utf8")).toBe("old-a");
+    expect(await readFile(path.join(game, "z.rpyc"), "utf8")).toBe("old-z");
+    await expect(lstat(path.join(external, "newdir"))).rejects.toThrow();
+  });
+
+  it("links a root junction so the mirror can read assets kept on another drive", async (context) => {
+    const external = path.join(folder, "external-assets");
+    await mkdir(external, { recursive: true });
+    await writeFile(path.join(external, "note.txt"), "external asset");
+    const project = path.join(folder, "junction-project");
+    await mkdir(path.join(project, "game"), { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    try {
+      await symlink(external, path.join(project, "LinkedAssets"), process.platform === "win32" ? "junction" : "dir");
+    } catch {
+      context.skip();
+      return;
+    }
+    const marker = path.join(folder, "junction-read.txt");
+    const fake = path.join(folder, "junction.cjs");
+    await writeFile(fake, `require("node:fs").writeFileSync(${JSON.stringify(marker)}, require("node:fs").readFileSync(require("node:path").join(process.argv[4], "LinkedAssets", "note.txt"), "utf8"));\n`);
+    const result = await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(result.validationCopy).toBe(true);
+    expect(await readFile(marker, "utf8")).toBe("external asset");
   });
 });
 

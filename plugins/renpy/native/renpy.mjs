@@ -1,7 +1,7 @@
 // Resolves the user's Ren'Py SDK and provides bounded, cancellable CLI execution.
 // No shell is used. The SDK remains the authority for script parsing and exports.
 import { spawn } from "node:child_process";
-import { access, lstat, mkdir, mkdtemp, readdir, rename, rm, stat } from "node:fs/promises";
+import { access, cp, lstat, mkdir, mkdtemp, readdir, readFile, realpath, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
@@ -90,44 +90,248 @@ export function renpyErrors(output) {
 
 const VALIDATION_BACKUPS = "I take responsibility for this.";
 
+const MIRROR_EXCLUDES = new Set([
+  ".git", ".ohmygame", "build", "node_modules", ".venv", "__pycache__",
+  ".pytest_cache", ".ruff_cache", ".tmp", "dist",
+]);
+
+const GAME_EXCLUDES = new Set(["saves", "cache"]);
+
 /**
- * Ren'Py always adds <project>/game/saves as an active save location. For a
- * portable project that folder is the real player namespace; --savedir and
- * RENPY_PATH_TO_SAVES do not redirect it. Refuse existing player data there,
- * and remove whatever an automated run creates when it was absent or empty.
+ * Remove a disposable folder without letting a locked file hide the validation
+ * result. A warning names the folder that remains so it can be cleaned later.
  */
-async function projectSaves(project) {
-  const folder = path.join(project, "game", "saves");
+async function cleanupFolder(folder, label) {
+  let last;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await rm(folder, { recursive: true, force: true });
+      return undefined;
+    } catch (error) {
+      last = error;
+      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+  return `Could not remove the ${label} at ${folder}: ${last instanceof Error ? last.message : String(last)}`;
+}
+
+async function requireDirectory(folder, label) {
   const found = await lstat(folder).catch((error) => {
     if (error.code === "ENOENT") return undefined;
     throw error;
   });
-  if (!found) return { folder, existed: false };
+  if (!found) throw new Error(`This project has no ${label} to validate: ${folder}`);
   if (found.isSymbolicLink() || !found.isDirectory())
-    throw new Error("Refusing a non-directory or symbolic-link game/saves folder: " + folder);
-  if ((await readdir(folder)).length)
-    throw new Error(
-      "This Ren'Py project keeps player data in game/saves, which --savedir cannot isolate. " +
-      "Move that folder aside or set config.save_directory before running an automated Ren'Py operation.",
-    );
-  return { folder, existed: true };
+    throw new Error(`Refusing a symbolic-link or non-directory ${label}: ${folder}`);
+  return found;
 }
 
-async function removeProjectSaves(state) {
-  if (!state.existed) {
-    await rm(state.folder, { recursive: true, force: true });
-    return;
-  }
-  for (const entry of await readdir(state.folder))
-    await rm(path.join(state.folder, entry), { recursive: true, force: true });
+function insideOrEqual(parent, child) {
+  const relative = path.relative(parent, child);
+  return relative === "" || (relative !== ".." && !relative.startsWith(".." + path.sep) && !path.isAbsolute(relative));
+}
+
+/** A root entry only needs skipping on platforms where it aliases game/ or state/. */
+function rootResourceKey(name) {
+  return process.platform === "win32" || process.platform === "darwin" ? name.toLowerCase() : name;
 }
 
 /**
- * A throwaway savedir and redirected save-like state. The project's own
- * game/saves is checked before the run and cleaned after it.
+ * A disposable, faithful view of the project for automated validation. Game
+ * sources are copied without game/saves or game/cache, and writable root state
+ * is copied; other root resources are linked so Ren'Py can resolve
+ * root-relative files. The mirror is always used: the player's saves and the
+ * original game sources are never moved, and Ren'Py's generated saves stay in
+ * the disposable copy.
  */
-async function validationIsolation(project) {
-  const projectSavesState = await projectSaves(project);
+async function validationMirror(project) {
+  const game = path.join(project, "game");
+  const state = path.join(project, "state");
+  await requireDirectory(game, "game folder");
+  const stateFound = await lstat(state).catch((error) => {
+    if (error.code === "ENOENT") return undefined;
+    throw error;
+  });
+  if (stateFound && (stateFound.isSymbolicLink() || !stateFound.isDirectory()))
+    throw new Error("Refusing a symbolic-link or non-directory state folder: " + state);
+  const savesReal = await realpath(path.join(game, "saves")).catch(() => undefined);
+  const cacheReal = await realpath(path.join(game, "cache")).catch(() => undefined);
+  const stateReal = await realpath(state).catch(() => undefined);
+  const overlaps = (left, right) => Boolean(left && right && (insideOrEqual(left, right) || insideOrEqual(right, left)));
+  const playerDataAlias = (real) => overlaps(real, savesReal) || overlaps(real, cacheReal);
+  const stateAlias = (real) => overlaps(real, stateReal);
+  const root = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-project-"));
+  const link = process.platform === "win32" ? "junction" : "dir";
+  try {
+    // Copy the game tree by hand: a link that resolves into game/saves, or into
+    // an ancestor that contains it, is skipped rather than copied. The
+    // ancestor set stops a link back to game/ from recursing without hiding a
+    // second, legitimate link to the same folder.
+    const copyGame = async (source, target, ancestors, depth = 0) => {
+      const sourceReal = await realpath(source).catch(() => source);
+      if (ancestors.has(sourceReal)) return;
+      const nextAncestors = new Set(ancestors);
+      nextAncestors.add(sourceReal);
+      await mkdir(target, { recursive: true });
+      for (const entry of await readdir(source, { withFileTypes: true })) {
+        if (depth === 0 && GAME_EXCLUDES.has(entry.name.toLowerCase())) continue;
+        const from = path.join(source, entry.name);
+        const to = path.join(target, entry.name);
+        const info = await lstat(from);
+        if (info.isSymbolicLink()) {
+          const real = await realpath(from).catch(() => undefined);
+          if (!real || playerDataAlias(real)) continue;
+          const linked = await stat(real).catch(() => undefined);
+          if (linked?.isDirectory()) await copyGame(real, to, nextAncestors, depth + 1);
+          else if (linked?.isFile()) await cp(real, to, { force: true });
+          continue;
+        }
+        if (info.isDirectory()) {
+          await copyGame(from, to, nextAncestors, depth + 1);
+          continue;
+        }
+        if (info.isFile()) await cp(from, to, { force: true });
+      }
+    };
+    await copyGame(game, path.join(root, "game"), new Set());
+    if (stateFound)
+      await cp(state, path.join(root, "state"), { recursive: true, force: true, dereference: true });
+    for (const entry of await readdir(project, { withFileTypes: true })) {
+      const name = entry.name;
+      const key = rootResourceKey(name);
+      if (key === "game" || key === "state" || MIRROR_EXCLUDES.has(name.toLowerCase())) continue;
+      const source = path.join(project, name);
+      const target = path.join(root, name);
+      const real = await realpath(source).catch(() => undefined);
+      if (!real || playerDataAlias(real) || stateAlias(real)) continue;
+      const info = await stat(real);
+      if (!info.isDirectory()) {
+        await cp(real, target, { force: true });
+        continue;
+      }
+      try {
+        await symlink(real, target, link);
+      } catch {
+        // A host that cannot link still gets a faithful, if larger, copy.
+        await cp(real, target, { recursive: true, force: true, dereference: true });
+      }
+    }
+  } catch (error) {
+    const warning = await cleanupFolder(root, "incomplete validation copy");
+    const suffix = warning ? ` (${warning})` : "";
+    throw new Error("Could not make a disposable validation copy: " + (error instanceof Error ? error.message : String(error)) + suffix);
+  }
+  return { project: root, cleanup: () => cleanupFolder(root, "disposable validation copy") };
+}
+
+/**
+ * Copy compiled scripts from a successful mirror compile back into the real
+ * project. Compile is the one automated operation whose artifact is part of
+ * its contract; lint and tests stay read-only. Saves, cache and new orphan
+ * files are not promoted.
+ */
+async function promoteCompiledScripts(mirror, project, signal) {
+  const sourceRoot = path.join(mirror, "game");
+  // Resolve the project once so a project opened through a junction promotes
+  // through its real path instead of failing a lexical containment check.
+  const targetRoot = path.join(await realpath(project), "game");
+  if (signal?.aborted) throw new Error("Ren'Py command cancelled");
+  const realTargetRoot = await realpath(targetRoot);
+  const plan = [];
+  const checkTarget = async (to) => {
+    const resolved = path.resolve(to);
+    if (!insideOrEqual(realTargetRoot, resolved))
+      throw new Error("Refusing to write a compiled script outside the game folder: " + to);
+    // Find the nearest existing ancestor and resolve it. A missing directory
+    // under a link outside game/ is rejected before mkdir can create anything.
+    let ancestor = path.dirname(resolved);
+    for (;;) {
+      const info = await lstat(ancestor).catch((error) => {
+        if (error.code === "ENOENT") return undefined;
+        throw error;
+      });
+      if (info) {
+        const real = await realpath(ancestor);
+        if (!insideOrEqual(realTargetRoot, real))
+          throw new Error("Refusing to write a compiled script outside the game folder: " + to);
+        break;
+      }
+      const parent = path.dirname(ancestor);
+      if (parent === ancestor)
+        throw new Error("Refusing to write a compiled script outside the game folder: " + to);
+      ancestor = parent;
+    }
+    const existing = await lstat(resolved).catch((error) => {
+      if (error.code === "ENOENT") return undefined;
+      throw error;
+    });
+    if (existing?.isSymbolicLink())
+      throw new Error("Refusing to replace a symbolic-link compiled script: " + to);
+    if (existing && !existing.isFile())
+      throw new Error("Refusing to replace a non-file compiled script target: " + to);
+  };
+  async function collect(directory, relative = "", depth = 0) {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (signal?.aborted) throw new Error("Ren'Py command cancelled");
+      const next = relative ? path.join(relative, entry.name) : entry.name;
+      const from = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (depth === 0 && GAME_EXCLUDES.has(entry.name.toLowerCase())) continue;
+        await collect(from, next, depth + 1);
+        continue;
+      }
+      if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".rpyc")) continue;
+      const to = path.join(targetRoot, next);
+      const current = await readFile(from);
+      await checkTarget(to);
+      const old = await readFile(to).catch((error) => {
+        if (error.code === "ENOENT") return undefined;
+        throw error;
+      });
+      if (old?.equals(current)) continue;
+      plan.push({ from, to, old });
+    }
+  }
+  await collect(sourceRoot);
+  if (signal?.aborted) throw new Error("Ren'Py command cancelled");
+  const written = [];
+  try {
+    for (const { from, to, old } of plan) {
+      if (signal?.aborted) throw new Error("Ren'Py command cancelled");
+      await mkdir(path.dirname(to), { recursive: true });
+      // A same-directory temporary file makes each replacement atomic: a
+      // failed copy never truncates the project's existing .rpyc.
+      const temporary = path.join(path.dirname(to), `.ohmygame-promote-${randomUUID()}.tmp`);
+      try {
+        await cp(from, temporary, { force: true });
+        await rename(temporary, to);
+      } catch (error) {
+        await rm(temporary, { force: true }).catch(() => {});
+        throw error;
+      }
+      written.push({ to, old });
+    }
+  } catch (error) {
+    // Best-effort rollback: a failed or cancelled promotion must not leave a
+    // mixed set. A process kill during this short window is not covered.
+    for (const { to, old } of written.reverse()) {
+      try {
+        if (old === undefined) await rm(to, { force: true });
+        else await writeFile(to, old);
+      } catch {
+        // The original promotion error remains the useful one.
+      }
+    }
+    throw error;
+  }
+  return plan.length;
+}
+
+/**
+ * A throwaway savedir and redirected save-like state for a run inside the
+ * disposable mirror.
+ */
+async function validationIsolation() {
   const savedir = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-validation-"));
   let savesBase;
   let multipersistentBase;
@@ -135,8 +339,8 @@ async function validationIsolation(project) {
     savesBase = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-validation-saves-"));
     multipersistentBase = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-validation-multi-"));
   } catch (error) {
-    await rm(savedir, { recursive: true, force: true });
-    if (savesBase) await rm(savesBase, { recursive: true, force: true });
+    await cleanupFolder(savedir, "temporary save directory");
+    if (savesBase) await cleanupFolder(savesBase, "temporary save directory");
     throw error;
   }
   return {
@@ -147,31 +351,60 @@ async function validationIsolation(project) {
       RENPY_DISABLE_BACKUPS: VALIDATION_BACKUPS,
     },
     async cleanup() {
-      await removeProjectSaves(projectSavesState).catch(() => {});
-      await Promise.all([
-        rm(savedir, { recursive: true, force: true }),
-        rm(savesBase, { recursive: true, force: true }),
-        rm(multipersistentBase, { recursive: true, force: true }),
-      ]);
+      const warnings = [];
+      for (const [target, label] of [
+        [savedir, "temporary save directory"],
+        [savesBase, "temporary save directory"],
+        [multipersistentBase, "temporary multipersistent directory"],
+      ]) {
+        const warning = await cleanupFolder(target, label);
+        if (warning) warnings.push(warning);
+      }
+      return warnings.join("; ") || undefined;
     },
   };
 }
 
 /**
- * Runs a read-only SDK task against a throwaway save directory. Ren'Py loads
- * and can rewrite persistent data even for lint and compile; without this a
- * check would touch the player's real saves and unlocks.
+ * Runs an SDK task inside a disposable project mirror. Ren'Py loads and can
+ * rewrite persistent data even for lint and compile; the mirror keeps that
+ * away from the player's saves and from the live game sources. Compile
+ * artifacts are promoted back because compile promises .rpyc files.
  */
 export async function runWithIsolatedSaves(command, project, args, options = {}) {
-  const isolation = await validationIsolation(project);
+  const mirror = await validationMirror(project);
+  const warnings = [];
+  let result;
+  let failure;
+  let isolation;
   try {
-    return await runRenpy(command, ["--savedir", isolation.savedir, project, ...args], {
+    isolation = await validationIsolation();
+    result = await runRenpy(command, ["--savedir", isolation.savedir, mirror.project, ...args], {
       ...options,
+      cwd: mirror.project,
       env: { ...options.env, ...isolation.env },
     });
+    if (args[0] === "compile" && result.exitCode === 0)
+      result = { ...result, compiledArtifacts: await promoteCompiledScripts(mirror.project, project, options.signal) };
+  } catch (error) {
+    failure = error;
   } finally {
-    await isolation.cleanup();
+    if (isolation) {
+      const warning = await isolation.cleanup();
+      if (warning) warnings.push(warning);
+    }
+    const warning = await mirror.cleanup();
+    if (warning) warnings.push(warning);
   }
+  if (failure) {
+    if (warnings.length && failure instanceof Error) failure.message += " (cleanup warning: " + warnings.join("; ") + ")";
+    throw failure;
+  }
+  return {
+    ...result,
+    validationCopy: true,
+    ...(warnings.length ? { cleanupWarning: warnings.join("; ") } : {}),
+  };
 }
 
 /** Execute an SDK CLI task; cancellation and timeout are distinguished from CLI failures. */
@@ -245,20 +478,26 @@ export async function exportWeb(project, command, options = {}) {
   });
   if (existing && (existing.isSymbolicLink() || !existing.isDirectory()))
     throw new Error("Refusing an unsafe existing web build path");
-  // Checked before the build starts, so a project with real game/saves
-  // player data fails before the launcher can touch it.
-  const isolation = await validationIsolation(project);
+  // The launcher builds from a disposable mirror, so it cannot read or rewrite
+  // the player's real saves. Only the completed web output is promoted into
+  // the project's build folder.
+  const mirror = await validationMirror(project);
+  const warnings = [];
   const backup = path.join(buildRoot, "renpy-web-old-" + randomUUID());
+  let isolation;
   let staging;
   let movedOld = false;
+  let result;
+  let failure;
   try {
+    isolation = await validationIsolation();
     staging = await mkdtemp(path.join(buildRoot, "renpy-web-"));
     const execute = options.execute ?? runRenpy;
     // The launcher starts the project in its own process, which ignores the
     // parent's --savedir. RENPY_PATH_TO_SAVES is inherited and keeps the
     // build from reading or rewriting the player's saves and unlocks; the
-    // preflight guard covers portable projects, where Ren'Py ignores it.
-    const result = await execute(command, ["--savedir", isolation.savedir, "launcher", "web_build", project, "--destination", staging], {
+    // mirror keeps the launcher's generated files out of the project.
+    result = await execute(command, ["--savedir", isolation.savedir, "launcher", "web_build", mirror.project, "--destination", staging], {
       cwd: command.sdkPath,
       signal: options.signal,
       progress: options.progress,
@@ -297,15 +536,34 @@ export async function exportWeb(project, command, options = {}) {
       throw error;
     }
     if (movedOld) {
-      await rm(backup, { recursive: true, force: true });
+      const warning = await cleanupFolder(backup, "previous web build backup");
+      if (warning) warnings.push(warning);
       movedOld = false;
     }
-    return result;
+  } catch (error) {
+    failure = error;
   } finally {
-    if (staging) await rm(staging, { recursive: true, force: true });
-    await isolation.cleanup();
+    if (staging) {
+      const warning = await cleanupFolder(staging, "web export staging folder");
+      if (warning) warnings.push(warning);
+    }
+    if (isolation) {
+      const warning = await isolation.cleanup();
+      if (warning) warnings.push(warning);
+    }
+    const warning = await mirror.cleanup();
+    if (warning) warnings.push(warning);
     // If promotion failed before it could complete, do not delete a backup.
   }
+  if (failure) {
+    if (warnings.length && failure instanceof Error) failure.message += " (cleanup warning: " + warnings.join("; ") + ")";
+    throw failure;
+  }
+  return {
+    ...result,
+    validationCopy: true,
+    ...(warnings.length ? { cleanupWarning: warnings.join("; ") } : {}),
+  };
 }
 
 /** What the managed host session should run for `project run`. */
