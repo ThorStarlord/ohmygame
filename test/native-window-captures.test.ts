@@ -18,7 +18,8 @@ const capture = (title = "Ren'Py") => ({
   height: 720,
   title,
   hwnd: "12345",
-  pid: 4321,
+  rootPid: 4321,
+  pid: 4322,
   mediaType: "image/png" as const,
   analysis: { sampledPixels: 10, opaqueRatio: 1, luminanceMean: 40, luminanceVariance: 20, likelyBlank: false },
   data: pngData(),
@@ -57,6 +58,7 @@ describe("Native window captures", () => {
     expect(parseNativeWindowCapture({ ...capture(), data: "not-base64-%%-png" })).toBeUndefined();
     expect(parseNativeWindowCapture({ ...capture(), width: 1 })).toBeUndefined();
     expect(parseNativeWindowCapture({ ...capture(), data: "iVBORw0KGgo=" })).toBeUndefined();
+    expect(parseNativeWindowCapture({ ...capture(), width: 16_384, height: 16_384, data: pngData(16_384, 16_384) })).toBeUndefined();
   });
 
   it("keeps a project under a total encoded-byte budget", () => {

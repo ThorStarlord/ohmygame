@@ -48,6 +48,9 @@ export interface NativeWindowCaptureSummary {
   height: number;
   title: string;
   hwnd: string;
+  /** The managed session root process. */
+  rootPid: number;
+  /** The process that owns the captured window; it may be a descendant. */
   pid: number;
   mediaType: "image/png";
   analysis: PlaytestCapture["analysis"];
@@ -64,7 +67,7 @@ export type NativeWindowCaptureInput = Omit<NativeWindowCaptureSummary, "id" | "
 };
 
 const NATIVE_CAPTURE_KEYS = new Set([
-  "width", "height", "title", "hwnd", "pid", "mediaType", "analysis", "data",
+  "width", "height", "title", "hwnd", "rootPid", "pid", "mediaType", "analysis", "data",
 ]);
 
 export function isNativeWindowCaptureInput(value: unknown): value is NativeWindowCaptureInput {
@@ -76,6 +79,7 @@ export function isNativeWindowCaptureInput(value: unknown): value is NativeWindo
     && typeof item.height === "number" && Number.isSafeInteger(item.height) && item.height > 0 && item.height <= 16_384
     && typeof item.title === "string" && item.title.length <= 500
     && typeof item.hwnd === "string" && /^\d{1,20}$/.test(item.hwnd)
+    && typeof item.rootPid === "number" && Number.isSafeInteger(item.rootPid) && item.rootPid > 0
     && typeof item.pid === "number" && Number.isSafeInteger(item.pid) && item.pid > 0
     && item.mediaType === "image/png"
     && typeof item.data === "string" && item.data.length > 0 && item.data.length <= 12 * 1024 * 1024

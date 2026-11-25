@@ -145,6 +145,7 @@ export async function captureNativeWindow(request: { rootPid: number; sessionId:
     height: size.height,
     title: (source.name || owner.title).slice(0, 500),
     hwnd: owner.hwnd,
+    rootPid: request.rootPid,
     pid: owner.pid,
     mediaType: "image/png",
     analysis,

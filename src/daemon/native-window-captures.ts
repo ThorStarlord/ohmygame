@@ -5,15 +5,17 @@ import { isNativeWindowCaptureInput } from "../shared/engine-observations.js";
 const MAX_PROJECTS = 24;
 const MAX_CAPTURES = 12;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_PIXELS = 16_000_000;
 const MAX_PROJECT_BYTES = 32 * 1024 * 1024;
 
 const summary = ({ data: _data, ...item }: NativeWindowCapture): NativeWindowCaptureSummary => ({ ...item });
 
 /**
  * Validate a capture at the daemon boundary. Shape validation is shared; this
- * additionally proves the bytes are a PNG and that its dimensions match the
- * reported metadata. The input is rebuilt from allowed fields so no caller
- * field reaches storage or model-visible metadata.
+ * additionally checks the PNG signature/IHDR, bounds the pixel area, and
+ * matches the dimensions to the reported metadata. It does not decode the
+ * image. The input is rebuilt from allowed fields so no caller field reaches
+ * storage or model-visible metadata.
  */
 export function parseNativeWindowCapture(value: unknown): NativeWindowCaptureInput | undefined {
   if (!isNativeWindowCaptureInput(value)) return undefined;
@@ -24,12 +26,13 @@ export function parseNativeWindowCapture(value: unknown): NativeWindowCaptureInp
   if (bytes.length < 24 || bytes.toString("ascii", 12, 16) !== "IHDR") return undefined;
   const width = bytes.readUInt32BE(16);
   const height = bytes.readUInt32BE(20);
-  if (width !== input.width || height !== input.height) return undefined;
+  if (width !== input.width || height !== input.height || width * height > MAX_PIXELS) return undefined;
   return {
     width: input.width,
     height: input.height,
     title: input.title,
     hwnd: input.hwnd,
+    rootPid: input.rootPid,
     pid: input.pid,
     mediaType: "image/png",
     analysis: {
@@ -61,6 +64,7 @@ export class NativeWindowCaptures {
       height: input.height,
       title: input.title,
       hwnd: input.hwnd,
+      rootPid: input.rootPid,
       pid: input.pid,
       mediaType: "image/png",
       analysis: { ...input.analysis },

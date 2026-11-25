@@ -189,7 +189,7 @@ describe("agent tools", () => {
     await runner.load();
     const capture = {
       id: "capture-1", sessionId: "session-1", capturedAt: 1, width: 640, height: 360,
-      title: "Game", hwnd: "42", pid: 4321, mediaType: "image/png" as const,
+      title: "Game", hwnd: "42", rootPid: 4321, pid: 4322, mediaType: "image/png" as const,
       analysis: { sampledPixels: 10, opaqueRatio: 1, luminanceMean: 20, luminanceVariance: 10, likelyBlank: false },
       data: "iVBORw0KGgo=",
     };

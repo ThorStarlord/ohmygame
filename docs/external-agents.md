@@ -198,7 +198,8 @@ and answers with JSON; nothing is streamed, so `GET` returns 405.
 
 ## Public tools
 
-Every session lists the same tools, whichever project it uses. A tool the
+Every session lists the same tools, whichever project it uses, except that the
+Windows-only native window capture tool is listed only on Windows. A tool the
 bound project does not have returns an error that says why.
 
 | Tool                                                                        | Notes                                                                       |

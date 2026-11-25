@@ -3153,7 +3153,7 @@ export function createApp(options: AppOptions = {}) {
         return reply.code(409).send({ error: "The native session is no longer running" });
       }
       const input = parseNativeWindowCapture(request.body);
-      if (!input || input.pid !== session.pid) return reply.code(400).send({ error: "Invalid window capture" });
+      if (!input || input.rootPid !== session.pid) return reply.code(400).send({ error: "Invalid window capture" });
       return nativeWindowCaptures.add(project.id, session.id, {
         ...input,
         title: pluginServices.redactObservationText(input.title, session.plugin),
