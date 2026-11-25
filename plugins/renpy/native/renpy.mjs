@@ -1,7 +1,7 @@
 // Resolves the user's Ren'Py SDK and provides bounded, cancellable CLI execution.
 // No shell is used. The SDK remains the authority for script parsing and exports.
 import { spawn } from "node:child_process";
-import { access, lstat, mkdir, mkdtemp, readdir, rename, rm, stat } from "node:fs/promises";
+import { access, cp, lstat, mkdir, mkdtemp, readdir, rename, rm, stat, symlink } from "node:fs/promises";
 import { constants } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
@@ -93,8 +93,9 @@ const VALIDATION_BACKUPS = "I take responsibility for this.";
 /**
  * Ren'Py always adds <project>/game/saves as an active save location. For a
  * portable project that folder is the real player namespace; --savedir and
- * RENPY_PATH_TO_SAVES do not redirect it. Refuse existing player data there,
- * and remove whatever an automated run creates when it was absent or empty.
+ * RENPY_PATH_TO_SAVES do not redirect it. Automated validation either runs in
+ * a disposable copy without this folder, or removes what it created when the
+ * folder was absent or empty. The original saves are never moved.
  */
 async function projectSaves(project) {
   const folder = path.join(project, "game", "saves");
@@ -102,15 +103,69 @@ async function projectSaves(project) {
     if (error.code === "ENOENT") return undefined;
     throw error;
   });
-  if (!found) return { folder, existed: false };
+  if (!found) return { folder, existed: false, populated: false };
   if (found.isSymbolicLink() || !found.isDirectory())
     throw new Error("Refusing a non-directory or symbolic-link game/saves folder: " + folder);
-  if ((await readdir(folder)).length)
-    throw new Error(
-      "This Ren'Py project keeps player data in game/saves, which --savedir cannot isolate. " +
-      "Move that folder aside or set config.save_directory before running an automated Ren'Py operation.",
-    );
-  return { folder, existed: true };
+  return { folder, existed: true, populated: (await readdir(folder)).length > 0 };
+}
+
+const MIRROR_EXCLUDES = new Set([
+  ".git", ".ohmygame", "build", "node_modules", ".venv", "__pycache__",
+  ".pytest_cache", ".ruff_cache", ".tmp", "dist",
+]);
+
+/**
+ * A disposable, faithful view of the project for automated validation. The
+ * game tree is copied without game/saves and game/cache, and writable root
+ * state is copied; other root resources are linked read-only. Ren'Py can
+ * therefore resolve root-relative files while the player's real saves and the
+ * project sources stay untouched. Projects without player data in game/saves
+ * use the original folder, as before.
+ */
+async function validationMirror(project) {
+  const saves = await projectSaves(project);
+  if (!saves.populated) return { project, created: false, cleanup: async () => {} };
+  const root = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-project-"));
+  const link = process.platform === "win32" ? "junction" : "dir";
+  try {
+    await cp(path.join(project, "game"), path.join(root, "game"), {
+      recursive: true,
+      force: true,
+      filter: (source) => {
+        const relative = path.relative(project, source);
+        if (relative === "") return true;
+        const parts = relative.split(path.sep);
+        if (parts[0] !== "game") return false;
+        return parts[1] !== "saves" && parts[1] !== "cache";
+      },
+    });
+    const state = path.join(project, "state");
+    if (await lstat(state).then((entry) => entry.isDirectory()).catch(() => false))
+      await cp(state, path.join(root, "state"), { recursive: true, force: true });
+    for (const entry of await readdir(project, { withFileTypes: true })) {
+      if (entry.name === "game" || entry.name === "state" || MIRROR_EXCLUDES.has(entry.name)) continue;
+      const source = path.join(project, entry.name);
+      const target = path.join(root, entry.name);
+      if (!entry.isDirectory()) {
+        await cp(source, target, { force: true });
+        continue;
+      }
+      try {
+        await symlink(source, target, link);
+      } catch {
+        // A host that cannot link still gets a faithful, if larger, copy.
+        await cp(source, target, { recursive: true, force: true });
+      }
+    }
+  } catch (error) {
+    await rm(root, { recursive: true, force: true }).catch(() => {});
+    throw new Error("Could not make a disposable validation copy: " + (error instanceof Error ? error.message : String(error)));
+  }
+  return {
+    project: root,
+    created: true,
+    cleanup: async () => { await rm(root, { recursive: true, force: true }); },
+  };
 }
 
 async function removeProjectSaves(state) {
@@ -160,17 +215,25 @@ async function validationIsolation(project) {
 /**
  * Runs a read-only SDK task against a throwaway save directory. Ren'Py loads
  * and can rewrite persistent data even for lint and compile; without this a
- * check would touch the player's real saves and unlocks.
+ * check would touch the player's real saves and unlocks. A project with player
+ * data in game/saves is checked from a disposable mirror instead.
  */
 export async function runWithIsolatedSaves(command, project, args, options = {}) {
-  const isolation = await validationIsolation(project);
+  const mirror = await validationMirror(project);
   try {
-    return await runRenpy(command, ["--savedir", isolation.savedir, project, ...args], {
-      ...options,
-      env: { ...options.env, ...isolation.env },
-    });
+    const isolation = await validationIsolation(mirror.project);
+    try {
+      const result = await runRenpy(command, ["--savedir", isolation.savedir, mirror.project, ...args], {
+        ...options,
+        cwd: mirror.created ? mirror.project : (options.cwd ?? project),
+        env: { ...options.env, ...isolation.env },
+      });
+      return mirror.created ? { ...result, validationCopy: true } : result;
+    } finally {
+      await isolation.cleanup();
+    }
   } finally {
-    await isolation.cleanup();
+    await mirror.cleanup();
   }
 }
 
@@ -246,7 +309,14 @@ export async function exportWeb(project, command, options = {}) {
   if (existing && (existing.isSymbolicLink() || !existing.isDirectory()))
     throw new Error("Refusing an unsafe existing web build path");
   // Checked before the build starts, so a project with real game/saves
-  // player data fails before the launcher can touch it.
+  // player data fails before the launcher can touch it. The web build writes
+  // its output into the original project, so unlike lint/compile/test it does
+  // not use a disposable mirror.
+  if ((await projectSaves(project)).populated)
+    throw new Error(
+      "This Ren'Py project keeps player data in game/saves, which a web build cannot isolate. " +
+      "Move that folder aside or set config.save_directory before exporting the web build.",
+    );
   const isolation = await validationIsolation(project);
   const backup = path.join(buildRoot, "renpy-web-old-" + randomUUID());
   let staging;

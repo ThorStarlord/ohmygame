@@ -15,6 +15,9 @@
     },
     "output": {
       "type": "string"
+    },
+    "validationCopy": {
+      "type": "boolean"
     }
   },
   "required": [

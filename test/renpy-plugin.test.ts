@@ -279,22 +279,61 @@ describe("Ren'Py execution and browser export", () => {
     await expect(lstat(path.dirname(environment.multi!))).rejects.toThrow();
   });
 
-  it("refuses an automated run when the project keeps player data in game/saves", async () => {
+  it("validates a project with player saves in a disposable copy", async () => {
     const project = path.join(folder, "portable-saved");
     const saves = path.join(project, "game", "saves");
     await mkdir(saves, { recursive: true });
+    await mkdir(path.join(project, "game"), { recursive: true });
+    await mkdir(path.join(project, "state"), { recursive: true });
+    await mkdir(path.join(project, "Canon"), { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(project, "state", "registry.json"), "{}");
+    await writeFile(path.join(project, "Canon", "note.md"), "source");
     await writeFile(path.join(saves, "persistent"), "player data");
-    const marker = path.join(folder, "should-not-run.txt");
-    const fake = path.join(folder, "should-not-run.cjs");
-    await writeFile(fake, `require("node:fs").writeFileSync(${JSON.stringify(marker)}, "ran");\n`);
-    await expect(runWithIsolatedSaves(
+    const marker = path.join(folder, "validation-project.txt");
+    const fake = path.join(folder, "validation-copy.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const project = process.argv[4];
+      fs.readFileSync(path.join(project, "state", "registry.json"));
+      fs.readFileSync(path.join(project, "Canon", "note.md"));
+      fs.writeFileSync(${JSON.stringify(marker)}, project);
+      fs.writeFileSync(path.join(project, "game", "checked.txt"), "validated");\n`);
+    const result = await runWithIsolatedSaves(
       { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
       project,
       ["lint"],
       { cwd: folder },
-    )).rejects.toThrow(/game\/saves/);
-    await expect(lstat(marker)).rejects.toThrow();
+    );
+    const checked = await readFile(marker, "utf8");
+    expect(result.validationCopy).toBe(true);
+    expect(checked).not.toBe(project);
+    expect(path.basename(checked)).toMatch(/^ohmygame-renpy-project-/);
     expect(await readFile(path.join(saves, "persistent"), "utf8")).toBe("player data");
+    await expect(lstat(path.join(project, "game", "checked.txt"))).rejects.toThrow();
+    await expect(lstat(checked)).rejects.toThrow();
+  });
+
+  it("removes the validation copy when validation fails", async () => {
+    const project = path.join(folder, "portable-saved-failure");
+    const saves = path.join(project, "game", "saves");
+    await mkdir(saves, { recursive: true });
+    await mkdir(path.join(project, "game"), { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(saves, "persistent"), "player data");
+    const marker = path.join(folder, "validation-failure-project.txt");
+    const fake = path.join(folder, "validation-failure.cjs");
+    await writeFile(fake, `require("node:fs").writeFileSync(${JSON.stringify(marker)}, process.argv[4]); process.exit(2);\n`);
+    const result = await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(result.exitCode).toBe(2);
+    expect(result.validationCopy).toBe(true);
+    expect(await readFile(path.join(saves, "persistent"), "utf8")).toBe("player data");
+    await expect(lstat(await readFile(marker, "utf8"))).rejects.toThrow();
   });
 
   it("removes project-local saves that an automated run creates", async () => {

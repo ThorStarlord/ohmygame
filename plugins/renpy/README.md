@@ -30,7 +30,7 @@ Web export relies on SDK Web support and browser-compatible game features. Expor
 
 ## Player data
 
-Ren'Py always treats `game/saves` as an active save location, and for a portable project without `config.save_directory` it is the real player namespace. `--savedir` and `RENPY_PATH_TO_SAVES` do not redirect it. Automated lint, compile, test and Web-export operations therefore refuse a non-empty `game/saves` instead of touching it, and remove saves they create when the folder was absent or empty. A standard project's persistent data, save slots, MultiPersistent files and script backups are redirected to temporary locations and removed afterwards. Interactive **Run in Ren'Py** deliberately uses the project's real save namespace.
+Ren'Py always treats `game/saves` as an active save location, and for a portable project without `config.save_directory` it is the real player namespace. `--savedir` and `RENPY_PATH_TO_SAVES` do not redirect it. Automated lint, compile and engine-test operations therefore run against a disposable project-shaped copy when `game/saves` contains anything; the copy leaves out `game/saves` and `game/cache`, copies writable root state, links other root resources read-only, and is removed after the check. The original project and its saves are never moved or modified. A project without player data in `game/saves` still runs in place, with a temporary `--savedir` and redirected persistent state; saves the run creates are removed. Web export refuses a non-empty `game/saves` because its build output belongs to the original project. Interactive **Run in Ren'Py** deliberately uses the project's real save namespace.
 
 OhMyGame keeps project metadata in .ohmygame/, and its Canvas under canvas/. To make art, audio, and generated assets part of the Ren'Py game, copy selected files to game/images/ or game/audio/ and reference them from the .rpy scripts. Keep source files and licenses separately.
 
@@ -41,7 +41,7 @@ Run the repository's plugin and source tests (after normal dependency setup):
     bun run plugin:check plugins/renpy
     bun run test -- test/renpy-plugin.test.ts
 
-This test slice validates SDK discovery, manifest, command wiring, cancellation, output handling, isolated validation saves, the `game/saves` guard and transactional Web-export behavior with a fake CLI. It does not launch the real Ren'Py SDK. A Windows/macOS native smoke and browser input/audio/save qualification remain required before production claims. Lint, compile and engine tests use a throwaway `--savedir` plus redirected persistent state, because Ren'Py loads and can rewrite persistent data during those checks.
+This test slice validates SDK discovery, manifest, command wiring, cancellation, output handling, isolated validation saves, the disposable validation copy for projects with player data, the Web-export `game/saves` guard and transactional Web-export behavior with a fake CLI. It does not launch the real Ren'Py SDK. A Windows/macOS native smoke and browser input/audio/save qualification remain required before production claims. Lint, compile and engine tests use a throwaway `--savedir` plus redirected persistent state, because Ren'Py loads and can rewrite persistent data during those checks.
 
 ## Engine authority
 
