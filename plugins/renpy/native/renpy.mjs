@@ -167,14 +167,14 @@ async function validationMirror(project) {
     // an ancestor that contains it, is skipped rather than copied. The
     // ancestor set stops a link back to game/ from recursing without hiding a
     // second, legitimate link to the same folder.
-    const copyGame = async (source, target, ancestors) => {
+    const copyGame = async (source, target, ancestors, depth = 0) => {
       const sourceReal = await realpath(source).catch(() => source);
       if (ancestors.has(sourceReal)) return;
       const nextAncestors = new Set(ancestors);
       nextAncestors.add(sourceReal);
       await mkdir(target, { recursive: true });
       for (const entry of await readdir(source, { withFileTypes: true })) {
-        if (GAME_EXCLUDES.has(entry.name.toLowerCase())) continue;
+        if (depth === 0 && GAME_EXCLUDES.has(entry.name.toLowerCase())) continue;
         const from = path.join(source, entry.name);
         const to = path.join(target, entry.name);
         const info = await lstat(from);
@@ -182,12 +182,12 @@ async function validationMirror(project) {
           const real = await realpath(from).catch(() => undefined);
           if (!real || playerDataAlias(real)) continue;
           const linked = await stat(real).catch(() => undefined);
-          if (linked?.isDirectory()) await copyGame(real, to, nextAncestors);
+          if (linked?.isDirectory()) await copyGame(real, to, nextAncestors, depth + 1);
           else if (linked?.isFile()) await cp(real, to, { force: true });
           continue;
         }
         if (info.isDirectory()) {
-          await copyGame(from, to, nextAncestors);
+          await copyGame(from, to, nextAncestors, depth + 1);
           continue;
         }
         if (info.isFile()) await cp(from, to, { force: true });
@@ -232,7 +232,9 @@ async function validationMirror(project) {
  */
 async function promoteCompiledScripts(mirror, project, signal) {
   const sourceRoot = path.join(mirror, "game");
-  const targetRoot = path.join(project, "game");
+  // Resolve the project once so a project opened through a junction promotes
+  // through its real path instead of failing a lexical containment check.
+  const targetRoot = path.join(await realpath(project), "game");
   if (signal?.aborted) throw new Error("Ren'Py command cancelled");
   const realTargetRoot = await realpath(targetRoot);
   const plan = [];
@@ -269,14 +271,14 @@ async function promoteCompiledScripts(mirror, project, signal) {
     if (existing && !existing.isFile())
       throw new Error("Refusing to replace a non-file compiled script target: " + to);
   };
-  async function collect(directory, relative = "") {
+  async function collect(directory, relative = "", depth = 0) {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       if (signal?.aborted) throw new Error("Ren'Py command cancelled");
       const next = relative ? path.join(relative, entry.name) : entry.name;
       const from = path.join(directory, entry.name);
       if (entry.isDirectory()) {
-        if (GAME_EXCLUDES.has(entry.name.toLowerCase())) continue;
-        await collect(from, next);
+        if (depth === 0 && GAME_EXCLUDES.has(entry.name.toLowerCase())) continue;
+        await collect(from, next, depth + 1);
         continue;
       }
       if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".rpyc")) continue;
@@ -296,12 +298,23 @@ async function promoteCompiledScripts(mirror, project, signal) {
   const written = [];
   try {
     for (const { from, to, old } of plan) {
+      if (signal?.aborted) throw new Error("Ren'Py command cancelled");
       await mkdir(path.dirname(to), { recursive: true });
-      await cp(from, to, { force: true });
+      // A same-directory temporary file makes each replacement atomic: a
+      // failed copy never truncates the project's existing .rpyc.
+      const temporary = path.join(path.dirname(to), `.ohmygame-promote-${randomUUID()}.tmp`);
+      try {
+        await cp(from, temporary, { force: true });
+        await rename(temporary, to);
+      } catch (error) {
+        await rm(temporary, { force: true }).catch(() => {});
+        throw error;
+      }
       written.push({ to, old });
     }
   } catch (error) {
-    // Best-effort rollback: a failed promotion must not leave a mixed set.
+    // Best-effort rollback: a failed or cancelled promotion must not leave a
+    // mixed set. A process kill during this short window is not covered.
     for (const { to, old } of written.reverse()) {
       try {
         if (old === undefined) await rm(to, { force: true });

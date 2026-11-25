@@ -570,6 +570,57 @@ describe("Ren'Py execution and browser export", () => {
     expect(JSON.parse(await readFile(marker, "utf8"))).toEqual({ assets: "asset", alias: "asset" });
   });
 
+  it("promotes compiled scripts when the project itself is opened through a junction", async (context) => {
+    const real = path.join(folder, "junction-project-real");
+    const linked = path.join(folder, "junction-project-linked");
+    await mkdir(path.join(real, "game"), { recursive: true });
+    await writeFile(path.join(real, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(real, "game", "script.rpyc"), "old");
+    try {
+      await symlink(real, linked, process.platform === "win32" ? "junction" : "dir");
+    } catch {
+      context.skip();
+      return;
+    }
+    const fake = path.join(folder, "junction-project.cjs");
+    await writeFile(fake, `require("node:fs").writeFileSync(require("node:path").join(process.argv[4], "game", "script.rpyc"), "new");\n`);
+    const result = await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      linked,
+      ["compile", "--keep-orphan-rpyc"],
+      { cwd: folder },
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.compiledArtifacts).toBe(1);
+    expect(await readFile(path.join(real, "game", "script.rpyc"), "utf8")).toBe("new");
+    expect(await readFile(path.join(linked, "game", "script.rpyc"), "utf8")).toBe("new");
+  });
+
+  it("keeps ordinary nested cache and saves asset folders in the mirror", async () => {
+    const project = path.join(folder, "nested-assets");
+    await mkdir(path.join(project, "game", "story", "cache"), { recursive: true });
+    await mkdir(path.join(project, "game", "story", "saves"), { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(project, "game", "story", "cache", "asset.txt"), "cached asset");
+    await writeFile(path.join(project, "game", "story", "saves", "note.txt"), "story note");
+    const marker = path.join(folder, "nested-assets.json");
+    const fake = path.join(folder, "nested-assets.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const game = path.join(process.argv[4], "game");
+      fs.writeFileSync(${JSON.stringify(marker)}, JSON.stringify({
+        cache: fs.readFileSync(path.join(game, "story", "cache", "asset.txt"), "utf8"),
+        saves: fs.readFileSync(path.join(game, "story", "saves", "note.txt"), "utf8"),
+      }));\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(JSON.parse(await readFile(marker, "utf8"))).toEqual({ cache: "cached asset", saves: "story note" });
+  });
+
   it("skips a root link that resolves to player saves", async (context) => {
     const project = path.join(folder, "root-save-link");
     const saves = path.join(project, "game", "saves");
@@ -598,6 +649,36 @@ describe("Ren'Py execution and browser export", () => {
     );
     expect(await readFile(marker, "utf8")).toBe("false");
     expect(await readFile(path.join(saves, "persistent"), "utf8")).toBe("player data");
+  });
+
+  it("rolls back completed promotions when a later atomic replace fails", async (context) => {
+    if (process.platform !== "win32") {
+      context.skip();
+      return;
+    }
+    const project = path.join(folder, "promotion-rollback");
+    const game = path.join(project, "game");
+    await mkdir(game, { recursive: true });
+    await writeFile(path.join(game, "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(game, "a.rpyc"), "old-a");
+    await writeFile(path.join(game, "b.rpyc"), "old-b");
+    await chmod(path.join(game, "b.rpyc"), 0o444);
+    const fake = path.join(folder, "rollback.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const game = path.join(process.argv[4], "game");
+      fs.chmodSync(path.join(game, "b.rpyc"), 0o644);
+      fs.writeFileSync(path.join(game, "a.rpyc"), "new-a");
+      fs.writeFileSync(path.join(game, "b.rpyc"), "new-b");\n`);
+    await expect(runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["compile", "--keep-orphan-rpyc"],
+      { cwd: folder },
+    )).rejects.toThrow(/EPERM|operation not permitted/);
+    expect(await readFile(path.join(game, "a.rpyc"), "utf8")).toBe("old-a");
+    expect(await readFile(path.join(game, "b.rpyc"), "utf8")).toBe("old-b");
+    expect((await readdir(game)).filter((name) => name.startsWith(".ohmygame-promote-"))).toEqual([]);
   });
 
   it("preflights every promoted script before writing any of them", async (context) => {
