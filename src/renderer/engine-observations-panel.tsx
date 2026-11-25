@@ -144,6 +144,15 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
           </figure>
         ) : null}
       </div>) : <p>{t("engineObservations.nativeEmpty")}</p>}
+      {current.captures.some((capture) => !current.nativeSessions.some((session) => session.id === capture.sessionId)) ? <>
+        <p><strong>{t("engineObservations.retainedCaptures")}</strong></p>
+        {current.captures.filter((capture) => !current.nativeSessions.some((session) => session.id === capture.sessionId)).map((capture) => <div key={capture.id}>
+          <p>{capture.title} · {new Date(capture.capturedAt).toLocaleTimeString()}{capture.analysis.likelyBlank ? ` · ${t("engineObservations.blankCapture")}` : ""}</p>
+          {captureImages[capture.sessionId]
+            ? <img src={`data:image/png;base64,${captureImages[capture.sessionId]}`} alt={t("engineObservations.captureAlt", { label: capture.title })} style={{ maxWidth: "100%", height: "auto" }} />
+            : <Button size="sm" variant="ghost" onClick={() => void viewCapture(capture.sessionId)}>{t("engineObservations.viewCapture")}</Button>}
+        </div>)}
+      </> : null}
       <p><strong>{t("engineObservations.history")}</strong></p>
       {selected ? <>
         <select aria-label={t("engineObservations.history")} value={selected.id} onChange={(event) => setSelectedId(event.target.value)}>
