@@ -52,7 +52,7 @@ Godot observation:
 
 - Native window capture is Windows-only and limited to a visible top-level window owned by the session's process tree. Console windows are excluded; multiple game windows are refused rather than guessed.
 - Capture is person-initiated. The agent can read a retained capture but cannot start one.
-- No native input automation, continuous video, engine-internal game state, or screenshot after the retained capture is evicted.
+- No native input automation, continuous video, engine-internal game state, or screenshot after the retained capture is evicted. Windows message injection was not adopted: it has different semantics per engine, is unreliable for focused/raw input, and would not establish an authentic playtest contract. `game_use` remains the supported interaction runtime only where its advertised web/plugin capabilities exist.
 - Ren'Py Web export remains unqualified with the installed SDK; the disposable project's own Web build fails in Ren'Py's `web.rpy`.
 - The capture is a scaled still image, not proof of gameplay or correct state. Preview/native state and check history are daemon-memory evidence with unknown source freshness.
 - No remote GitHub checks are reported for the branch.
