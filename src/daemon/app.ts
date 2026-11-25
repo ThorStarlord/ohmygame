@@ -3148,7 +3148,10 @@ export function createApp(options: AppOptions = {}) {
         .find((item) => item.id === request.params.sessionId);
       if (!session) return reply.code(404).send({ error: "Native session not found" });
       if (!isNativeWindowCaptureInput(request.body)) return reply.code(400).send({ error: "Invalid window capture" });
-      return nativeWindowCaptures.add(project.id, session.id, request.body);
+      return nativeWindowCaptures.add(project.id, session.id, {
+        ...request.body,
+        title: pluginServices.redactObservationText(request.body.title, session.plugin),
+      });
     },
   );
   app.get<{ Params: { projectId: string; sessionId: string } }>(

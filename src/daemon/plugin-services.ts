@@ -1504,6 +1504,11 @@ export class PluginServices {
     if (key) this.#engineChecks.forget(key);
   }
 
+  /** Applies the same diagnostic redaction to a capture's window title. */
+  redactObservationText(text: string, plugin?: string): string {
+    return this.#engineRedactor(redactCredentials(text, plugin ? this.values.secrets(plugin) : []), { maxLength: 64_000 });
+  }
+
   #pageTools: PageToolRunner | undefined;
 
   /** How a tool a panel answers reaches its page: through the project's open window. */
