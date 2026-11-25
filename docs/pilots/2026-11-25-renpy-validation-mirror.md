@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-25
 **Status:** bounded capability implemented and qualified against the canonical Superhero-Netorare-Parody repository through the real extension host; the desktop dialog flow remains a separate UI check.
-**OhMyGame:** `ThorStarlord/ohmygame`, branch `fix/renpy-validation-mirror`, based on `dev` `6be054172c39d7ee356fb668a272921c9ad4a2e6`; implementation commit `54f5f0a98133bff7b677598b901f969c7a9e025b`.
+**OhMyGame:** `ThorStarlord/ohmygame`, branch `fix/renpy-validation-mirror`, based on `dev` `6be054172c39d7ee356fb668a272921c9ad4a2e6`; implementation commit `40fe9f72ad0465bf9857a4cb1b8209797945d323`.
 **Superhero-Netorare-Parody:** `ThorStarlord/Superhero-Netorare-Parody`, worktree at `work/m1-ch1-ch2-characterization-repair`; canonical source and player data were treated as read-only.
 
 ## Verdict
