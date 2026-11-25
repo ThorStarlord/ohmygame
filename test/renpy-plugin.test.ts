@@ -486,6 +486,125 @@ describe("Ren'Py execution and browser export", () => {
     expect(await readFile(path.join(project, "game", "SAVES", "persistent"), "utf8")).toBe("player data");
   });
 
+  it("ignores a case-variant root Game folder instead of copying its saves", async (context) => {
+    if (process.platform !== "win32" && process.platform !== "darwin") {
+      context.skip();
+      return;
+    }
+    const project = path.join(folder, "case-variant-root");
+    await mkdir(path.join(project, "Game", "SAVES"), { recursive: true });
+    await writeFile(path.join(project, "Game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(project, "Game", "SAVES", "persistent"), "player data");
+    const marker = path.join(folder, "case-variant.json");
+    const fake = path.join(folder, "case-variant.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const game = path.join(process.argv[4], "game");
+      fs.writeFileSync(${JSON.stringify(marker)}, JSON.stringify({
+        upper: fs.existsSync(path.join(game, "SAVES")),
+        lower: fs.existsSync(path.join(game, "saves")),
+      }));\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(JSON.parse(await readFile(marker, "utf8"))).toEqual({ upper: false, lower: false });
+    expect(await readFile(path.join(project, "Game", "SAVES", "persistent"), "utf8")).toBe("player data");
+  });
+
+  it("skips a link inside game that resolves to player saves", async (context) => {
+    const project = path.join(folder, "inner-save-link");
+    const saves = path.join(project, "game", "saves");
+    await mkdir(saves, { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(saves, "persistent"), "player data");
+    try {
+      await symlink(saves, path.join(project, "game", "shared"), process.platform === "win32" ? "junction" : "dir");
+    } catch {
+      context.skip();
+      return;
+    }
+    const marker = path.join(folder, "inner-link.txt");
+    const fake = path.join(folder, "inner-link.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      fs.writeFileSync(${JSON.stringify(marker)}, String(fs.existsSync(path.join(process.argv[4], "game", "shared"))));\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(await readFile(marker, "utf8")).toBe("false");
+    expect(await readFile(path.join(saves, "persistent"), "utf8")).toBe("player data");
+  });
+
+  it("skips a root link that resolves to player saves", async (context) => {
+    const project = path.join(folder, "root-save-link");
+    const saves = path.join(project, "game", "saves");
+    await mkdir(saves, { recursive: true });
+    await writeFile(path.join(project, "game", "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(saves, "persistent"), "player data");
+    try {
+      await symlink(saves, path.join(project, "SharedSaves"), process.platform === "win32" ? "junction" : "dir");
+    } catch {
+      context.skip();
+      return;
+    }
+    const marker = path.join(folder, "root-link.txt");
+    const fake = path.join(folder, "root-link.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const linked = path.join(process.argv[4], "SharedSaves", "persistent");
+      const found = fs.existsSync(linked);
+      if (found) fs.writeFileSync(linked, "MUTATED");
+      fs.writeFileSync(${JSON.stringify(marker)}, String(found));\n`);
+    await runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["lint"],
+      { cwd: folder },
+    );
+    expect(await readFile(marker, "utf8")).toBe("false");
+    expect(await readFile(path.join(saves, "persistent"), "utf8")).toBe("player data");
+  });
+
+  it("preflights every promoted script before writing any of them", async (context) => {
+    const project = path.join(folder, "promotion-preflight");
+    const game = path.join(project, "game");
+    const external = path.join(folder, "external-target");
+    await mkdir(game, { recursive: true });
+    await mkdir(external, { recursive: true });
+    await writeFile(path.join(game, "script.rpy"), "label start:\n    return\n");
+    await writeFile(path.join(game, "a.rpyc"), "old-a");
+    await writeFile(path.join(game, "z.rpyc"), "old-z");
+    try {
+      await symlink(external, path.join(game, "linked"), process.platform === "win32" ? "junction" : "dir");
+    } catch {
+      context.skip();
+      return;
+    }
+    const fake = path.join(folder, "preflight.cjs");
+    await writeFile(fake, `const fs = require("node:fs");
+      const path = require("node:path");
+      const game = path.join(process.argv[4], "game");
+      fs.writeFileSync(path.join(game, "a.rpyc"), "new-a");
+      fs.writeFileSync(path.join(game, "z.rpyc"), "new-z");
+      fs.mkdirSync(path.join(game, "linked", "newdir"), { recursive: true });
+      fs.writeFileSync(path.join(game, "linked", "newdir", "outside.rpyc"), "outside");\n`);
+    await expect(runWithIsolatedSaves(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      project,
+      ["compile", "--keep-orphan-rpyc"],
+      { cwd: folder },
+    )).rejects.toThrow(/outside the game folder/);
+    expect(await readFile(path.join(game, "a.rpyc"), "utf8")).toBe("old-a");
+    expect(await readFile(path.join(game, "z.rpyc"), "utf8")).toBe("old-z");
+    await expect(lstat(path.join(external, "newdir"))).rejects.toThrow();
+  });
+
   it("links a root junction so the mirror can read assets kept on another drive", async (context) => {
     const external = path.join(folder, "external-assets");
     await mkdir(external, { recursive: true });

@@ -1,7 +1,7 @@
 // Resolves the user's Ren'Py SDK and provides bounded, cancellable CLI execution.
 // No shell is used. The SDK remains the authority for script parsing and exports.
 import { spawn } from "node:child_process";
-import { access, cp, lstat, mkdir, mkdtemp, readdir, readFile, realpath, rename, rm, stat, symlink } from "node:fs/promises";
+import { access, cp, lstat, mkdir, mkdtemp, readdir, readFile, realpath, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
@@ -126,6 +126,16 @@ async function requireDirectory(folder, label) {
   return found;
 }
 
+function insideOrEqual(parent, child) {
+  const relative = path.relative(parent, child);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+/** A root entry only needs skipping on platforms where it aliases game/ or state/. */
+function rootResourceKey(name) {
+  return process.platform === "win32" || process.platform === "darwin" ? name.toLowerCase() : name;
+}
+
 /**
  * A disposable, faithful view of the project for automated validation. Game
  * sources are copied without game/saves or game/cache, and writable root state
@@ -135,59 +145,80 @@ async function requireDirectory(folder, label) {
  * the disposable copy.
  */
 async function validationMirror(project) {
-  await requireDirectory(path.join(project, "game"), "game folder");
+  const game = path.join(project, "game");
   const state = path.join(project, "state");
+  await requireDirectory(game, "game folder");
   const stateFound = await lstat(state).catch((error) => {
     if (error.code === "ENOENT") return undefined;
     throw error;
   });
   if (stateFound && (stateFound.isSymbolicLink() || !stateFound.isDirectory()))
     throw new Error("Refusing a symbolic-link or non-directory state folder: " + state);
+  const savesReal = await realpath(path.join(game, "saves")).catch(() => undefined);
+  const cacheReal = await realpath(path.join(game, "cache")).catch(() => undefined);
+  const stateReal = await realpath(state).catch(() => undefined);
+  const overlaps = (left, right) => Boolean(left && right && (insideOrEqual(left, right) || insideOrEqual(right, left)));
+  const playerDataAlias = (real) => overlaps(real, savesReal) || overlaps(real, cacheReal);
+  const stateAlias = (real) => overlaps(real, stateReal);
   const root = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-project-"));
   const link = process.platform === "win32" ? "junction" : "dir";
   try {
-    const game = path.join(project, "game");
-    await cp(game, path.join(root, "game"), {
-      recursive: true,
-      force: true,
-      // Follow links inside game/ so the mirror never contains a link back to
-      // the project's live player data.
-      dereference: true,
-      filter: (source) => {
-        const relative = path.relative(game, source);
-        if (relative === "") return true;
-        const first = relative.split(path.sep)[0];
-        return !GAME_EXCLUDES.has(first.toLowerCase());
-      },
-    });
+    // Copy the game tree by hand: a link that resolves into game/saves, or into
+    // an ancestor that contains it, is skipped rather than copied. This also
+    // stops a link back to game/ from recursing.
+    const copied = new Set();
+    const copyGame = async (source, target) => {
+      const sourceReal = await realpath(source).catch(() => source);
+      if (copied.has(sourceReal)) return;
+      copied.add(sourceReal);
+      await mkdir(target, { recursive: true });
+      for (const entry of await readdir(source, { withFileTypes: true })) {
+        if (GAME_EXCLUDES.has(entry.name.toLowerCase())) continue;
+        const from = path.join(source, entry.name);
+        const to = path.join(target, entry.name);
+        const info = await lstat(from);
+        if (info.isSymbolicLink()) {
+          const real = await realpath(from).catch(() => undefined);
+          if (!real || playerDataAlias(real)) continue;
+          const linked = await stat(real).catch(() => undefined);
+          if (linked?.isDirectory()) await copyGame(real, to);
+          else if (linked?.isFile()) await cp(real, to, { force: true });
+          continue;
+        }
+        if (info.isDirectory()) {
+          await copyGame(from, to);
+          continue;
+        }
+        if (info.isFile()) await cp(from, to, { force: true });
+      }
+    };
+    await copyGame(game, path.join(root, "game"));
     if (stateFound)
       await cp(state, path.join(root, "state"), { recursive: true, force: true, dereference: true });
     for (const entry of await readdir(project, { withFileTypes: true })) {
       const name = entry.name;
-      if (name === "game" || name === "state" || MIRROR_EXCLUDES.has(name.toLowerCase())) continue;
+      const key = rootResourceKey(name);
+      if (key === "game" || key === "state" || MIRROR_EXCLUDES.has(name.toLowerCase())) continue;
       const source = path.join(project, name);
       const target = path.join(root, name);
-      // stat follows a root junction or symlink, so a linked asset directory
-      // is recognized as a directory instead of failing on the link itself.
-      const info = await stat(source).catch((error) => {
-        if (error.code === "ENOENT") return undefined;
-        throw error;
-      });
-      if (!info) continue;
+      const real = await realpath(source).catch(() => undefined);
+      if (!real || playerDataAlias(real) || stateAlias(real)) continue;
+      const info = await stat(real);
       if (!info.isDirectory()) {
-        await cp(source, target, { force: true, dereference: true });
+        await cp(real, target, { force: true });
         continue;
       }
       try {
-        await symlink(source, target, link);
+        await symlink(real, target, link);
       } catch {
         // A host that cannot link still gets a faithful, if larger, copy.
-        await cp(source, target, { recursive: true, force: true, dereference: true });
+        await cp(real, target, { recursive: true, force: true, dereference: true });
       }
     }
   } catch (error) {
-    await cleanupFolder(root, "incomplete validation copy");
-    throw new Error("Could not make a disposable validation copy: " + (error instanceof Error ? error.message : String(error)));
+    const warning = await cleanupFolder(root, "incomplete validation copy");
+    const suffix = warning ? ` (${warning})` : "";
+    throw new Error("Could not make a disposable validation copy: " + (error instanceof Error ? error.message : String(error)) + suffix);
   }
   return { project: root, cleanup: () => cleanupFolder(root, "disposable validation copy") };
 }
@@ -201,44 +232,85 @@ async function validationMirror(project) {
 async function promoteCompiledScripts(mirror, project, signal) {
   const sourceRoot = path.join(mirror, "game");
   const targetRoot = path.join(project, "game");
+  if (signal?.aborted) throw new Error("Ren'Py command cancelled");
   const realTargetRoot = await realpath(targetRoot);
-  let promoted = 0;
-  async function walk(directory, relative = "") {
+  const plan = [];
+  const checkTarget = async (to) => {
+    const resolved = path.resolve(to);
+    const inside = path.relative(realTargetRoot, resolved);
+    if (inside.startsWith("..") || path.isAbsolute(inside))
+      throw new Error("Refusing to write a compiled script outside the game folder: " + to);
+    // Find the nearest existing ancestor and resolve it. A missing directory
+    // under a link outside game/ is rejected before mkdir can create anything.
+    let ancestor = path.dirname(resolved);
+    for (;;) {
+      const info = await lstat(ancestor).catch((error) => {
+        if (error.code === "ENOENT") return undefined;
+        throw error;
+      });
+      if (info) {
+        const real = await realpath(ancestor);
+        if (!insideOrEqual(realTargetRoot, real))
+          throw new Error("Refusing to write a compiled script outside the game folder: " + to);
+        break;
+      }
+      const parent = path.dirname(ancestor);
+      if (parent === ancestor)
+        throw new Error("Refusing to write a compiled script outside the game folder: " + to);
+      ancestor = parent;
+    }
+    const existing = await lstat(resolved).catch((error) => {
+      if (error.code === "ENOENT") return undefined;
+      throw error;
+    });
+    if (existing?.isSymbolicLink())
+      throw new Error("Refusing to replace a symbolic-link compiled script: " + to);
+    if (existing && !existing.isFile())
+      throw new Error("Refusing to replace a non-file compiled script target: " + to);
+  };
+  async function collect(directory, relative = "") {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       if (signal?.aborted) throw new Error("Ren'Py command cancelled");
       const next = relative ? path.join(relative, entry.name) : entry.name;
       const from = path.join(directory, entry.name);
       if (entry.isDirectory()) {
         if (GAME_EXCLUDES.has(entry.name.toLowerCase())) continue;
-        await walk(from, next);
+        await collect(from, next);
         continue;
       }
       if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".rpyc")) continue;
-      const current = await readFile(from);
       const to = path.join(targetRoot, next);
+      const current = await readFile(from);
       const old = await readFile(to).catch((error) => {
         if (error.code === "ENOENT") return undefined;
         throw error;
       });
       if (old?.equals(current)) continue;
-      const parent = path.dirname(to);
-      await mkdir(parent, { recursive: true });
-      const realParent = await realpath(parent);
-      const inside = path.relative(realTargetRoot, realParent);
-      if (inside.startsWith("..") || path.isAbsolute(inside))
-        throw new Error("Refusing to write a compiled script outside the game folder: " + to);
-      const existing = await lstat(to).catch((error) => {
-        if (error.code === "ENOENT") return undefined;
-        throw error;
-      });
-      if (existing?.isSymbolicLink())
-        throw new Error("Refusing to replace a symbolic-link compiled script: " + to);
-      await cp(from, to, { force: true });
-      promoted++;
+      await checkTarget(to);
+      plan.push({ from, to, old });
     }
   }
-  await walk(sourceRoot);
-  return promoted;
+  await collect(sourceRoot);
+  const written = [];
+  try {
+    for (const { from, to, old } of plan) {
+      await mkdir(path.dirname(to), { recursive: true });
+      await cp(from, to, { force: true });
+      written.push({ to, old });
+    }
+  } catch (error) {
+    // Best-effort rollback: a failed promotion must not leave a mixed set.
+    for (const { to, old } of written.reverse()) {
+      try {
+        if (old === undefined) await rm(to, { force: true });
+        else await writeFile(to, old);
+      } catch {
+        // The original promotion error remains the useful one.
+      }
+    }
+    throw error;
+  }
+  return plan.length;
 }
 
 /**
