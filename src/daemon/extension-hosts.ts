@@ -357,10 +357,10 @@ class ExtensionHost {
   }
 
   /** The native engine sessions this host owns, newest first. */
-  nativeSessions(): NativeSessionView[] {
+  nativeSessions(includeOutput = false): NativeSessionView[] {
     return [...this.#nativeSessions.values()]
       .sort((left, right) => right.startedAt - left.startedAt)
-      .map(({ releaseHold: _hold, expire: _expire, ...session }) => ({ ...session }));
+      .map(({ releaseHold: _hold, expire: _expire, output, ...session }) => ({ ...session, ...(includeOutput && output ? { output: { ...output } } : {}) }));
   }
 
   /** Stops one of this host's sessions, optionally only when `plugin` owns it. */
@@ -943,6 +943,14 @@ class ExtensionHost {
       this.#trackNativeSession(message.plugin, message.session);
       return;
     }
+    if (message.type === "native-session-output") {
+      const record = this.#nativeSessions.get(message.sessionId);
+      // The final drain can arrive just after the exit record; keep it while
+      // the session is still retained so the terminal output is not lost.
+      if (record && record.plugin === message.plugin)
+        record.output = { ...message.output };
+      return;
+    }
     if (message.type === "game") {
       this.#serveGame(message.id, message.plugin, message.request);
       return;
@@ -1066,8 +1074,8 @@ export class ExtensionHosts {
   serveSessions(service: HostSessionService): void { this.#sessions = service; }
 
   /** Native sessions a scope owns, or every host's when no scope is given. */
-  sessions(scope?: string): NativeSessionView[] {
-    if (scope !== undefined) return this.#hosts.get(scope)?.nativeSessions() ?? [];
+  sessions(scope?: string, includeOutput = false): NativeSessionView[] {
+    if (scope !== undefined) return this.#hosts.get(scope)?.nativeSessions(includeOutput) ?? [];
     return [...this.#hosts.values()].flatMap((host) => host.nativeSessions());
   }
 
@@ -1223,7 +1231,8 @@ export class ExtensionHosts {
             now,
           ];
           this.#crashes.set(plugin, recent);
-          this.#onLog?.(plugin, { level: "error", source: "host", text: `Its extension host stopped (${reason}) while it was running` });
+          const tail = exited.log.slice(-3).join(" | ").slice(0, 1_500);
+          this.#onLog?.(plugin, { level: "error", source: "host", text: `Its extension host stopped (${reason}) while it was running${tail ? `: ${tail}` : ""}` });
           if (recent.length >= this.#options.crashLimit && !this.#quarantined.has(plugin)) {
             this.#quarantined.add(plugin);
             this.#onLog?.(plugin, { level: "error", source: "host", text: `Turned off: it stopped its extension host ${recent.length} times in ${Math.round(this.#options.crashWindowMs / 60_000)} minutes. It stays off until it is turned on again or OhMyGame restarts.` });

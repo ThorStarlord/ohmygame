@@ -490,8 +490,8 @@ export class NativePlugins {
   }
 
   /** Native engine sessions a project's plugins currently own, or recently ended. */
-  async sessions(folder: string): Promise<NativeSessionView[]> {
-    return this.#hosts.sessions(await projectFolderKey(folder).catch(() => folder));
+  async sessions(folder: string, includeOutput = false): Promise<NativeSessionView[]> {
+    return this.#hosts.sessions(await projectFolderKey(folder).catch(() => folder), includeOutput);
   }
 
   /** Stops a native session in a project; only that project's host owns it. */

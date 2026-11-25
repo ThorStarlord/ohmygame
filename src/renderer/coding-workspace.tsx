@@ -42,6 +42,7 @@ import {
   type IconComponent,
 } from "./icons.js";
 import { usePluginSlot } from "./project-plugin-contributions.js";
+import { EngineObservationsPanel } from "./engine-observations-panel.js";
 import { Fragment, lazy, Suspense, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Tree, type NodeRendererProps, type TreeApi } from "react-arborist";
@@ -223,6 +224,7 @@ export function CodingWorkspace({
   const [previewClient] = useState(() => crypto.randomUUID());
   const [actualPreviewPath, setActualPreviewPath] = useState(project?.previewPath ?? "/");
   const [logsOpen, setLogsOpen] = useState(false);
+  const [observationsOpen, setObservationsOpen] = useState(false);
   const [knownPaths, setKnownPaths] = useState<string[]>(["/"]);
   const [files, setFiles] = useState<WorkspaceFile[]>([]);
   const [codeFileRequest, setCodeFileRequest] = useState(openFileRequest);
@@ -410,6 +412,8 @@ export function CodingWorkspace({
     show("code");
   };
 
+  const observationsButton = project ? <Button size="sm" variant="ghost" aria-expanded={observationsOpen} onClick={() => { setObservationsOpen((open) => !open); setLogsOpen(false); }}>{t("engineObservations.title")}</Button> : null;
+
   const views: Record<CodingView, { toolbar?: ReactNode; body: ReactNode } | undefined> = {
     preview: hasPreview ? {
       toolbar: supportsPreview ? <>
@@ -435,7 +439,7 @@ export function CodingWorkspace({
           tuningOpen={tuningOpen}
           onToggleTuning={buildsWebPreview(project) ? undefined : () => setTuningOpen((open) => !open)}
           logsOpen={logsOpen}
-          onLogs={() => setLogsOpen((open) => !open)}
+          onLogs={() => { setLogsOpen((open) => !open); setObservationsOpen(false); }}
           onNavigate={navigatePreview}
           onRefresh={refreshPreview}
           onRestart={() => onRestart()}
@@ -443,15 +447,16 @@ export function CodingWorkspace({
           onToggleAgentPlaytestWatch={() => void toggleAgentPlaytestWatch()}
           onViewportChange={setViewport}
         />
+        {observationsButton}
         {panels ? null : recordButton}
         {panels ? null : playButton}
-      </> : undefined,
+      </> : observationsButton,
       body: <>
         {supportsPreview ? (
           <div className="coding-workspace-preview-panel">
             <ErrorBoundary label={t("errorBoundary.label.preview")} resetKey={previewPageUrl}>
             <PreviewView
-              project={project} client={gameClient} onAskAgent={onAskAgent} onLogs={() => setLogsOpen(true)} onOpenFile={openCode} reload={reload} revision={workspaceRevision} url={previewPageUrl} viewport={viewport} device={device} filter={filter}
+              project={project} client={gameClient} onAskAgent={onAskAgent} onLogs={() => { setLogsOpen(true); setObservationsOpen(false); }} onOpenFile={openCode} reload={reload} revision={workspaceRevision} url={previewPageUrl} viewport={viewport} device={device} filter={filter}
               pausedAfterRecovery={previewPaused}
               active={shows("preview")} playerOpen={player.open} suspended={player.suspended} pending={player.pending || player.checking}
               error={player.error} onPlay={playGame} stageRef={previewStage}
@@ -481,7 +486,7 @@ export function CodingWorkspace({
       /></Suspense>,
     } : undefined,
     code: {
-      toolbar: <div className="code-toolbar" ref={setCodeToolbar} />,
+      toolbar: <><div className="code-toolbar" ref={setCodeToolbar} />{observationsButton}</>,
       body: project ? <WorkspaceCodeView
         key={project.id}
         toolbarTarget={codeToolbar}
@@ -513,6 +518,7 @@ export function CodingWorkspace({
       {header}
       {body}
       {supportsPreview && logsOpen && view === logsView ? <PreviewLogs project={project} onClose={() => setLogsOpen(false)} /> : null}
+      {project && observationsOpen && view === logsView ? <EngineObservationsPanel key={project.id} projectId={project.id} onClose={() => setObservationsOpen(false)} onOpenFile={(path) => { setObservationsOpen(false); openCode(path); }} onAskAgent={onAskAgent} /> : null}
     </section>
   );
   const topPlay = panels?.play && playButton ? createPortal(<>{recordButton}{playButton}</>, panels.play) : null;

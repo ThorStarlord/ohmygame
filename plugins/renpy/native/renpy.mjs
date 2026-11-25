@@ -6,6 +6,7 @@ import { constants } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { renpyDiagnostics } from "./diagnostics.mjs";
 
 const MAX_OUTPUT = 40_000;
 const DEFAULT_TIMEOUT = 120_000;
@@ -384,6 +385,7 @@ export async function runWithIsolatedSaves(command, project, args, options = {})
       cwd: mirror.project,
       env: { ...options.env, ...isolation.env },
     });
+    result = { ...result, ...await renpyDiagnostics(result.output, mirror.project, project) };
     if (args[0] === "compile" && result.exitCode === 0)
       result = { ...result, compiledArtifacts: await promoteCompiledScripts(mirror.project, project, options.signal) };
   } catch (error) {
@@ -419,10 +421,12 @@ export function runRenpy(command, args, options = {}) {
       ...(env ? { env: { ...process.env, ...env } } : {}),
     });
     let output = "";
+    let outputTruncated = false;
     let timeout = false;
     let settled = false;
     const append = (chunk) => {
       const part = chunk.toString("utf8");
+      if (output.length + part.length > MAX_OUTPUT) outputTruncated = true;
       output = (output + part).slice(-MAX_OUTPUT);
       const last = part.trim().split(/\r?\n/).at(-1);
       if (last) progress?.(last);
@@ -444,7 +448,7 @@ export function runRenpy(command, args, options = {}) {
     child.on("close", (exitCode) => {
       if (signal?.aborted) return finish(new Error("Ren'Py command cancelled"));
       if (timeout) return finish(new Error("Ren'Py command timed out"));
-      finish(undefined, { exitCode, output, errors: renpyErrors(output) });
+      finish(undefined, { exitCode, output, errors: renpyErrors(output), outputTruncated });
     });
   });
 }
@@ -504,6 +508,8 @@ export async function exportWeb(project, command, options = {}) {
       timeoutMs: 600_000,
       env: { ...options.env, ...isolation.env },
     });
+    if (typeof result.output === "string")
+      result = { ...result, ...await renpyDiagnostics(result.output, mirror.project, project) };
     if (result.exitCode !== 0)
       throw new Error("Ren'Py web export failed (exit " + result.exitCode + "): " + (result.errors.join("\n") || result.output.slice(-3000)));
     // Ren'Py may place a named web directory alongside an archive.

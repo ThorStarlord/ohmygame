@@ -17,12 +17,16 @@ import { agentToolName, configReferences, fillConfigReferences, isAppWidePlugin,
 import { isNewerPluginVersion, PLUGIN_NPM_REGISTRIES, type McpServerDefinition, type PluginLogView, type PluginOrigin, type PluginUninstallPreview, type ProjectPluginCanvas, type ProjectPluginPreview, type PluginMcpResult, type ProjectPreviewDevice, type StorePlugin } from "../shared/plugins.js";
 import { compileInputMap } from "../shared/preview-input.js";
 import type { PluginUiCapabilities } from "../shared/plugin-ui-protocol.js";
-import type { LibrarySource } from "../shared/contracts.js";
+import type { LibrarySource, ProjectState } from "../shared/contracts.js";
+import type { EngineObservationSnapshot, NativeWindowCaptureSummary } from "../shared/engine-observations.js";
+import { createLogRedactor } from "../shared/log-redaction.js";
+import { EngineCheckHistory, renpyCheckOperation, renpyCommandOperation } from "./engine-check-history.js";
 import type { PluginBrowserShortcut } from "../shared/browser.js";
 import { PROJECT_FILE_NAME, projectTypePlugin } from "../shared/project-file.js";
 import { appWidePluginSuits } from "../shared/project-runtime.js";
 import {
   ExtensionHosts,
+  ExtensionHostError,
   type ExtensionHostOptions,
 } from "./extension-hosts.js";
 import { NativePlugins, type PluginCallOptions } from "./native-plugins.js";
@@ -282,6 +286,8 @@ export class PluginServices {
   readonly safeMode: boolean;
   /** What each plugin printed and what of its failed, since the app started. */
   readonly logs = new PluginLogs((plugin) => this.values.secrets(plugin));
+  readonly #engineChecks = new EngineCheckHistory();
+  readonly #engineRedactor = createLogRedactor();
   /** Where signed releases are unpacked; uninstalling deletes its folders. */
   readonly packagesDirectory: string;
   #packageChanges: Promise<unknown> = Promise.resolve();
@@ -1436,15 +1442,71 @@ export class PluginServices {
     name: string,
     options: Omit<PluginCallOptions, "version">,
   ): Promise<unknown> {
-    // A session made before a version change must not run the new code with this version's schemas.
-    return this.#checkedTool(entry, entry.id, name, options.input, (tool, input) => {
-      const declared = entry.manifest.contributes?.tools?.find((item) => item.name === tool);
-      if (declared?.panel) {
-        if (!this.#pageTools) return Promise.reject(new Error(`${entry.id}'s ${tool} runs in its panel, which only the app's window can show`));
-        return this.#pageTools(entry, { name: tool, panel: declared.panel, ...(declared.timeoutSeconds ? { timeoutSeconds: declared.timeoutSeconds } : {}) }, { ...options, input });
+    // Observe only recognized engine checks at the existing validated tool boundary.
+    // Diagnostics never change the outcome of the underlying tool call.
+    const operation = renpyCheckOperation(entry.id, name);
+    const folder = operation ? await projectFolderKey(options.folder).catch(() => undefined) : undefined;
+    const run = folder && operation ? this.#engineChecks.begin(folder, entry.id, entry.version, operation) : undefined;
+    const redact = (text: string) => this.#engineRedactor(redactCredentials(text, this.values.secrets(entry.id)), { maxLength: 64_000 });
+    try {
+      const result = await this.#checkedTool(entry, entry.id, name, options.input, (tool, input) => {
+        const declared = entry.manifest.contributes?.tools?.find((item) => item.name === tool);
+        if (declared?.panel) {
+          if (!this.#pageTools) return Promise.reject(new Error(`${entry.id}'s ${tool} runs in its panel, which only the app's window can show`));
+          return this.#pageTools(entry, { name: tool, panel: declared.panel, ...(declared.timeoutSeconds ? { timeoutSeconds: declared.timeoutSeconds } : {}) }, { ...options, input });
+        }
+        return this.#redacting(entry.id, this.native.callTool(`${entry.id}:${tool}`, { ...options, input, version: entry.version }));
+      });
+      if (folder && run) {
+        try { this.#engineChecks.complete(folder, run, result, redact); } catch { /* Observation is best effort. */ }
       }
-      return this.#redacting(entry.id, this.native.callTool(`${entry.id}:${tool}`, { ...options, input, version: entry.version }));
-    });
+      return result;
+    } catch (error) {
+      if (folder && run) {
+        try {
+          this.#engineChecks.fail(folder, run, error instanceof Error ? error.message : String(error),
+            options.signal?.aborted === true || (error instanceof ExtensionHostError && error.code === "cancelled"), redact);
+        } catch { /* Preserve the original tool failure. */ }
+      }
+      throw error;
+    }
+  }
+
+  /** A read-only, project-scoped view of already observed evidence. */
+  async engineObservations(project: ProjectState, captures: NativeWindowCaptureSummary[] = []): Promise<EngineObservationSnapshot> {
+    const folder = await projectFolderKey(project.workspacePath).catch(() => undefined);
+    const redact = (text: string, plugin?: string) => this.#engineRedactor(redactCredentials(text, plugin ? this.values.secrets(plugin) : []));
+    const preview = project.preview;
+    return {
+      projectId: project.id,
+      observedAt: Date.now(),
+      historyRetention: "daemon-memory",
+      preview: {
+        status: preview.status, phase: preview.phase, revision: preview.revision, startedAt: preview.startedAt,
+        ...(preview.error ? { error: redact(preview.error).slice(0, 4_000) } : {}),
+        diagnostics: (preview.diagnostics ?? (preview.diagnostic ? [preview.diagnostic] : [])).slice(0, 50).map((item) => ({
+          kind: item.kind, message: redact(item.message), ...(item.source ? { source: item.source } : {}),
+          ...(item.path ? { path: redact(item.path) } : {}),
+        })),
+      },
+      nativeSessions: (await this.native.sessions(project.workspacePath, true)).map(({ output, ...item }) => ({
+        ...item, label: redact(item.label, item.plugin),
+        ...(item.error ? { error: redact(item.error, item.plugin) } : {}),
+        ...(output ? { output: { stdout: redact(output.stdout, item.plugin), stderr: redact(output.stderr, item.plugin), omitted: output.omitted } } : {}),
+      })),
+      captures: captures.map((capture) => ({ ...capture, title: redact(capture.title) })),
+      checks: folder ? this.#engineChecks.read(folder) : [],
+    };
+  }
+
+  async forgetEngineObservations(folder: string): Promise<void> {
+    const key = await projectFolderKey(folder).catch(() => undefined);
+    if (key) this.#engineChecks.forget(key);
+  }
+
+  /** Applies the same diagnostic redaction to a capture's window title. */
+  redactObservationText(text: string, plugin?: string): string {
+    return this.#engineRedactor(redactCredentials(text, plugin ? this.values.secrets(plugin) : []), { maxLength: 64_000 });
   }
 
   #pageTools: PageToolRunner | undefined;
@@ -1464,11 +1526,39 @@ export class PluginServices {
     command: PluginCommand,
     options: Pick<PluginCallOptions, "folder" | "input" | "onProgress" | "build">,
   ): Promise<unknown> {
-    const id = `${entry.id}:${command.id}`;
     return this.#checkedCommand(entry, entry.id, command, options.input, {
       tool: (tool, input) => this.callTool(entry, tool, { ...options, input }),
-      native: (input) => this.#redacting(entry.id, this.native.runCommand(id, { ...options, version: entry.version, ...(input === undefined ? {} : { input }) })),
+      native: (input) => this.#nativeCommand(entry, command, options, input),
     });
+  }
+
+  /** Runs a native command and records it when it is a recognized engine check. */
+  async #nativeCommand(
+    entry: PluginIndexEntry,
+    command: PluginCommand,
+    options: Pick<PluginCallOptions, "folder" | "input" | "onProgress" | "build" | "signal">,
+    input: unknown,
+  ): Promise<unknown> {
+    const id = `${entry.id}:${command.id}`;
+    const operation = renpyCommandOperation(entry.id, command.id);
+    const folder = operation && options.folder ? await projectFolderKey(options.folder).catch(() => undefined) : undefined;
+    const run = folder && operation ? this.#engineChecks.begin(folder, entry.id, entry.version, operation) : undefined;
+    const redact = (text: string) => this.#engineRedactor(redactCredentials(text, this.values.secrets(entry.id)), { maxLength: 64_000 });
+    try {
+      const result = await this.#redacting(entry.id, this.native.runCommand(id, { ...options, version: entry.version, ...(input === undefined ? {} : { input }) }));
+      if (folder && run) {
+        try { this.#engineChecks.complete(folder, run, result, redact); } catch { /* Observation is best effort. */ }
+      }
+      return result;
+    } catch (error) {
+      if (folder && run) {
+        try {
+          this.#engineChecks.fail(folder, run, error instanceof Error ? error.message : String(error),
+            options.signal?.aborted === true || (error instanceof ExtensionHostError && error.code === "cancelled"), redact);
+        } catch { /* Preserve the original command failure. */ }
+      }
+      throw error;
+    }
   }
 
   /**

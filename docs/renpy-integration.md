@@ -65,3 +65,11 @@ A full Godot release-ready claim requires a real Godot 4.3+ editor, the Compatib
 - Prefer a separate Ren'Py plugin over duplicating core OhMyGame functionality.
 - Implement the useful native development vertical and guarded web export, without pretending simulated tests qualify a real desktop.
 - Treat autopublish, upstream package publication and unverified engine behavior as out of scope for this fork.
+
+### Engine observations
+
+The Code and Game workspace Problems & engine status view reads the daemon's bounded recent engine-check observations. The same project-scoped evidence is available to agents through `engine_observations`. The Ren'Py plugin adds optional structured findings and truncation indicators to its existing result contract. Source navigation maps supported script locations reported inside the validation mirror to existing project-relative source files, excluding saves and cache. Output and unclassified findings remain evidence, not diagnoses.
+
+An explicit lint action uses the existing plugin command and tool execution path. Reading observations never starts a check or opens a game. Exit 0, nonzero exit, invocation failure, cancellation and unknown outcome are distinguished. Older plugin results without structured findings still show their reported errors as unclassified. History is in daemon memory (up to eight recent attempts per retained project and 24 projects), not a durable log; source freshness is always unknown. Comparisons match reported findings only for sequential checks of the same plugin version and operation with untruncated supported extraction. They do not establish identical SDK/configuration, full diagnostic coverage or a repaired source file. The save-isolation and linked-resource limitations above are unchanged. Reinstall the updated local Ren'Py development plugin to obtain the new structured fields and lint command.
+
+The Problems surface also offers an explicit Repair and recheck agent action for a retained nonzero engine exit. It supplies the before-run identity and a bounded diagnosis, correction, same-check rerun and comparison request through the existing conversation route. Merely opening the panel does not repair or validate anything. Native output inspection uses its exact session ID. This is a feedback-loop entry point, not proof of an autonomous successful repair or playtest.

@@ -301,3 +301,11 @@ gives the format and how a game connects. The game defines
   through the dev server, which is why games `fetch` it.
 - The bridge can't run where a page's security policy blocks it or in HTML the
   proxy doesn't inject. The panel then says the game isn't connected.
+
+### Integrated engine observation
+
+The Problems & engine status view and the read-only `engine_observations` agent tool combine recent recognized Ren'Py checks with the existing project's preview diagnostics and managed native-session states. They do not start a preview, check or native game. The check history is bounded, daemon-local and reports unknown source freshness; preview diagnostics are the existing runtime's reported state. Source-file navigation is available only for supported project-relative Ren'Py script locations. Output excerpts are bounded and passed through existing diagnostic redaction; do not treat these excerpts as complete logs or a proof that secrets can never appear. Native session state does not establish game behavior.
+
+For a running managed native session, the view offers Capture window. That person action asks the Windows desktop process for one visible top-level window owned by the session's process tree, stores a scaled PNG in daemon memory and reports blank-frame analysis. `engine_capture` can read that retained capture later; it cannot trigger a capture. An absent or ambiguous window is an error, not a fallback to a title or another desktop window. Captures can be scaled or blank and do not prove gameplay. The first version does not capture arbitrary windows, send native input or provide continuous observation.
+
+Native output observation is available for owned sessions whose plugin opts in at launch. The Problems & engine status view displays separate bounded stdout/stderr excerpts; they expire with the host's retained session. A missing output excerpt is not evidence of a clean run. Capturing output is not screen capture or proof of gameplay behavior. Existing Godot plugin distribution remains unchanged.

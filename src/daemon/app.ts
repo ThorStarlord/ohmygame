@@ -159,6 +159,7 @@ import { panelStateIssue } from "../shared/plugin-panel-state.js";
 import { isPluginId, networkCovers, PLUGIN_MEDIA_KINDS, pluginApiIssue, type PluginMediaKind, type PluginSave3DModel } from "../shared/plugin-manifest.js";
 import { PageToolError, PluginPageTools, type PageToolAnswer } from "./plugin-page-tools.js";
 import { PanelScreenshots, type PanelScreenshotAnswer } from "./panel-screenshots.js";
+import { NativeWindowCaptures, parseNativeWindowCapture } from "./native-window-captures.js";
 import { createPluginFolder, deletePluginFile, listPluginFiles, movePluginFile, openPluginFile, PLUGIN_FILE_MAX_BYTES, PluginFileError, writablePath, writePluginFile } from "./plugin-files.js";
 import { isOwned, ownedFolders, PluginPendingWrites, ProjectIdle } from "./plugin-pending-writes.js";
 import { PluginModelError, PluginModels } from "./plugin-models.js";
@@ -1036,6 +1037,8 @@ export function createApp(options: AppOptions = {}) {
   });
   // Indexing the bundled plugins starts now; every use of the plugin services waits for it.
   const pluginServicesReady = pluginServices.ready().catch((err: unknown) => app.log.warn({ err }, "Could not load the plugins"));
+  /** Person-authorized captures of a project's managed native window. */
+  const nativeWindowCaptures = new NativeWindowCaptures();
   projects.recognizesEngine = (folder) => pluginServices.recognizesFolder(folder);
 
   const pluginConfiguration = new PluginConfigurationStore(dataDirectory);
@@ -1186,6 +1189,16 @@ export function createApp(options: AppOptions = {}) {
     },
   });
   /** OhMyGame's own tools for a conversation, the same for Pi and for a coding agent. */
+  const observeEngine = async (id: string) => {
+    const current = projects.get(id);
+    if (!current) throw new Error("Project not found");
+    return pluginServices.engineObservations(current, nativeWindowCaptures.list(current.id));
+  };
+  const readEngineCapture = async (project: ProjectState, sessionId: string) =>
+    nativeWindowCaptures.latest(project.id, sessionId);
+  /** Native window capture is a Windows desktop capability, not a generic tool. */
+  const engineCaptureReader = (project: ProjectState) =>
+    process.platform === "win32" ? (sessionId: string) => readEngineCapture(project, sessionId) : undefined;
   const projectAgentTools = async (project: ProjectState, conversation: StoredConversation) => {
     const playtest = await ownedPlaytest(project, `${project.id}:${conversation.summary.id}`);
     return [...createAgentTools(
@@ -1220,6 +1233,8 @@ export function createApp(options: AppOptions = {}) {
         approve: async (request, approvalSignal) => await agents.askApproval(project.id, conversation.summary.id, `library:${toolCallId}`, request, approvalSignal) !== "deny",
       }, signal),
       panelScreenshots,
+      () => observeEngine(project.id),
+      engineCaptureReader(project),
     ), ...await pluginSetup.agentTools(project)];
   };
   const playtestTarget = async (project: ProjectState, signal?: AbortSignal): Promise<GameUseOpenTarget> => {
@@ -1245,6 +1260,8 @@ export function createApp(options: AppOptions = {}) {
       // An outside agent has no OhMyGame conversation to ask the person in, so it takes only their own assets.
       (input, _toolCallId, signal) => libraryAgentSearch.use(input, { conversation: `external:${sessionId}`, projectId: project.id, workspacePath: project.workspacePath }, signal),
       panelScreenshots,
+      () => observeEngine(project.id),
+      engineCaptureReader(project),
     ),
     // An outside agent's call isn't part of an OhMyGame turn, so it is a change of its own.
     pluginTools: async (project) => (await pluginServices.agentTools(project.workspacePath)).map((tool) => ({
@@ -1260,7 +1277,7 @@ export function createApp(options: AppOptions = {}) {
       // game_use lists what any runtime takes; a project's own accepts a subset.
       const placeholder: ProjectState = { id: "", name: "", type: "interactive-story", updatedAt: "", workspacePath: "", preview: { status: "stopped" } };
       return [
-        ...createAgentTools(placeholder, tools, projects, undefined, undefined, undefined, undefined, canvasStore, undefined, undefined, options.browserDriver, mediaModelsFor(placeholder.id), (input, signal) => libraryAgentSearch.search("catalog", input, signal), () => Promise.reject(new Error("No project")), panelScreenshots),
+        ...createAgentTools(placeholder, tools, projects, undefined, undefined, undefined, undefined, canvasStore, undefined, undefined, options.browserDriver, mediaModelsFor(placeholder.id), (input, signal) => libraryAgentSearch.search("catalog", input, signal), () => Promise.reject(new Error("No project")), panelScreenshots, () => observeEngine(placeholder.id), process.platform === "win32" ? () => Promise.resolve(undefined) : undefined),
         createGameUseTool(options.playtestDriver ?? UNAVAILABLE_GAME_RUNTIME, () => playtestTarget(placeholder), { catalog: true }),
       ];
     },
@@ -3117,6 +3134,41 @@ export function createApp(options: AppOptions = {}) {
       return pluginChangeReply(reply, cause);
     }
   });
+  // Read existing engine evidence without invoking tools or starting a game.
+  app.get<{ Params: { projectId: string } }>("/projects/:projectId/engine-observations", async (request, reply) => {
+    if (!projects.get(request.params.projectId)) return reply.code(404).send({ error: "Project not found" });
+    return observeEngine(request.params.projectId);
+  });
+  // A person-authorized capture from the desktop window, retained for the agent.
+  app.post<{ Params: { projectId: string; sessionId: string }; Body: unknown }>(
+    "/projects/:projectId/native-sessions/:sessionId/captures",
+    { bodyLimit: 16 * 1024 * 1024 },
+    async (request, reply) => {
+      const project = projects.get(request.params.projectId);
+      if (!project) return reply.code(404).send({ error: "Project not found" });
+      const session = (await pluginServices.native.sessions(project.workspacePath))
+        .find((item) => item.id === request.params.sessionId);
+      if (!session) return reply.code(404).send({ error: "Native session not found" });
+      if (session.state !== "running" || session.pid === undefined) {
+        return reply.code(409).send({ error: "The native session is no longer running" });
+      }
+      const input = parseNativeWindowCapture(request.body);
+      if (!input || input.rootPid !== session.pid) return reply.code(400).send({ error: "Invalid window capture" });
+      return nativeWindowCaptures.add(project.id, session.id, {
+        ...input,
+        title: pluginServices.redactObservationText(input.title, session.plugin),
+      });
+    },
+  );
+  app.get<{ Params: { projectId: string; sessionId: string } }>(
+    "/projects/:projectId/native-sessions/:sessionId/capture",
+    async (request, reply) => {
+      const project = projects.get(request.params.projectId);
+      if (!project) return reply.code(404).send({ error: "Project not found" });
+      const capture = nativeWindowCaptures.latest(project.id, request.params.sessionId);
+      return capture ?? reply.code(404).send({ error: "No capture is retained for this session" });
+    },
+  );
   // Native engine processes a project's plugins own, and deliberate stop.
   app.get<{ Params: { projectId: string } }>("/projects/:projectId/native-sessions", async (request, reply) => {
     const project = projects.get(request.params.projectId);
@@ -4114,6 +4166,8 @@ export function createApp(options: AppOptions = {}) {
   /** Lets go of everything the app holds for a project, before its files go. */
   async function forgetProject(project: ProjectState): Promise<void> {
     await previews.forget(project);
+    await pluginServices.forgetEngineObservations(project.workspacePath);
+    nativeWindowCaptures.forget(project.id);
     gameTuning.forget(project);
     agents.forgetProject(project.id);
     conversations.forget(project);

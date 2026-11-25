@@ -829,6 +829,8 @@ describe("OhMyGame plugin contracts", () => {
     const run = manifest.contributes.commands.find((command) => command.id === "run-in-renpy")?.run;
     expect(run).toMatchObject({ native: "runInRenpy", changesFiles: false });
     expect(run).not.toHaveProperty("timeoutSeconds");
+    const lint = manifest.contributes.commands.find((command) => command.id === "lint-renpy")?.run;
+    expect(lint).toMatchObject({ native: "lintRenpy", changesFiles: false });
     expect(manifest.engines["ohmygame-api"]).toBe("^2.37.0");
   });
 
@@ -878,6 +880,7 @@ describe("OhMyGame plugin contracts", () => {
         : [path.join(folder, "game"), "run"],
       cwd: sdk,
       label: "Ren'Py",
+      captureOutput: true,
     }]);
     expect(result).toEqual({ started: true, sessionId: "session-1", pid: 1234 });
   });
@@ -896,6 +899,24 @@ describe("OhMyGame plugin contracts", () => {
     expect(Object.keys(types)).toEqual(["renpy-game"]);
     expect(typeof (types["renpy-game"] as { buildWeb: unknown }).buildWeb).toBe("function");
     expect(tools.sort()).toEqual(["renpy_compile", "renpy_export_web", "renpy_lint", "renpy_status", "renpy_test"].sort());
-    expect(commands.sort()).toEqual(["runInRenpy", "settingsStatus"]);
+    expect(commands.sort()).toEqual(["lintRenpy", "runInRenpy", "settingsStatus"]);
+  });
+});
+
+describe("Engine diagnostic observations", () => {
+  it("returns project-relative findings from the validation mirror with legacy output intact", async () => {
+    const fake = path.join(folder, "diagnostic.cjs");
+    await writeFile(fake, "const path = require(\"node:path\"); console.log('File \"' + path.join(process.cwd(), \"game\", \"script.rpy\") + '\", line 2:'); console.log(\"Error: fixture diagnostic\"); console.log(\"game/script.rpy:3 Warning: fixture lint finding\"); process.exitCode = 1;");
+    const result = await runWithIsolatedSaves({ executable: process.execPath, prefixArgs: [fake], sdkPath: folder }, folder, ["lint"]);
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain("Error: fixture diagnostic");
+    expect(result.outputTruncated).toBe(false);
+    expect(result.diagnosticsTruncated).toBe(false);
+    expect(result.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "game/script.rpy", line: 2 }),
+      expect.objectContaining({ severity: "error", message: "Error: fixture diagnostic" }),
+      expect.objectContaining({ severity: "warning", path: "game/script.rpy", line: 3 }),
+    ]));
+    expect(result.validationCopy).toBe(true);
   });
 });

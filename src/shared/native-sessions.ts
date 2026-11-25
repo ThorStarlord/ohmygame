@@ -12,6 +12,23 @@ export interface NativeSessionStart {
   cwd?: string;
   /** Shown in the app, such as "Ren'Py" or "Godot". */
   label?: string;
+  /** Explicitly observe this owned child's output. Default: no output capture. */
+  captureOutput?: boolean;
+}
+
+export interface NativeSessionOutput {
+  stdout: string;
+  stderr: string;
+  /** Earlier output or the final drain may have been omitted. */
+  omitted: boolean;
+}
+
+export function isNativeSessionOutput(value: unknown): value is NativeSessionOutput {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const output = value as Partial<NativeSessionOutput>;
+  return typeof output.stdout === "string" && output.stdout.length <= 4_096 &&
+    typeof output.stderr === "string" && output.stderr.length <= 4_096 &&
+    typeof output.omitted === "boolean";
 }
 
 /** What the project and its windows see about a session. */
@@ -29,6 +46,8 @@ export interface NativeSessionView {
   error?: string;
   /** True when the person or the project asked it to stop. */
   stopped?: boolean;
+  /** Only in an explicit project observation, not the ordinary session list. */
+  output?: NativeSessionOutput;
 }
 
 /** The handle a plugin's native code receives. */
@@ -63,6 +82,7 @@ export function nativeSessionStartIssue(value: unknown): string | undefined {
     return "The working folder must be a bounded path";
   if (start.label !== undefined && (typeof start.label !== "string" || !start.label.trim() || start.label.length > NATIVE_SESSION_MAX_LABEL_CHARS || hasNul(start.label)))
     return "The session label must be a bounded string";
+  if (start.captureOutput !== undefined && typeof start.captureOutput !== "boolean") return "Native output capture must be a boolean";
   return undefined;
 }
 
@@ -82,6 +102,7 @@ export function isNativeSessionView(value: unknown): value is NativeSessionView 
     (session.exitCode === undefined || session.exitCode === null || Number.isInteger(session.exitCode)) &&
     (session.signal === undefined || session.signal === null || (typeof session.signal === "string" && session.signal.length <= 64)) &&
     (session.error === undefined || (typeof session.error === "string" && session.error.length <= 2_000)) &&
-    (session.stopped === undefined || typeof session.stopped === "boolean")
+    (session.stopped === undefined || typeof session.stopped === "boolean") &&
+    (session.output === undefined || isNativeSessionOutput(session.output))
   );
 }

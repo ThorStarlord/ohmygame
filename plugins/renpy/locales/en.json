@@ -7,5 +7,6 @@
   "config.renpySdkPath": "Ren'Py SDK folder or launcher",
   "config.renpySdkPath.description": "Select the Ren'Py SDK directory containing renpy.py and renpy.sh, or renpy.sh itself. On Windows, select the SDK directory; the plugin uses its bundled Python interpreter. Leave empty to use RENPY_SDK_PATH or RENPY_HOME.",
   "command.run": "Run in Ren'Py",
-  "command.status": "Ren'Py SDK status"
+  "command.status": "Ren'Py SDK status",
+  "command.lint": "Check Ren'Py scripts"
 }

@@ -38,6 +38,8 @@ export const EXTERNAL_PROJECT_TOOLS = [
   "generate_audio",
   "canvas_check",
   "project_guide",
+  "engine_observations",
+  ...(process.platform === "win32" ? ["engine_capture"] as const : []),
   "canvas_initialize",
   "generate_canvas_media",
   "library_search",

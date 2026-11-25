@@ -7,5 +7,6 @@
   "config.renpySdkPath": "Ren'Py SDK 文件夹或启动程序",
   "config.renpySdkPath.description": "选择包含 renpy.py 和 renpy.sh 的 Ren'Py SDK 目录（Windows 推荐），或 renpy.sh。留空时使用 RENPY_SDK_PATH 或 RENPY_HOME。",
   "command.run": "在 Ren'Py 中运行",
-  "command.status": "Ren'Py SDK 状态"
+  "command.status": "Ren'Py SDK 状态",
+  "command.lint": "检查 Ren'Py 脚本"
 }
