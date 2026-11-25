@@ -46,7 +46,7 @@ Godot observation:
 - `bun run typecheck`, `bun run lint`, and `bun run plugin:check plugins/renpy` - pass.
 - `test/agent-tools.test.ts -t "reads only a person-authorized native capture"` - pass. Two unrelated existing Windows symlink fixtures in that file fail with `EPERM` in this environment.
 - Desktop capture and lint/source navigation were exercised through the actual built Electron app; evidence is local, not remote CI.
-- After hardening, the real capture path was re-run through the main-frame desktop IPC and the daemon route: 1920 x 1112 PNG accepted, `likelyBlank: false`. The route rejects extra fields, non-numeric HWND, malformed/non-PNG data, dimension mismatches and images over 16 million pixels; retained encoded captures are capped at 32 MiB per project.
+- After hardening, the real capture path was re-run through the main-frame desktop IPC and the daemon route: 1920 x 1112 PNG accepted, `likelyBlank: false`. The route rejects extra fields, non-numeric HWND, payloads without a PNG signature/IHDR, dimension mismatches and images over 16 million pixels; decoded images are capped at 12 MiB and retained encoded captures at 32 MiB per project.
 - Evidence log: `H:\GithubRepositories\pilot-data\evidence\engine-observations-desktop.json.log`, `renpy-native-capture.png` and `atlas-native-capture.png`.
 
 ## Limitations

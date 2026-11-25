@@ -82,7 +82,7 @@ export function isNativeWindowCaptureInput(value: unknown): value is NativeWindo
     && typeof item.rootPid === "number" && Number.isSafeInteger(item.rootPid) && item.rootPid > 0
     && typeof item.pid === "number" && Number.isSafeInteger(item.pid) && item.pid > 0
     && item.mediaType === "image/png"
-    && typeof item.data === "string" && item.data.length > 0 && item.data.length <= 12 * 1024 * 1024
+    && typeof item.data === "string" && item.data.length > 0 && item.data.length <= 16 * 1024 * 1024
     && item.data.length % 4 === 0 && /^[A-Za-z0-9+/]*={0,2}$/.test(item.data)
     && !!analysis && typeof analysis === "object"
     && typeof analysis.sampledPixels === "number" && Number.isSafeInteger(analysis.sampledPixels) && analysis.sampledPixels >= 0

@@ -4,9 +4,10 @@ import { isNativeWindowCaptureInput } from "../shared/engine-observations.js";
 
 const MAX_PROJECTS = 24;
 const MAX_CAPTURES = 12;
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 const MAX_PIXELS = 16_000_000;
 const MAX_PROJECT_BYTES = 32 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 128 * 1024 * 1024;
 
 const summary = ({ data: _data, ...item }: NativeWindowCapture): NativeWindowCaptureSummary => ({ ...item });
 
@@ -54,6 +55,7 @@ export function parseNativeWindowCapture(value: unknown): NativeWindowCaptureInp
 export class NativeWindowCaptures {
   readonly #projects = new Map<string, NativeWindowCapture[]>();
   readonly #bytes = new Map<string, number>();
+  #totalBytes = 0;
 
   add(projectId: string, sessionId: string, input: NativeWindowCaptureInput): NativeWindowCaptureSummary {
     const capture: NativeWindowCapture = {
@@ -83,12 +85,21 @@ export class NativeWindowCaptures {
     this.#projects.delete(projectId);
     this.#projects.set(projectId, captures);
     this.#bytes.set(projectId, bytes);
-    while (this.#projects.size > MAX_PROJECTS) {
-      const oldest = this.#projects.keys().next().value!;
+    this.#totalBytes = this.#total();
+    while (this.#projects.size > MAX_PROJECTS || this.#totalBytes > MAX_TOTAL_BYTES) {
+      const oldest = [...this.#projects.keys()].find((id) => id !== projectId);
+      if (oldest === undefined) break;
       this.#projects.delete(oldest);
       this.#bytes.delete(oldest);
+      this.#totalBytes = this.#total();
     }
     return summary(capture);
+  }
+
+  #total(): number {
+    let total = 0;
+    for (const bytes of this.#bytes.values()) total += bytes;
+    return total;
   }
 
   list(projectId: string): NativeWindowCaptureSummary[] {
@@ -103,5 +114,6 @@ export class NativeWindowCaptures {
   forget(projectId: string): void {
     this.#projects.delete(projectId);
     this.#bytes.delete(projectId);
+    this.#totalBytes = this.#total();
   }
 }
