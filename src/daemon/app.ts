@@ -1186,6 +1186,11 @@ export function createApp(options: AppOptions = {}) {
     },
   });
   /** OhMyGame's own tools for a conversation, the same for Pi and for a coding agent. */
+  const observeEngine = async (id: string) => {
+    const current = projects.get(id);
+    if (!current) throw new Error("Project not found");
+    return pluginServices.engineObservations(current);
+  };
   const projectAgentTools = async (project: ProjectState, conversation: StoredConversation) => {
     const playtest = await ownedPlaytest(project, `${project.id}:${conversation.summary.id}`);
     return [...createAgentTools(
@@ -1220,6 +1225,7 @@ export function createApp(options: AppOptions = {}) {
         approve: async (request, approvalSignal) => await agents.askApproval(project.id, conversation.summary.id, `library:${toolCallId}`, request, approvalSignal) !== "deny",
       }, signal),
       panelScreenshots,
+      () => observeEngine(project.id),
     ), ...await pluginSetup.agentTools(project)];
   };
   const playtestTarget = async (project: ProjectState, signal?: AbortSignal): Promise<GameUseOpenTarget> => {
@@ -1245,6 +1251,7 @@ export function createApp(options: AppOptions = {}) {
       // An outside agent has no OhMyGame conversation to ask the person in, so it takes only their own assets.
       (input, _toolCallId, signal) => libraryAgentSearch.use(input, { conversation: `external:${sessionId}`, projectId: project.id, workspacePath: project.workspacePath }, signal),
       panelScreenshots,
+      () => observeEngine(project.id),
     ),
     // An outside agent's call isn't part of an OhMyGame turn, so it is a change of its own.
     pluginTools: async (project) => (await pluginServices.agentTools(project.workspacePath)).map((tool) => ({
@@ -1260,7 +1267,7 @@ export function createApp(options: AppOptions = {}) {
       // game_use lists what any runtime takes; a project's own accepts a subset.
       const placeholder: ProjectState = { id: "", name: "", type: "interactive-story", updatedAt: "", workspacePath: "", preview: { status: "stopped" } };
       return [
-        ...createAgentTools(placeholder, tools, projects, undefined, undefined, undefined, undefined, canvasStore, undefined, undefined, options.browserDriver, mediaModelsFor(placeholder.id), (input, signal) => libraryAgentSearch.search("catalog", input, signal), () => Promise.reject(new Error("No project")), panelScreenshots),
+        ...createAgentTools(placeholder, tools, projects, undefined, undefined, undefined, undefined, canvasStore, undefined, undefined, options.browserDriver, mediaModelsFor(placeholder.id), (input, signal) => libraryAgentSearch.search("catalog", input, signal), () => Promise.reject(new Error("No project")), panelScreenshots, () => observeEngine(placeholder.id)),
         createGameUseTool(options.playtestDriver ?? UNAVAILABLE_GAME_RUNTIME, () => playtestTarget(placeholder), { catalog: true }),
       ];
     },
@@ -3117,6 +3124,11 @@ export function createApp(options: AppOptions = {}) {
       return pluginChangeReply(reply, cause);
     }
   });
+  // Read existing engine evidence without invoking tools or starting a game.
+  app.get<{ Params: { projectId: string } }>("/projects/:projectId/engine-observations", async (request, reply) => {
+    if (!projects.get(request.params.projectId)) return reply.code(404).send({ error: "Project not found" });
+    return observeEngine(request.params.projectId);
+  });
   // Native engine processes a project's plugins own, and deliberate stop.
   app.get<{ Params: { projectId: string } }>("/projects/:projectId/native-sessions", async (request, reply) => {
     const project = projects.get(request.params.projectId);
@@ -4114,6 +4126,7 @@ export function createApp(options: AppOptions = {}) {
   /** Lets go of everything the app holds for a project, before its files go. */
   async function forgetProject(project: ProjectState): Promise<void> {
     await previews.forget(project);
+    await pluginServices.forgetEngineObservations(project.workspacePath);
     gameTuning.forget(project);
     agents.forgetProject(project.id);
     conversations.forget(project);

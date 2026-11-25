@@ -899,3 +899,20 @@ describe("OhMyGame plugin contracts", () => {
     expect(commands.sort()).toEqual(["runInRenpy", "settingsStatus"]);
   });
 });
+
+describe("Engine diagnostic observations", () => {
+  it("returns project-relative findings from the validation mirror with legacy output intact", async () => {
+    const fake = path.join(folder, "diagnostic.cjs");
+    await writeFile(fake, 'const path = require("node:path"); console.log("File \\"" + path.join(process.cwd(), "game", "script.rpy") + "\\", line 2:"); console.log("Error: fixture diagnostic"); process.exitCode = 1;');
+    const result = await runWithIsolatedSaves({ executable: process.execPath, prefixArgs: [fake], sdkPath: folder }, folder, ["lint"]);
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain("Error: fixture diagnostic");
+    expect(result.outputTruncated).toBe(false);
+    expect(result.diagnosticsTruncated).toBe(false);
+    expect(result.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "game/script.rpy", line: 2 }),
+      expect.objectContaining({ severity: "error", message: "Error: fixture diagnostic" }),
+    ]));
+    expect(result.validationCopy).toBe(true);
+  });
+});

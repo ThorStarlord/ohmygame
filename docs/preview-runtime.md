@@ -301,3 +301,7 @@ gives the format and how a game connects. The game defines
   through the dev server, which is why games `fetch` it.
 - The bridge can't run where a page's security policy blocks it or in HTML the
   proxy doesn't inject. The panel then says the game isn't connected.
+
+### Integrated engine observation
+
+The Problems & engine status view and the read-only `engine_observations` agent tool combine recent recognized Ren'Py checks with the existing project's preview diagnostics and managed native-session states. They do not start a preview or inspect a native window. The check history is bounded, daemon-local and reports unknown source freshness; preview diagnostics are the existing runtime's reported state. Source-file navigation is available only for supported project-relative Ren'Py script locations. Output excerpts are bounded and passed through existing diagnostic redaction; do not treat these excerpts as complete logs or a proof that secrets can never appear. Native session state does not establish game behavior. For actual gameplay use the supported `game_use` capabilities, not a guessed native capture route.

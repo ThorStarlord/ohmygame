@@ -112,6 +112,20 @@
           "native": "settingsStatus",
           "changesFiles": false
         }
+      },
+      {
+        "id": "lint-renpy",
+        "title": "%command.lint%",
+        "run": {
+          "tool": "renpy_lint",
+          "input": {}
+        },
+        "slots": [
+          {
+            "slot": "game.more",
+            "when": "project.plugin('thorstarlord/renpy')"
+          }
+        ]
       }
     ],
     "settings": {

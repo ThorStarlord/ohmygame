@@ -38,6 +38,7 @@ export const EXTERNAL_PROJECT_TOOLS = [
   "generate_audio",
   "canvas_check",
   "project_guide",
+  "engine_observations",
   "canvas_initialize",
   "generate_canvas_media",
   "library_search",
