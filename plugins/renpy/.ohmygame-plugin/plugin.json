@@ -70,7 +70,7 @@
       },
       {
         "name": "renpy_compile",
-        "description": "Compile Ren'Py scripts to .rpyc using the installed SDK; keeps compiled files for save compatibility.",
+        "description": "Compile Ren'Py scripts in a disposable mirror with the installed SDK, promote changed .rpyc files for save compatibility, and keep player saves untouched.",
         "input": "./tools/empty.json",
         "output": "./tools/run-output.json"
       },
@@ -82,7 +82,7 @@
       },
       {
         "name": "renpy_export_web",
-        "description": "Build a Ren'Py Web distribution into the game's OhMyGame preview folder.",
+        "description": "Build a Ren'Py Web distribution from a disposable mirror into the game's OhMyGame preview folder.",
         "input": "./tools/empty.json",
         "output": "./tools/run-output.json"
       }

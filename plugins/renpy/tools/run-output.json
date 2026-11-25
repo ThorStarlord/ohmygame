@@ -18,6 +18,13 @@
     },
     "validationCopy": {
       "type": "boolean"
+    },
+    "compiledArtifacts": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cleanupWarning": {
+      "type": "string"
     }
   },
   "required": [
