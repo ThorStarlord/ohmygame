@@ -48,7 +48,7 @@ const zhCN: typeof en = {
     retainedCaptures: "保留的截图",
     blankCapture: "可能为空白",
     captureAlt: "{{label}} 的窗口截图",
-    captureHint: "这是经你授权的一次截图，可能已缩放；空白截图不能证明游戏已损坏。",
+    captureHint: "这是经你授权的一次截图，会在本次应用会话中保留，代理可以读取。截图可能已缩放；空白截图不能证明游戏已损坏。",
   },
   pluginAccess: {
     title: "已记住的访问授权",

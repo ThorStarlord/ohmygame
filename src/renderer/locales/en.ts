@@ -47,7 +47,7 @@ const en = {
     retainedCaptures: "Retained captures",
     blankCapture: "likely blank",
     captureAlt: "Captured window for {{label}}",
-    captureHint: "One person-authorized snapshot. It may be scaled; a blank image is not proof the game is broken.",
+    captureHint: "One person-authorized snapshot, retained for this app session so the agent can read it. It may be scaled; a blank image is not proof the game is broken.",
   },
   pluginAccess: {
     title: "Remembered access",
