@@ -24,6 +24,7 @@ import { ignoreBrokenStdio } from "./stdio.js";
 import { RotatingLogFile } from "./log-file.js";
 import { createLogRedactor } from "../shared/log-redaction.js";
 import { desktopDiagnosticsArchive } from "./diagnostics-export.js";
+import { captureNativeWindow } from "./native-window-capture.js";
 import { recordConsole, recordUncaughtErrors, rendererConsoleLines, runtimeStateLine, updateFailureLine } from "./console-log.js";
 import { createDesktopWindow, fitPlaytestContentSize, isValidPlaytestViewport, waitForRenderer } from "./window.js";
 import { applicationMenuTemplate, isApplicationMenuLabels, windowContextMenuTemplate } from "./application-menu.js";
@@ -551,6 +552,16 @@ handle("ohmygame:select-project-directory", async (event) => {
     properties: ["openDirectory", "createDirectory"],
   });
   return result.canceled ? undefined : result.filePaths[0];
+});
+handle("ohmygame:capture-native-window", async (event, request: unknown) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error("Invalid native capture source");
+  if (!request || typeof request !== "object") throw new Error("Invalid native capture request");
+  const { rootPid, sessionId } = request as { rootPid?: unknown; sessionId?: unknown };
+  if (typeof rootPid !== "number" || !Number.isSafeInteger(rootPid) || rootPid <= 0
+    || typeof sessionId !== "string" || !sessionId || sessionId.length > 100) {
+    throw new Error("Invalid native capture request");
+  }
+  return captureNativeWindow({ rootPid, sessionId });
 });
 handle("ohmygame:capture-page", async (event, rectangle: unknown) => {
   const window = mainWindow && event.sender === mainWindow.webContents

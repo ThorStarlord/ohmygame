@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { EngineCheckStatus, EngineDiagnostic, EngineObservationSnapshot } from "../shared/engine-observations.js";
+import type { EngineCheckStatus, EngineDiagnostic, EngineObservationSnapshot, NativeWindowCapture } from "../shared/engine-observations.js";
 import type { NativeSessionView } from "../shared/native-sessions.js";
 import { request } from "./api.js";
 import { usePluginSlot } from "./project-plugin-contributions.js";
@@ -40,6 +40,9 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
   const [selectedId, setSelectedId] = useState<string>();
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string>();
+  const [captureImages, setCaptureImages] = useState<Record<string, string>>({});
+  const [capturing, setCapturing] = useState<string>();
+  const [captureError, setCaptureError] = useState<string>();
   const commands = usePluginSlot("game.more");
   const lint = commands.commands.find((command) => command.id === "thorstarlord/renpy:lint-renpy");
 
@@ -72,6 +75,34 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
     catch (cause) { setCheckError(cause instanceof Error ? cause.message : String(cause)); }
     finally { setChecking(false); setRefresh((value) => value + 1); }
   }
+  async function capture(sessionId: string, pid: number) {
+    const api = window.ohMyGameDesktop?.captureNativeWindow;
+    if (!api || capturing) return;
+    setCapturing(sessionId);
+    setCaptureError(undefined);
+    try {
+      const image = await api({ rootPid: pid, sessionId });
+      await request(`/projects/${encodeURIComponent(projectId)}/native-sessions/${encodeURIComponent(sessionId)}/captures`, {
+        method: "POST",
+        body: JSON.stringify(image),
+      });
+      setCaptureImages((current) => ({ ...current, [sessionId]: image.data }));
+      setRefresh((value) => value + 1);
+    } catch (cause) {
+      setCaptureError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setCapturing(undefined);
+    }
+  }
+  async function viewCapture(sessionId: string) {
+    setCaptureError(undefined);
+    try {
+      const image = await request<NativeWindowCapture>(`/projects/${encodeURIComponent(projectId)}/native-sessions/${encodeURIComponent(sessionId)}/capture`);
+      setCaptureImages((current) => ({ ...current, [sessionId]: image.data }));
+    } catch (cause) {
+      setCaptureError(cause instanceof Error ? cause.message : String(cause));
+    }
+  }
 
   return <aside className="preview-logs" aria-label={t("engineObservations.title")} data-native-preview-overlay="">
     <header><strong>{t("engineObservations.title")}</strong>
@@ -81,6 +112,7 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
     <p>{t("engineObservations.retention")}</p>
     {lint ? <Button size="sm" disabled={checking || current?.checks.some((run) => run.operation === "lint" && run.status === "running")} onClick={() => void runLint()}>{checking ? t("engineObservations.lintBusy") : t("engineObservations.lint")}</Button> : null}
     {checkError ? <p role="alert">{checkError}</p> : null}
+    {captureError ? <p role="alert">{captureError}</p> : null}
     {error ? <p role="alert">{t("engineObservations.unavailable")}</p> : null}
     {!current && !error ? <p role="status">{t("engineObservations.loading")}</p> : null}
     {current ? <>
@@ -97,6 +129,20 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
           {session.output.stdout ? <><p>stdout</p><pre>{session.output.stdout}</pre></> : null}
           {session.output.stderr ? <><p>stderr</p><pre>{session.output.stderr}</pre></> : null}
         </details> : null}
+        {typeof window !== "undefined" && window.ohMyGameDesktop?.captureNativeWindow && session.state === "running" && session.pid ? (
+          <Button size="sm" disabled={capturing === session.id} onClick={() => void capture(session.id, session.pid!)}>
+            {capturing === session.id ? t("engineObservations.capturing") : t("engineObservations.capture")}
+          </Button>
+        ) : null}
+        {current.captures.some((capture) => capture.sessionId === session.id) && !captureImages[session.id] ? (
+          <Button size="sm" variant="ghost" onClick={() => void viewCapture(session.id)}>{t("engineObservations.viewCapture")}</Button>
+        ) : null}
+        {captureImages[session.id] ? (
+          <figure>
+            <img src={`data:image/png;base64,${captureImages[session.id]}`} alt={t("engineObservations.captureAlt", { label: session.label })} style={{ maxWidth: "100%", height: "auto" }} />
+            <figcaption>{t("engineObservations.captureHint")}</figcaption>
+          </figure>
+        ) : null}
       </div>) : <p>{t("engineObservations.nativeEmpty")}</p>}
       <p><strong>{t("engineObservations.history")}</strong></p>
       {selected ? <>

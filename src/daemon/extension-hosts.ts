@@ -945,7 +945,9 @@ class ExtensionHost {
     }
     if (message.type === "native-session-output") {
       const record = this.#nativeSessions.get(message.sessionId);
-      if (record && record.plugin === message.plugin && record.state !== "exited" && record.state !== "failed")
+      // The final drain can arrive just after the exit record; keep it while
+      // the session is still retained so the terminal output is not lost.
+      if (record && record.plugin === message.plugin)
         record.output = { ...message.output };
       return;
     }
@@ -1229,7 +1231,8 @@ export class ExtensionHosts {
             now,
           ];
           this.#crashes.set(plugin, recent);
-          this.#onLog?.(plugin, { level: "error", source: "host", text: `Its extension host stopped (${reason}) while it was running` });
+          const tail = exited.log.slice(-3).join(" | ").slice(0, 1_500);
+          this.#onLog?.(plugin, { level: "error", source: "host", text: `Its extension host stopped (${reason}) while it was running${tail ? `: ${tail}` : ""}` });
           if (recent.length >= this.#options.crashLimit && !this.#quarantined.has(plugin)) {
             this.#quarantined.add(plugin);
             this.#onLog?.(plugin, { level: "error", source: "host", text: `Turned off: it stopped its extension host ${recent.length} times in ${Math.round(this.#options.crashWindowMs / 60_000)} minutes. It stays off until it is turned on again or OhMyGame restarts.` });

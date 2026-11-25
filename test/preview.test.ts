@@ -666,7 +666,7 @@ describe("preview source changes", () => {
     for (const file of ["tuning.json", "public/tuning.json", "public\\tuning.json"])
       expect(isPreviewSourceChange(file), file).toBe(false);
     expect(isPreviewSourceChange("levels/tuning.json")).toBe(true);
-    for (const file of ["canvas/boards/board.json", "canvas/editor/board.json", "canvas\\documents\\design.md", "canvas/index.json", "canvas/jobs.json", "canvas/tables/scores.json", "canvas/schemas/board.schema.json", ".data/state.json", "node_modules/x/index.js", "dist/index.js", "src/build/out.js", "server.log", "LICENSE"]) {
+    for (const file of ["canvas/boards/board.json", "canvas/editor/board.json", "canvas\\documents\\design.md", "canvas/index.json", "canvas/jobs.json", "canvas/tables/scores.json", "canvas/schemas/board.schema.json", ".data/state.json", "node_modules/x/index.js", "dist/index.js", "src/build/out.js", "server.log", "LICENSE", "game/saves/1-1-LT1.save", "game/cache/bytecode.rpyc", "game/script.rpyc", "game/script.rpymc", "game/persistent", "game/security_token", "game/traceback.txt", "game/errors.txt"]) {
       expect(isPreviewSourceChange(file), file).toBe(false);
     }
   });

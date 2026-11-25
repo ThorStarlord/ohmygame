@@ -829,6 +829,8 @@ describe("OhMyGame plugin contracts", () => {
     const run = manifest.contributes.commands.find((command) => command.id === "run-in-renpy")?.run;
     expect(run).toMatchObject({ native: "runInRenpy", changesFiles: false });
     expect(run).not.toHaveProperty("timeoutSeconds");
+    const lint = manifest.contributes.commands.find((command) => command.id === "lint-renpy")?.run;
+    expect(lint).toMatchObject({ native: "lintRenpy", changesFiles: false });
     expect(manifest.engines["ohmygame-api"]).toBe("^2.37.0");
   });
 
@@ -897,7 +899,7 @@ describe("OhMyGame plugin contracts", () => {
     expect(Object.keys(types)).toEqual(["renpy-game"]);
     expect(typeof (types["renpy-game"] as { buildWeb: unknown }).buildWeb).toBe("function");
     expect(tools.sort()).toEqual(["renpy_compile", "renpy_export_web", "renpy_lint", "renpy_status", "renpy_test"].sort());
-    expect(commands.sort()).toEqual(["runInRenpy", "settingsStatus"]);
+    expect(commands.sort()).toEqual(["lintRenpy", "runInRenpy", "settingsStatus"]);
   });
 });
 

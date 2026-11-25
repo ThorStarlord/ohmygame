@@ -1121,11 +1121,15 @@ export function isPreviewSourceChange(filename: string): boolean {
   if (isGameTuningFile(filename)) return false;
   const parts = filename.replaceAll("\\", "/").split("/");
   const name = parts.at(-1) ?? "";
+  // Ren'Py writes its player data and compiled output while a native game is
+  // open; rebuilding the preview for those files can cancel the build in a loop.
+  if (parts[0]?.toLowerCase() === "game" && ["saves", "cache"].includes(parts[1]?.toLowerCase() ?? "")) return false;
   return !(
     isDesignCanvasFile(parts) ||
     parts.some((part) => part.startsWith(".") || ["node_modules", "dist", "build"].includes(part)) ||
     !path.extname(name) ||
-    /\.(?:pid|log|tmp|swp)$/i.test(name)
+    /\.(?:pid|log|tmp|swp|rpyc|rpymc|save)$/i.test(name) ||
+    /^(?:persistent|security_token|traceback|errors)\.txt?$/i.test(name)
   );
 }
 

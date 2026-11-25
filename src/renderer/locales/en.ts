@@ -41,6 +41,11 @@ const en = {
     nativeStopping: "Stopping",
     nativeExited: "Exited",
     nativeFailed: "Failed",
+    capture: "Capture window",
+    capturing: "Capturing…",
+    viewCapture: "View capture",
+    captureAlt: "Captured window for {{label}}",
+    captureHint: "One person-authorized snapshot. It may be scaled; a blank image is not proof the game is broken.",
   },
   pluginAccess: {
     title: "Remembered access",

@@ -23,8 +23,13 @@ export function renpyCheckOperation(plugin: string, tool: string): EngineCheckOp
   }
 }
 
+/** A read-only command that runs a recognized check outside the tool list. */
+export function renpyCommandOperation(plugin: string, command: string): EngineCheckOperation | undefined {
+  return plugin === "thorstarlord/renpy" && command === "lint-renpy" ? "lint" : undefined;
+}
+
 function scriptPath(value: unknown): value is string {
-  return typeof value === "string" && value.length <= 4_096 && /^game\//.test(value)
+  return typeof value === "string" && value.length <= 4_096 && value.startsWith("game/")
     && /\.(?:rpy|rpym|py)$/i.test(value) && !/[\\:\0]/.test(value)
     && !value.split("/").some((part) => part === "" || part === ".." || part === ".")
     && !/^game\/(?:saves|cache)(?:\/|$)/i.test(value);

@@ -202,6 +202,8 @@ declare global {
         paste: () => Promise<void>;
       };
       capturePage: (bounds: { x: number; y: number; width: number; height: number }) => Promise<Uint8Array>;
+      /** Captures a visible window owned by a managed native session, after an explicit person action. */
+      captureNativeWindow?: (request: { rootPid: number; sessionId: string }) => Promise<import("../shared/engine-observations.js").NativeWindowCaptureInput>;
       /** Captures a Node's thumbnail in a hidden window, or says why it could not. */
       captureNodeThumbnail?: (projectId: string, nodeId: string, viewport: { width: number; height: number }, batchId: string) => Promise<NodeThumbnailResult>;
       /** Shares the editor build once, instead of compiling again for each capture. */

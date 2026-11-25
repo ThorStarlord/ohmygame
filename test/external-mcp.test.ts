@@ -472,6 +472,7 @@ it("serves the public contract from the daemon without the app token", async () 
     "web_fetch",
     "project_guide",
     "engine_observations",
+    "engine_capture",
     "panel_screenshot",
     "library_search",
     "library_use",

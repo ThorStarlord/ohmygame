@@ -42,6 +42,11 @@ const zhCN: typeof en = {
     nativeStopping: "停止中",
     nativeExited: "已退出",
     nativeFailed: "失败",
+    capture: "截取游戏窗口",
+    capturing: "截取中…",
+    viewCapture: "查看截图",
+    captureAlt: "{{label}} 的窗口截图",
+    captureHint: "这是经你授权的一次截图，可能已缩放；空白截图不能证明游戏已损坏。",
   },
   pluginAccess: {
     title: "已记住的访问授权",

@@ -1324,7 +1324,10 @@ describe("native engine sessions", () => {
     expect(extensionHosts.sessions(scope()).find((item) => item.id === started.id)?.output).toBeUndefined();
     expect(extensionHosts.sessions(path.join(root, "session-project-b"), true)).toEqual([]);
     await extensionHosts.stopSession(scope(), started.id);
-    expect(extensionHosts.sessions(scope(), true).find((item) => item.id === started.id)?.state).toBe("exited");
+    expect(extensionHosts.sessions(scope(), true).find((item) => item.id === started.id)).toMatchObject({
+      state: "exited",
+      output: { stdout: expect.stringContaining("owned stdout"), stderr: expect.stringContaining("owned stderr") },
+    });
   });
 
   it("returns immediately, holds its host past idle, and stops on request", async () => {

@@ -18,9 +18,9 @@ import { isNewerPluginVersion, PLUGIN_NPM_REGISTRIES, type McpServerDefinition, 
 import { compileInputMap } from "../shared/preview-input.js";
 import type { PluginUiCapabilities } from "../shared/plugin-ui-protocol.js";
 import type { LibrarySource, ProjectState } from "../shared/contracts.js";
-import type { EngineObservationSnapshot } from "../shared/engine-observations.js";
+import type { EngineObservationSnapshot, NativeWindowCaptureSummary } from "../shared/engine-observations.js";
 import { createLogRedactor } from "../shared/log-redaction.js";
-import { EngineCheckHistory, renpyCheckOperation } from "./engine-check-history.js";
+import { EngineCheckHistory, renpyCheckOperation, renpyCommandOperation } from "./engine-check-history.js";
 import type { PluginBrowserShortcut } from "../shared/browser.js";
 import { PROJECT_FILE_NAME, projectTypePlugin } from "../shared/project-file.js";
 import { appWidePluginSuits } from "../shared/project-runtime.js";
@@ -1473,7 +1473,7 @@ export class PluginServices {
   }
 
   /** A read-only, project-scoped view of already observed evidence. */
-  async engineObservations(project: ProjectState): Promise<EngineObservationSnapshot> {
+  async engineObservations(project: ProjectState, captures: NativeWindowCaptureSummary[] = []): Promise<EngineObservationSnapshot> {
     const folder = await projectFolderKey(project.workspacePath).catch(() => undefined);
     const redact = (text: string, plugin?: string) => this.#engineRedactor(redactCredentials(text, plugin ? this.values.secrets(plugin) : []));
     const preview = project.preview;
@@ -1483,7 +1483,7 @@ export class PluginServices {
       historyRetention: "daemon-memory",
       preview: {
         status: preview.status, phase: preview.phase, revision: preview.revision, startedAt: preview.startedAt,
-        ...(preview.error ? { error: redact(preview.error) } : {}),
+        ...(preview.error ? { error: redact(preview.error).slice(0, 4_000) } : {}),
         diagnostics: (preview.diagnostics ?? (preview.diagnostic ? [preview.diagnostic] : [])).slice(0, 50).map((item) => ({
           kind: item.kind, message: redact(item.message), ...(item.source ? { source: item.source } : {}),
           ...(item.path ? { path: redact(item.path) } : {}),
@@ -1494,6 +1494,7 @@ export class PluginServices {
         ...(item.error ? { error: redact(item.error, item.plugin) } : {}),
         ...(output ? { output: { stdout: redact(output.stdout, item.plugin), stderr: redact(output.stderr, item.plugin), omitted: output.omitted } } : {}),
       })),
+      captures,
       checks: folder ? this.#engineChecks.read(folder) : [],
     };
   }
@@ -1520,11 +1521,39 @@ export class PluginServices {
     command: PluginCommand,
     options: Pick<PluginCallOptions, "folder" | "input" | "onProgress" | "build">,
   ): Promise<unknown> {
-    const id = `${entry.id}:${command.id}`;
     return this.#checkedCommand(entry, entry.id, command, options.input, {
       tool: (tool, input) => this.callTool(entry, tool, { ...options, input }),
-      native: (input) => this.#redacting(entry.id, this.native.runCommand(id, { ...options, version: entry.version, ...(input === undefined ? {} : { input }) })),
+      native: (input) => this.#nativeCommand(entry, command, options, input),
     });
+  }
+
+  /** Runs a native command and records it when it is a recognized engine check. */
+  async #nativeCommand(
+    entry: PluginIndexEntry,
+    command: PluginCommand,
+    options: Pick<PluginCallOptions, "folder" | "input" | "onProgress" | "build" | "signal">,
+    input: unknown,
+  ): Promise<unknown> {
+    const id = `${entry.id}:${command.id}`;
+    const operation = renpyCommandOperation(entry.id, command.id);
+    const folder = operation && options.folder ? await projectFolderKey(options.folder).catch(() => undefined) : undefined;
+    const run = folder && operation ? this.#engineChecks.begin(folder, entry.id, entry.version, operation) : undefined;
+    const redact = (text: string) => this.#engineRedactor(redactCredentials(text, this.values.secrets(entry.id)), { maxLength: 64_000 });
+    try {
+      const result = await this.#redacting(entry.id, this.native.runCommand(id, { ...options, version: entry.version, ...(input === undefined ? {} : { input }) }));
+      if (folder && run) {
+        try { this.#engineChecks.complete(folder, run, result, redact); } catch { /* Observation is best effort. */ }
+      }
+      return result;
+    } catch (error) {
+      if (folder && run) {
+        try {
+          this.#engineChecks.fail(folder, run, error instanceof Error ? error.message : String(error),
+            options.signal?.aborted === true || (error instanceof ExtensionHostError && error.code === "cancelled"), redact);
+        } catch { /* Preserve the original command failure. */ }
+      }
+      throw error;
+    }
   }
 
   /**

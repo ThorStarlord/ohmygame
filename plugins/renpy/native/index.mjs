@@ -40,10 +40,14 @@ export function activate(context) {
       : { found: false, executable: null, sdkPath: null, problem: "Ren'Py SDK not found; configure the SDK location." };
   });
 
-  context.registerTool("renpy_lint", async (_input, call) =>
+  const lint = async (_input, call) =>
     runWithIsolatedSaves(await requireSdk(call), project(), ["lint", "--error-code"], {
       cwd: project(), signal: call.signal, progress: call.progress, timeoutMs: 180_000,
-    }));
+    });
+  context.registerTool("renpy_lint", lint);
+  // The Problems panel runs this command; declaring it read-only keeps a
+  // check from becoming an Undo entry or blocking a running agent turn.
+  context.registerCommand("lintRenpy", lint);
 
   context.registerTool("renpy_compile", async (_input, call) =>
     runWithIsolatedSaves(await requireSdk(call), project(), ["compile", "--keep-orphan-rpyc"], {

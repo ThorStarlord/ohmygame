@@ -16,8 +16,8 @@ import type {
   PlaytestViewport,
 } from "./playtest.js";
 
-/** 5: a project host can own native engine sessions for its plugin. */
-export const EXTENSION_HOST_PROTOCOL_VERSION = 5;
+/** 6: a project host can report bounded output from a native engine session. */
+export const EXTENSION_HOST_PROTOCOL_VERSION = 6;
 
 /** Results larger than this, serialized, fail instead of being sent. */
 export const HOST_RESULT_MAX_BYTES = 8 * 1024 * 1024;

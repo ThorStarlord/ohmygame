@@ -20,7 +20,7 @@ async function sourceLocation(reported, mirror, project) {
   const inMirror = path.resolve(mirror, candidate);
   if (!inside(mirror, inMirror)) return undefined;
   const relative = path.relative(mirror, inMirror).split(path.sep).join("/");
-  if (!/^game\//.test(relative) || !/\.(?:rpy|rpym|py)$/i.test(relative) || /^game\/(?:saves|cache)(?:\/|$)/i.test(relative)) return undefined;
+  if (!relative.startsWith("game/") || !/\.(?:rpy|rpym|py)$/i.test(relative) || /^game\/(?:saves|cache)(?:\/|$)/i.test(relative)) return undefined;
   try {
     const game = await realpath(path.join(project, "game"));
     const actual = await realpath(path.join(project, relative));

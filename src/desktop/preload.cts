@@ -101,6 +101,8 @@ if (process.isMainFrame) {
     }),
     capturePage: (bounds: { x: number; y: number; width: number; height: number }) =>
       ipcRenderer.invoke("ohmygame:capture-page", bounds) as Promise<Uint8Array>,
+    captureNativeWindow: (request: { rootPid: number; sessionId: string }) =>
+      ipcRenderer.invoke("ohmygame:capture-native-window", request) as Promise<import("../shared/engine-observations.js").NativeWindowCaptureInput>,
     captureNodeThumbnail: (projectId: string, nodeId: string, viewport: { width: number; height: number }, batchId: string) =>
       ipcRenderer.invoke("ohmygame:capture-node-thumbnail", projectId, nodeId, viewport, batchId) as Promise<NodeThumbnailResult>,
     prepareNodeThumbnails: (projectId: string, batchId: string, snapshot: PlayableThumbnailSnapshot) =>

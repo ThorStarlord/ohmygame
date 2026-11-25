@@ -117,8 +117,8 @@
         "id": "lint-renpy",
         "title": "%command.lint%",
         "run": {
-          "tool": "renpy_lint",
-          "input": {}
+          "native": "lintRenpy",
+          "changesFiles": false
         },
         "slots": [
           {

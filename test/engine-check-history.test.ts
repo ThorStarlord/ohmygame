@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EngineCheckHistory, compareReportedChecks, renpyCheckOperation } from "../src/daemon/engine-check-history.js";
+import { EngineCheckHistory, compareReportedChecks, renpyCheckOperation, renpyCommandOperation } from "../src/daemon/engine-check-history.js";
 import type { EngineDiagnostic } from "../src/shared/engine-observations.js";
 
 const plugin = "thorstarlord/renpy";
@@ -69,5 +69,7 @@ describe("Engine check observations", () => {
     expect(history.read("A")).toEqual([]);
     expect(renpyCheckOperation("other/renpy", "renpy_lint")).toBeUndefined();
     expect(renpyCheckOperation(plugin, "renpy_lint")).toBe("lint");
+    expect(renpyCommandOperation(plugin, "lint-renpy")).toBe("lint");
+    expect(renpyCommandOperation(plugin, "run-in-renpy")).toBeUndefined();
   });
 });
