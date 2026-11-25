@@ -39,7 +39,7 @@ export async function renpyDiagnostics(output, mirror, project) {
   let diagnosticsTruncated = false;
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index].trim();
-    const traceback = /^File "([^"\r\n]+)", line (\d+)(?::.*)?$/i.exec(line);
+    const traceback = /^File "([^"\r\n]+)", line (\d+)(?:[:,].*)?$/i.exec(line);
     // Ren'Py lint also emits game/script.rpy:12 followed by its finding.
     const lint = /^(.+?\.(?:rpy|rpym|py)):(\d+)(?:\s+|:\s*)(.*)$/i.exec(line);
     const location = traceback ?? lint;

@@ -1076,7 +1076,7 @@ export class ExtensionHosts {
   /** Native sessions a scope owns, or every host's when no scope is given. */
   sessions(scope?: string, includeOutput = false): NativeSessionView[] {
     if (scope !== undefined) return this.#hosts.get(scope)?.nativeSessions(includeOutput) ?? [];
-    return [...this.#hosts.values()].flatMap((host) => host.nativeSessions());
+    return [...this.#hosts.values()].flatMap((host) => host.nativeSessions(includeOutput));
   }
 
   /** Stop a session in `scope`; the owner is checked by that host's record. */

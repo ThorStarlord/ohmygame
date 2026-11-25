@@ -23,7 +23,7 @@ Observed:
 - Managed Run in Ren'Py kept a session with PID and bounded output.
 - Capture window produced a real 1920 x 1112 PNG of the Ren'Py main menu titled `Evil get fucked!`; blank analysis reported `likelyBlank: false`.
 - The Problems panel rendered the capture, session state, diagnostics and source links.
-- Ren'Py lint recorded 17 reported findings. Open source file opened `game/scripts/arc3/iris_ch1.rpy` at the reported line.
+- Ren'Py lint recorded 17 reported findings. Open source file opened `game/scripts/arc3/iris_ch1.rpy`; the Code panel opened the file, not a jumped-to line.
 - The project's Web export failed with a real Ren'Py `web.rpy` recursion error; the failure was reported in the panel and did not crash the extension host after generated saves/cache were excluded from preview rebuilds.
 
 Disposable fix:

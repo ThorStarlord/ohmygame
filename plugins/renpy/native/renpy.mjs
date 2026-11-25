@@ -510,41 +510,46 @@ export async function exportWeb(project, command, options = {}) {
     });
     if (typeof result.output === "string")
       result = { ...result, ...await renpyDiagnostics(result.output, mirror.project, project) };
-    if (result.exitCode !== 0)
-      throw new Error("Ren'Py web export failed (exit " + result.exitCode + "): " + (result.errors.join("\n") || result.output.slice(-3000)));
-    // Ren'Py may place a named web directory alongside an archive.
-    // The destination parameter does not always name the serving root.
-    const validIndex = async (directory) => {
-      const entry = await lstat(path.join(directory, "index.html")).catch(() => undefined);
-      return Boolean(entry?.isFile() && !entry.isSymbolicLink());
-    };
-    let playable = staging;
-    if (!(await validIndex(staging))) {
-      const candidates = [];
-      for (const child of await readdir(staging, { withFileTypes: true })) {
-        if (!child.isDirectory() || child.isSymbolicLink()) continue;
-        const directory = path.join(staging, child.name);
-        if (await validIndex(directory)) candidates.push(directory);
+    if (result.exitCode !== 0) {
+      // The preview build must fail, but the agent tool returns the engine's
+      // result so the check history can retain its diagnostics and exit code.
+      if (options.throwOnFailure !== false)
+        throw new Error("Ren'Py web export failed (exit " + result.exitCode + "): " + (result.errors.join("\n") || result.output.slice(-3000)));
+    } else {
+      // Ren'Py may place a named web directory alongside an archive.
+      // The destination parameter does not always name the serving root.
+      const validIndex = async (directory) => {
+        const entry = await lstat(path.join(directory, "index.html")).catch(() => undefined);
+        return Boolean(entry?.isFile() && !entry.isSymbolicLink());
+      };
+      let playable = staging;
+      if (!(await validIndex(staging))) {
+        const candidates = [];
+        for (const child of await readdir(staging, { withFileTypes: true })) {
+          if (!child.isDirectory() || child.isSymbolicLink()) continue;
+          const directory = path.join(staging, child.name);
+          if (await validIndex(directory)) candidates.push(directory);
+        }
+        if (candidates.length !== 1)
+          throw new Error("Ren'Py web export produced no unambiguous playable index.html; verify Web support in the SDK");
+        playable = candidates[0];
       }
-      if (candidates.length !== 1)
-        throw new Error("Ren'Py web export produced no unambiguous playable index.html; verify Web support in the SDK");
-      playable = candidates[0];
-    }
-    if (existing) {
-      await rename(destination, backup);
-      movedOld = true;
-    }
-    try {
-      await rename(playable, destination);
-    } catch (error) {
-      if (movedOld) await rename(backup, destination);
-      movedOld = false;
-      throw error;
-    }
-    if (movedOld) {
-      const warning = await cleanupFolder(backup, "previous web build backup");
-      if (warning) warnings.push(warning);
-      movedOld = false;
+      if (existing) {
+        await rename(destination, backup);
+        movedOld = true;
+      }
+      try {
+        await rename(playable, destination);
+      } catch (error) {
+        if (movedOld) await rename(backup, destination);
+        movedOld = false;
+        throw error;
+      }
+      if (movedOld) {
+        const warning = await cleanupFolder(backup, "previous web build backup");
+        if (warning) warnings.push(warning);
+        movedOld = false;
+      }
     }
   } catch (error) {
     failure = error;
