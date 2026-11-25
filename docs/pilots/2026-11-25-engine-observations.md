@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-25
 **Status:** PR #10 integration completed locally, including a real desktop workflow against a disposable Ren'Py project; Web playtesting and native input remain unsupported.
-**OhMyGame:** `ThorStarlord/ohmygame`, branch `feat/engine-observations`, based on `dev` `792e9e19884b1900dd5049d7e843e542486f2042`; candidate `5fe88f2c6c3eaceed6b8b35e66a8bc6d42ad961e` (continues `4ca7e63a8e568b55280ba93206c79cda61322539`).
+**OhMyGame:** `ThorStarlord/ohmygame`, branch `feat/engine-observations`, based on `dev` `792e9e19884b1900dd5049d7e843e542486f2042`; candidate `05372cf91ebc8561b599995047ceaca9063ae0b0` (continues `4ca7e63a8e568b55280ba93206c79cda61322539`).
 **Disposable project:** `H:\GithubRepositories\renpy-pilot`, a pilot copy of Superhero-Netorare-Parody; canonical game source and player data were not used for the exercise.
 
 ## Delivered
@@ -40,12 +40,13 @@ Godot observation:
 
 ## Verification
 
-- `bun run test -- test/preview.test.ts test/external-mcp.test.ts test/renpy-plugin.test.ts test/engine-check-history.test.ts test/native-output.test.ts test/native-window-captures.test.ts` - 81 passed, 2 skipped.
+- `bun run test -- test/preview.test.ts test/external-mcp.test.ts test/renpy-plugin.test.ts test/engine-check-history.test.ts test/native-output.test.ts test/native-window-captures.test.ts` - 82 passed, 2 skipped.
 - `bun run test -- test/app.test.ts` - 92 passed.
 - `bun run test -- test/extension-hosts.test.ts` - 63 passed, 2 skipped.
 - `bun run typecheck`, `bun run lint`, and `bun run plugin:check plugins/renpy` - pass.
 - `test/agent-tools.test.ts -t "reads only a person-authorized native capture"` - pass. Two unrelated existing Windows symlink fixtures in that file fail with `EPERM` in this environment.
 - Desktop capture and lint/source navigation were exercised through the actual built Electron app; evidence is local, not remote CI.
+- After hardening, the real capture path was re-run through the main-frame desktop IPC and the daemon route: 1920 x 1112 PNG accepted, `likelyBlank: false`. The route rejects extra fields, non-numeric HWND, malformed/non-PNG data and dimension mismatches; retained encoded captures are capped at 32 MiB per project.
 - Evidence log: `H:\GithubRepositories\pilot-data\evidence\engine-observations-desktop.json.log`, `renpy-native-capture.png` and `atlas-native-capture.png`.
 
 ## Limitations
