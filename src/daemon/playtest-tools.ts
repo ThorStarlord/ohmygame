@@ -75,7 +75,21 @@ const inputActions = [
   Type.Object({ type: Type.Literal("resize"), viewport: viewportSchema }, { additionalProperties: false }),
 ] as const;
 
-const actionSchema = Type.Union([...inputActions, resetBridgeAction, valueBridgeAction]);
+const narrativeActions = [
+  Type.Object({
+    type: Type.Literal("advance"),
+    interactionId: Type.Optional(Type.String({ minLength: 1, maxLength: 100 })),
+  }, { additionalProperties: false }),
+  Type.Object({
+    type: Type.Literal("choose"),
+    choiceId: Type.String({ minLength: 1, maxLength: 100 }),
+    interactionId: Type.String({ minLength: 1, maxLength: 100 }),
+  }, { additionalProperties: false }),
+] as const;
+
+const actionSchema = Type.Union([...inputActions, ...narrativeActions, resetBridgeAction, valueBridgeAction]);
+/** The web runtime's tool does not take narrative actions; this is their full schema for a plugin's runtime. */
+const webActionSchema = Type.Union([...inputActions, resetBridgeAction, valueBridgeAction]);
 
 /** Every operation but captureFrame, which only a plugin's runtime has: the web runtime's tool as before. */
 const WEB_OPERATIONS = GAME_USE_OPERATIONS.filter((operation) => operation !== "captureFrame");
@@ -93,7 +107,7 @@ const fullParameters = Type.Object({
 });
 type GameUseToolInput = typeof fullParameters;
 
-const parameters = gameUseParameters(actionSchema, WEB_OPERATIONS, { path: true });
+const parameters = gameUseParameters(webActionSchema, WEB_OPERATIONS, { path: true });
 
 /**
  * The Playable Nodes player's bridge only resets, so its agent is not offered
@@ -101,8 +115,9 @@ const parameters = gameUseParameters(actionSchema, WEB_OPERATIONS, { path: true 
  */
 const resetOnlyParameters = gameUseParameters(Type.Union([...inputActions, resetBridgeAction]), WEB_OPERATIONS, { path: true });
 
+
 /** What an outside agent's catalog lists: every operation any runtime has, checked again when called. */
-const catalogParameters = gameUseParameters(actionSchema, GAME_USE_OPERATIONS, { path: true, frame: MAX_CAPTURE_FRAME });
+const catalogParameters = gameUseParameters(webActionSchema, GAME_USE_OPERATIONS, { path: true, frame: MAX_CAPTURE_FRAME });
 
 function gameUseParameters(
   action: TSchema,
@@ -141,6 +156,7 @@ function pluginParameters(driver: GameRuntimeAdapter, maxFrame: number | undefin
   const operations = GAME_USE_OPERATIONS.filter((operation) => supportsGameUseOperation(driver.capabilities, operation));
   const input = driver.capabilities.input;
   const actions = [
+    ...(input.includes("narrative") ? narrativeActions : []),
     ...(input.includes("pointer") ? [pointClickAction] : []),
     ...inputActions.slice(2).filter((action) => {
       const type = (action.properties.type as { const?: string }).const;
@@ -171,7 +187,7 @@ export function createGameUseTool(
     name: "game_use",
     label: "Game Use",
     description: plugin
-      ? `Use the current game, which its engine's plugin runs outside OhMyGame: open a session${frames ? ", capture a frame of a fresh run" : ""}${supportsGameUseOperation(driver.capabilities, "capture") ? ", capture the current frame" : ""}${supportsGameUseOperation(driver.capabilities, "act") ? ", send input" : ""}, and close the session when finished. Reuse the returned sessionId.`
+      ? `Use the current game, which its engine's plugin runs outside OhMyGame: open a session${frames ? ", capture a frame of a fresh run" : ""}${supportsGameUseOperation(driver.capabilities, "capture") ? ", capture the current frame" : ""}${supportsGameUseOperation(driver.capabilities, "act") ? driver.capabilities.input.includes("narrative") ? ", advance dialogue or choose an available narrative option" : ", send input" : ""}, and close the session when finished. Reuse the returned sessionId.`
       : "Use the current game runtime as a player: open and control the game, inspect interactive elements and canvas state, capture screenshots, review console and network failures, and call an optional deterministic game bridge. Open and act return a fresh state snapshot. Reuse the returned sessionId and close the session when finished.",
     promptSnippet: plugin
       ? "Use the current game through its engine's plugin, including screenshots"
@@ -180,6 +196,7 @@ export function createGameUseTool(
       ? [
           "Use game_use to see the game after changing it; a successful build alone is not a playtest",
           ...(frames ? ["captureFrame runs the game again from its start and captures that frame; it does not show what an open session shows now, and two runs may differ. Pick a frame after the game has loaded, and try a later one if the capture is blank or still loading"] : []),
+          ...(driver.capabilities.input.includes("narrative") ? ["When gameState.kind is renpy, read its dialogue and choices, then use advance or choose with the latest interactionId; inspect again after each action. A transitioning state is not awaiting input: inspect again rather than sending input. A stale interactionId is refused rather than applied to a different screen, and an uncertain action is not retried."] : []),
           "Close game sessions when finished",
         ]
       : [
@@ -335,6 +352,8 @@ function actionCapabilities(action: PlaytestAction): { input: GameUseInputCapabi
     case "press": return { input: ["keyboard"], observation: [] };
     case "touch": return { input: ["touch"], observation: [] };
     case "resize": return { input: ["resize"], observation: [] };
+    case "advance":
+    case "choose": return { input: ["narrative"], observation: [] };
     case "wait":
     case "bridge": return { input: [], observation: [] };
   }

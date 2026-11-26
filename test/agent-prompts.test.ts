@@ -69,6 +69,16 @@ describe("OhMyGame system prompt", () => {
     expect(text).not.toContain("game_sdk_setup");
     expect(text).not.toContain("multiplayer_setup");
   });
+  it("tells a web-build type whose plugin runs game_use to use its live engine operations", () => {
+    const text = appendSystemPromptForProject({
+      type: "general",
+      pluginType: { id: "thorstarlord/renpy:renpy-game", plugin: "thorstarlord/renpy", preview: "web-build", gameUse: true },
+    }).join("\n");
+    expect(text).toContain("runs its game for game_use in a disposable session");
+    expect(text).toContain("inspect, advance, choose, capture and close");
+    expect(text).not.toContain("Web preview and OhMyGame Community publishing are unavailable");
+  });
+
   it("keeps disabled General previews under user control without requiring a Node stack", () => {
     const text = prompt({ type: "general" });
     expect(text).toContain("Web preview is disabled");

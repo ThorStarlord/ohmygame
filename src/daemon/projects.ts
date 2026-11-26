@@ -419,7 +419,8 @@ export class ProjectManager {
     const project = this.#projects.get(id);
     if (!project) throw new ProjectWorkspaceError("Project not found");
     const current = project.pluginType;
-    if (current?.id === pluginType.id && current.plugin === pluginType.plugin && current.preview === pluginType.preview) return project;
+    if (current?.id === pluginType.id && current.plugin === pluginType.plugin && current.preview === pluginType.preview
+      && (current.gameUse === true) === (pluginType.gameUse === true)) return project;
     await this.#save(project, { pluginType, ...(project.type === "general" ? { webPreviewEnabled: pluginType.preview === "web" } : {}) });
     return project;
   }
@@ -1511,7 +1512,7 @@ function parseMetadata(value: unknown, id: string, fallbackUpdatedAt: string): L
         name: parsed.name.trim(),
         ...(parsed.nameSource ? { nameSource: parsed.nameSource } : {}),
         type,
-        ...(parsed.pluginType ? { pluginType: { id: parsed.pluginType.id, plugin: parsed.pluginType.plugin, preview: parsed.pluginType.preview } } : {}),
+        ...(parsed.pluginType ? { pluginType: { id: parsed.pluginType.id, plugin: parsed.pluginType.plugin, preview: parsed.pluginType.preview, ...(parsed.pluginType.gameUse ? { gameUse: true } : {}) } } : {}),
         ...(type === "general" ? { webPreviewEnabled: parsed.webPreviewEnabled ?? false } : {}),
         updatedAt,
         ...(startupDirectory ? { startupDirectory } : {}),

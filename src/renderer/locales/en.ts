@@ -95,6 +95,8 @@ const en = {
     scenarioReasonKind: "a difference image is not a rendered checkpoint",
     scenarioReasonSize: "different image sizes",
     scenarioNeedTwo: "Run a scenario twice, or retain two checkpoints, to compare them.",
+    scenarioNeedMatchingRun: "Run the same scenario again to compare the same checkpoint name. You can still choose two different retained checkpoints below.",
+    scenarioChooseCheckpoint: "Choose a checkpoint",
     scenarioHint: "Checkpoints are engine-rendered images from an isolated validation copy, not desktop captures. A visible difference is evidence, not proof of improvement.",
     scenarioStatusPassed: "passed",
     scenarioStatusFailed: "failed",

@@ -1,6 +1,7 @@
 // OhMyGame Ren'Py plugin entry point; runs in the project extension host.
 import { resolveRenpy, runWithIsolatedSaves, exportWeb, renpyLaunch } from "./renpy.mjs";
 import { discoverScenarios, runScenario } from "./scenario.mjs";
+import { closeAllInteractiveSessions, interactiveGameUse } from "./interactive.mjs";
 
 function requireProject(context) {
   if (!context.project?.folder) throw new Error("Ren'Py tools require an open game project");
@@ -32,7 +33,13 @@ export function activate(context) {
       await build(call);
       return { folder: ".ohmygame/build/web", entry: "index.html" };
     },
+    gameUse: async (input, call) =>
+      interactiveGameUse(await requireSdk(call), project(), input, {
+        signal: call?.signal,
+        env: {},
+      }),
   });
+  context.onDispose(() => closeAllInteractiveSessions());
 
   context.registerTool("renpy_status", async (_input, call) => {
     const sdk = await resolveRenpy(call?.configuration?.renpySdkPath);

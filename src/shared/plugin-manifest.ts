@@ -267,7 +267,7 @@ const ProjectType = Type.Object(
         {
           additionalProperties: false,
           description:
-            "A \"native\" type's game that game_use can open through the plugin's gameUse hook: the operations besides open and close it supports, the input act takes, and the highest frame captureFrame may ask for",
+            "A native or web-build type's game that game_use can open through the plugin's gameUse hook: the operations besides open and close it supports, the input act takes (including narrative actions), and the highest frame captureFrame may ask for",
         },
       ),
     ),
@@ -1518,8 +1518,8 @@ export function validatePluginManifest(value: unknown): PluginManifestResult {
     const gameUse = type.gameUse as PluginGameUseSpec | undefined;
     if (!gameUse) return;
     const path = `/contributes/projectTypes/${index}/gameUse`;
-    if ((type.preview as string) !== "native")
-      issue(path, "only a \"native\" type runs its game through its plugin");
+    if ((type.preview as string) !== "native" && (type.preview as string) !== "web-build")
+      issue(path, "only a native or web-build type runs its game through its plugin");
     if (!native) issue(path, "needs a native entrypoint");
     const acts = gameUse.operations.includes("act");
     if (acts && !gameUse.input) issue(`${path}/input`, "act needs the input it takes");

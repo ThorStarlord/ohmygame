@@ -89,7 +89,9 @@ function builtInInstructions(project: AgentPromptProject): string[] {
     ...COMMON_AGENT_INSTRUCTIONS,
     ...GENERAL_GAME_INSTRUCTIONS,
     ...(supportsBrowserGameServices(project) ? GAME_SERVICES : []),
-    ...(project.pluginType?.preview === "native" ? [
+    ...(project.pluginType?.gameUse ? [
+      `This project's type comes from the ${project.pluginType.plugin} plugin. The plugin runs its game for game_use in a disposable session, with engine-native inspect, advance, choose, capture and close operations; use it to see the game after changing it. Its own preview and build tools remain separate. Preserve the engine and project setup and follow its Skills.`,
+    ] : project.pluginType?.preview === "native" ? [
       `This project's type comes from the ${project.pluginType.plugin} plugin, and the game runs outside OhMyGame through it. Preserve its engine and project setup, follow its Skills, and use its tools to preview and build. Web preview and OhMyGame Community publishing are unavailable for this project. When game_use is available, the plugin runs the game for it: use it to see the game after changing it.`,
     ] : [
       "OhMyGame's built-in Preview, game_use, and cloud publishing currently support Web output in this workspace. For Web output, OhMyGame owns the dev server; do not start persistent background servers yourself. Use game_use only for a configured Web preview. For native engines, use available engine tools, connections, or existing project checks and state when visual gameplay was not verified. An editor connection alone does not establish a successful playtest.",
@@ -122,5 +124,5 @@ function webGameRunContract(project: AgentPromptProject): string {
 
 /** Preview being disabled does not prevent a General project from targeting the browser. */
 export function supportsBrowserGameServices(project: AgentPromptProject): boolean {
-  return project.type === "web-game" || (project.type === "general" && project.pluginType?.preview !== "native");
+  return project.type === "web-game" || (project.type === "general" && project.pluginType?.preview !== "native" && !project.pluginType?.gameUse);
 }

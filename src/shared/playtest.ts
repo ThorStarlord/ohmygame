@@ -9,7 +9,7 @@ export interface PlaytestViewport {
 /** `plugin`: a game a plugin's native code runs, for a project type that declares `gameUse`. */
 export type GameRuntime = "web" | "godot" | "unity" | "plugin";
 export type GameProjectType = ProjectType;
-export type GameUseInputCapability = "pointer" | "keyboard" | "text" | "touch" | "resize";
+export type GameUseInputCapability = "pointer" | "keyboard" | "text" | "touch" | "resize" | "narrative";
 export type GameUseObservationCapability = "screenshot" | "video" | "dom" | "canvas" | "console" | "network";
 export type GameUseDeterminismCapability = "snapshot" | "reset" | "seed" | "step";
 /**
@@ -25,8 +25,9 @@ export type GameUseOperation = (typeof GAME_USE_OPERATIONS)[number];
 export const PLUGIN_GAME_USE_OPERATIONS = ["inspect", "act", "capture", "captureFrame"] as const;
 export type PluginGameUseOperation = (typeof PLUGIN_GAME_USE_OPERATIONS)[number];
 /** Input a plugin's runtime may take. Text needs page elements, which a plugin's snapshot doesn't have. */
-export const PLUGIN_GAME_USE_INPUT = ["pointer", "keyboard", "touch", "resize"] as const;
+export const PLUGIN_GAME_USE_INPUT = ["pointer", "keyboard", "touch", "resize", "narrative"] as const;
 export type PluginGameUseInput = (typeof PLUGIN_GAME_USE_INPUT)[number];
+export type PluginGameUseAction = "advance" | "choose";
 /** A plugin project type's `gameUse`, as its manifest declares it. */
 export interface PluginGameUseSpec {
   operations: readonly PluginGameUseOperation[];
@@ -89,8 +90,28 @@ export type PlaytestAction =
   | { type: "touch"; x: number; y: number }
   | { type: "wait"; milliseconds: number }
   | { type: "resize"; viewport: PlaytestViewport }
+  | { type: "advance"; interactionId?: string }
+  | { type: "choose"; choiceId: string; interactionId: string }
   | { type: "bridge"; method: "reset" }
   | { type: "bridge"; method: "setSeed" | "step"; value: number };
+
+/** A plugin runtime's semantic narrative observation. */
+export interface RenpyGameState {
+  kind: "renpy";
+  status: "main_menu" | "awaiting" | "transitioning" | "finished" | "unknown";
+  interactionId?: string;
+  label?: string;
+  statement?: string;
+  screen?: string;
+  speaker?: string;
+  dialogue?: string;
+  choices: { id: string; text: string; chosen: boolean }[];
+  canAdvance: boolean;
+  canChoose: boolean;
+  screens: string[];
+  viewport?: PlaytestViewport;
+  errors?: string[];
+}
 
 export interface PlaytestElement {
   index: number;
