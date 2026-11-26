@@ -68,7 +68,7 @@ export interface NativeWindowCapture extends NativeWindowCaptureSummary {
 }
 
 /** What the desktop capture adapter returns before the daemon gives it an ID. */
-export type NativeWindowCaptureInput = Omit<NativeWindowCaptureSummary, "id" | "sessionId" | "capturedAt"> & {
+export type NativeWindowCaptureInput = Omit<NativeWindowCaptureSummary, "id" | "sessionId" | "capturedAt" | "requestId" | "plugin"> & {
   data: string;
 };
 

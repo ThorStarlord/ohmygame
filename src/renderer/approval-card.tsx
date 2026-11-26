@@ -140,7 +140,7 @@ export function ApprovalCard({
           disabled={submitting}
           onClick={() => void decide(details.pluginAccess ? "allow-always" : "allow")}
         >
-          {t(details.pluginAccess ? "pluginAccess.allowRemember" : "approval.allow")}
+          {t(details.pluginAccess ? "pluginAccess.allowRemember" : native ? "approval.nativeCaptureAllow" : "approval.allow")}
         </Button>
         {details.pluginAccess ? <Button size="sm" disabled={submitting} onClick={() => void decide("allow")}>{t("pluginAccess.allowOnce")}</Button> : details.always ? (
           <Button

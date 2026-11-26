@@ -2339,6 +2339,7 @@ const zhCN: typeof en = {
     nativeCaptureSession: "游戏会话：",
     nativeCapturePermission: "权限：",
     nativeCaptureStill: "截取一张此游戏窗口的画面",
+    nativeCaptureAllow: "仅允许一次",
     nativeCaptureOnce: "仅允许现在截取一张静态图，不会被记住或重复使用。",
     waiting_one: "还有 {{count}} 个等待中",
     waiting_other: "还有 {{count}} 个等待中",

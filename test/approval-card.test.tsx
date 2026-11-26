@@ -149,9 +149,9 @@ it("asks for one native capture with no remembered permission", async () => {
   expect(container.textContent).toContain("Capture one image of this game window");
   expect(container.textContent).toContain("Check the dialogue layout");
   expect(container.textContent).toContain("cannot be remembered or reused");
-  expect([...container.querySelectorAll("button")].map((button) => button.textContent)).toEqual(["Allow", "Deny"]);
+  expect([...container.querySelectorAll("button")].map((button) => button.textContent)).toEqual(["Allow once", "Deny"]);
   await act(async () => {
-    [...container.querySelectorAll("button")].find((button) => button.textContent === "Allow")!.click();
+    [...container.querySelectorAll("button")].find((button) => button.textContent === "Allow once")!.click();
   });
   expect(decide).toHaveBeenCalledWith("allow");
 });

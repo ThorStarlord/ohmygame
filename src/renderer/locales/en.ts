@@ -2360,6 +2360,7 @@ const en = {
     nativeCaptureSession: "Game session:",
     nativeCapturePermission: "Permission:",
     nativeCaptureStill: "Capture one image of this game window",
+    nativeCaptureAllow: "Allow once",
     nativeCaptureOnce: "This allows one still image now. It cannot be remembered or reused.",
     waiting_one: "{{count}} more waiting",
     waiting_other: "{{count}} more waiting",
