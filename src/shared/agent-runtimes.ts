@@ -247,6 +247,7 @@ export interface ApprovalRequestDetails {
     session: string;
     purpose: string;
     maxAttempts: number;
+    durationMinutes: number;
     expiresAt: number;
     operation: "still";
   };

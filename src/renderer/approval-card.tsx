@@ -91,6 +91,7 @@ export function ApprovalCard({
         <p><strong>{t("approval.nativeObservationPurpose")}</strong> {observation.purpose}</p>
         <p><strong>{t("approval.nativeCapturePermission")}</strong> {t("approval.nativeObservationStill")}</p>
         <p><strong>{t("approval.nativeObservationLimit")}</strong> {t("approval.nativeObservationLimitValue", { count: observation.maxAttempts })}</p>
+        <p><strong>{t("approval.nativeObservationDuration")}</strong> {t("approval.nativeObservationDurationValue", { count: observation.durationMinutes })}</p>
         <p><strong>{t("approval.nativeObservationUntil")}</strong> {new Date(observation.expiresAt).toLocaleTimeString()}</p>
         <p className="approval-card-reason">{t("approval.nativeObservationOnce")}</p>
       </div> : null}

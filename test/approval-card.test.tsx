@@ -174,6 +174,7 @@ it("asks for a bounded observation session with its limits", async () => {
               session: "Run in Ren'Py",
               purpose: "Check the dialogue layout across scenes",
               maxAttempts: 3,
+              durationMinutes: 10,
               expiresAt,
               operation: "still",
             },
