@@ -1,5 +1,6 @@
 // OhMyGame Ren'Py plugin entry point; runs in the project extension host.
 import { resolveRenpy, runWithIsolatedSaves, exportWeb, renpyLaunch } from "./renpy.mjs";
+import { discoverScenarios, runScenario } from "./scenario.mjs";
 
 function requireProject(context) {
   if (!context.project?.folder) throw new Error("Ren'Py tools require an open game project");
@@ -57,6 +58,19 @@ export function activate(context) {
   context.registerTool("renpy_test", async (_input, call) =>
     runWithIsolatedSaves(await requireSdk(call), project(), ["test"], {
       cwd: project(), signal: call.signal, progress: call.progress, timeoutMs: 300_000,
+    }));
+
+  // Discovery and checkpoints use the engine's own testcase registry and
+  // screenshot statements. The project's testcases remain the scenario
+  // definition; no second scenario language is introduced.
+  context.registerTool("renpy_scenarios", async (_input, call) =>
+    discoverScenarios(await requireSdk(call), project(), {
+      signal: call.signal, progress: call.progress, timeoutMs: 300_000,
+    }));
+
+  context.registerTool("renpy_scenario_run", async (input, call) =>
+    runScenario(await requireSdk(call), project(), input, {
+      signal: call.signal, progress: call.progress, timeoutMs: 300_000,
     }));
 
   // A failed export is a failed check with diagnostics, not a tool crash.

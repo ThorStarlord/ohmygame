@@ -1,0 +1,133 @@
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "enum": [
+        "passed",
+        "failed",
+        "skipped",
+        "timed-out",
+        "cancelled",
+        "not-found",
+        "invocation-error",
+        "unknown"
+      ]
+    },
+    "authority": {
+      "const": "engine"
+    },
+    "scenarios": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "testcase",
+              "testsuite"
+            ]
+          },
+          "file": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "parameterized": {
+            "type": "boolean"
+          },
+          "default": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "kind"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "exitCode": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "errors": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "string"
+      }
+    },
+    "output": {
+      "type": "string"
+    },
+    "outputTruncated": {
+      "type": "boolean"
+    },
+    "validationCopy": {
+      "type": "boolean"
+    },
+    "cleanupWarning": {
+      "type": "string"
+    },
+    "failure": {
+      "type": "string"
+    },
+    "diagnostics": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "properties": {
+          "severity": {
+            "enum": [
+              "error",
+              "warning",
+              "info",
+              "unknown"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "path": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "severity",
+          "message"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "diagnosticsTruncated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "status",
+    "authority",
+    "scenarios",
+    "truncated",
+    "exitCode",
+    "errors",
+    "output"
+  ],
+  "additionalProperties": false
+}

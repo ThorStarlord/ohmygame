@@ -72,6 +72,20 @@ describe("Ren'Py execution and browser export", () => {
     expect(result.errors).toContain("Error: sample diagnostic");
   });
 
+  it("stops a test run when its final report arrives", async () => {
+    const fake = path.join(folder, "report.cjs");
+    await writeFile(fake, 'process.stdout.write("[rpytest] Status: FAILED\\n"); setInterval(() => {}, 1000);\n');
+    const started = Date.now();
+    const result = await runRenpy(
+      { executable: process.execPath, prefixArgs: [fake], sdkPath: folder },
+      [],
+      { stopOnReport: true, timeoutMs: 10_000 },
+    );
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain("Status: FAILED");
+    expect(Date.now() - started).toBeLessThan(5_000);
+  });
+
   it("honors cancellation before executing the SDK", async () => {
     const controller = new AbortController();
     controller.abort();
@@ -913,7 +927,7 @@ describe("OhMyGame plugin contracts", () => {
     });
     expect(Object.keys(types)).toEqual(["renpy-game"]);
     expect(typeof (types["renpy-game"] as { buildWeb: unknown }).buildWeb).toBe("function");
-    expect(tools.sort()).toEqual(["renpy_compile", "renpy_export_web", "renpy_lint", "renpy_status", "renpy_test"].sort());
+    expect(tools.sort()).toEqual(["renpy_compile", "renpy_export_web", "renpy_lint", "renpy_scenario_run", "renpy_scenarios", "renpy_status", "renpy_test"].sort());
     expect(commands.sort()).toEqual(["lintRenpy", "runInRenpy", "settingsStatus"]);
   });
 });

@@ -59,7 +59,7 @@ import { AgentManager, conversationItems, createPiSession, loadPiSkillCatalog, l
 import { CHECKPOINT_UNDONE_ENTRY, TURN_END_ENTRY, referencedSnapshots } from "./checkpoint-extension.js";
 import { AgentMediaModels } from "./agent-media-models.js";
 import { MediaRequests, preferredModel } from "./media-requests.js";
-import { createAgentTools, offersGameUse, projectPiToolNames } from "./agent-tools.js";
+import { createAgentTools, offersGameUse, projectPiToolNames, type ScenarioPlaytestTools } from "./agent-tools.js";
 import { AgentRuntimeService, nativeAgentInstructions } from "./agent-runtimes/service.js";
 import { LimitContinuations } from "./limit-continuation.js";
 import { LIMIT_RESUME_PROMPT } from "../shared/limit-resume.js";
@@ -162,6 +162,9 @@ import { PanelScreenshots, type PanelScreenshotAnswer } from "./panel-screenshot
 import { NativeWindowCaptures, parseNativeWindowCapture } from "./native-window-captures.js";
 import { NativeCaptureRequests } from "./native-capture-requests.js";
 import { ObservationGrants } from "./observation-grants.js";
+import { ScenarioRuns } from "./scenario-runs.js";
+import { ScenarioPlaytests } from "./scenario-playtests.js";
+import { registerScenarioRoutes } from "./scenario-routes.js";
 import { ObservationSessionService } from "./observation-session-service.js";
 import { requestOneTimeCapture } from "./one-time-capture-service.js";
 import { registerNativeCaptureRoutes } from "./native-capture-routes.js";
@@ -1053,6 +1056,13 @@ export function createApp(options: AppOptions = {}) {
   });
   /** Bounded observation authority; daemon-memory only and never persisted. */
   const observationGrants = new ObservationGrants();
+  /** Engine-native scenario runs and their bounded checkpoint evidence. */
+  const scenarioRuns = new ScenarioRuns();
+  const scenarioPlaytests = new ScenarioPlaytests({
+    plugins: pluginServices,
+    runs: scenarioRuns,
+    projectExists: (id) => Boolean(projects.get(id)),
+  });
   const invalidateConversationObservations = (projectId: string, conversationId: string) => {
     for (const grantId of observationGrants.invalidateConversation(projectId, conversationId))
       nativeCaptureRequests.cancelGrant(projectId, grantId);
@@ -1219,7 +1229,12 @@ export function createApp(options: AppOptions = {}) {
       observationGrants.invalidateSession(current.id, grant.sessionId);
       nativeCaptureRequests.cancelSession(current.id, grant.sessionId);
     }
-    return { ...snapshot, observationGrants: observationGrants.list(current.id) };
+    return {
+      ...snapshot,
+      observationGrants: observationGrants.list(current.id),
+      scenarioPlaytestsAvailable: await scenarioPlaytests.available(current),
+      scenarioRuns: scenarioPlaytests.list(current.id),
+    };
   };
   const readEngineCapture = async (project: ProjectState, query: { sessionId?: string; captureId?: string }) =>
     query.captureId
@@ -1266,6 +1281,15 @@ export function createApp(options: AppOptions = {}) {
           grants: observationGrants,
         })
       : undefined;
+    const scenarioTools: ScenarioPlaytestTools | undefined = await scenarioPlaytests.available(project)
+      ? {
+          discover: (signal) => scenarioPlaytests.discover(project, signal),
+          run: (input, signal) => scenarioPlaytests.run(project, input, signal),
+          checkpoint: (checkpointId) => scenarioPlaytests.checkpoint(project.id, checkpointId),
+          compare: (beforeCheckpointId, afterCheckpointId) =>
+            scenarioPlaytests.compare(project.id, beforeCheckpointId, afterCheckpointId),
+        }
+      : undefined;
     return [...createAgentTools(
       project,
       tools,
@@ -1304,6 +1328,7 @@ export function createApp(options: AppOptions = {}) {
         ? (sessionId, reason, toolCallId, signal) => requestEngineCapture(project, conversation, sessionId, reason, toolCallId, signal)
         : undefined,
       observationSessions,
+      scenarioTools,
     ), ...await pluginSetup.agentTools(project)];
   };
   const playtestTarget = async (project: ProjectState, signal?: AbortSignal): Promise<GameUseOpenTarget> => {
@@ -3206,6 +3231,9 @@ export function createApp(options: AppOptions = {}) {
     if (!projects.get(request.params.projectId)) return reply.code(404).send({ error: "Project not found" });
     return observeEngine(request.params.projectId);
   });
+  // Engine-native scenario discovery and execution in the plugin's disposable
+  // validation mirror. These are not desktop capture and need no grant.
+  registerScenarioRoutes(app, { projects, playtests: scenarioPlaytests });
   // A person-authorized capture from the desktop window, retained for the agent.
   app.post<{ Params: { projectId: string; sessionId: string }; Body: unknown }>(
     "/projects/:projectId/native-sessions/:sessionId/captures",
@@ -4251,6 +4279,7 @@ export function createApp(options: AppOptions = {}) {
     nativeWindowCaptures.forget(project.id);
     nativeCaptureRequests.forget(project.id);
     observationGrants.forget(project.id);
+    scenarioPlaytests.forget(project.id);
     gameTuning.forget(project);
     agents.forgetProject(project.id);
     conversations.forget(project);

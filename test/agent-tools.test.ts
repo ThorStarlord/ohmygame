@@ -200,7 +200,7 @@ describe("agent tools", () => {
       undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       async () => ({
         projectId: project.id, observedAt: 1, historyRetention: "daemon-memory",
-        preview: { status: "stopped", diagnostics: [] }, nativeSessions: [], captures: [], observationGrants: [], checks: [],
+        preview: { status: "stopped", diagnostics: [] }, nativeSessions: [], captures: [], observationGrants: [], scenarioPlaytestsAvailable: false, scenarioRuns: [], checks: [],
       }),
       read,
     );
@@ -239,7 +239,7 @@ describe("agent tools", () => {
       undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       async () => ({
         projectId: project.id, observedAt: 1, historyRetention: "daemon-memory",
-        preview: { status: "stopped", diagnostics: [] }, nativeSessions: [], captures: [], observationGrants: [], checks: [],
+        preview: { status: "stopped", diagnostics: [] }, nativeSessions: [], captures: [], observationGrants: [], scenarioPlaytestsAvailable: false, scenarioRuns: [], checks: [],
       }),
       undefined,
       request,
@@ -278,7 +278,7 @@ describe("agent tools", () => {
       undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       async () => ({
         projectId: project.id, observedAt: 1, historyRetention: "daemon-memory",
-        preview: { status: "stopped", diagnostics: [] }, nativeSessions: [], captures: [], observationGrants: [], checks: [],
+        preview: { status: "stopped", diagnostics: [] }, nativeSessions: [], captures: [], observationGrants: [], scenarioPlaytestsAvailable: false, scenarioRuns: [], checks: [],
       }),
       undefined,
       undefined,
@@ -298,6 +298,90 @@ describe("agent tools", () => {
     expect(result.content[1]).toEqual({ type: "image", data: capture.data, mimeType: "image/png" });
     await endTool.execute("end", { grantId: "grant-1" }, undefined, undefined, {} as never);
     expect(end).toHaveBeenCalledWith("grant-1");
+  });
+
+  it("exposes engine-native scenario discovery, execution and exact checkpoint comparison", async () => {
+    const dataDirectory = await mkdtemp(path.join(tmpdir(), "ohmygame-agent-scenario-"));
+    const projects = new ProjectManager(dataDirectory);
+    await projects.load();
+    const project = await projects.create("Scenario tools");
+    const runner = new ToolRunner(dataDirectory, { generate: async () => ({ bytes: Buffer.from("image"), mediaType: "image/webp" }) });
+    await runner.load();
+    const checkpoint = {
+      id: "checkpoint-1", runId: "run-1", plugin: "thorstarlord/renpy", scenario: "flow",
+      name: "scene/first", file: "scene/first.png", kind: "exploratory" as const, mode: "exploratory" as const,
+      order: 0, width: 1, height: 1, mediaType: "image/png" as const, bytes: 68, capturedAt: 1, retained: true,
+      data: "iVBORw0KGgo=",
+    };
+    const after = { ...checkpoint, id: "checkpoint-2", data: "iVBORw0KGgo=" };
+    const { data: _checkpointData, ...checkpointSummary } = checkpoint;
+    const run = {
+      id: "run-1", projectId: project.id, plugin: "thorstarlord/renpy", pluginVersion: "0.2.0",
+      engineRunId: "abcdef1234567890", scenario: "flow", executedSelection: "global::flow",
+      mode: "exploratory" as const, status: "passed" as const, startedAt: 1, completedAt: 2, exitCode: 0,
+      timedOut: false, cancelled: false, checkpointOrder: "file-write-time" as const,
+      checkpointLimitReached: false, checkpointWarnings: [],
+      diagnostics: [{ severity: "error" as const, message: "scenario diagnostic secret", path: "game/tests.rpy", line: 2 }],
+      outputExcerpt: "scenario output secret", outputOmitted: true, diagnosticsComplete: true,
+      checkpoints: [checkpointSummary],
+    };
+    const discovery = {
+      status: "passed" as const, authority: "engine" as const,
+      scenarios: [{ name: "flow", kind: "testcase" as const, file: "game/tests.rpy", line: 1, parameterized: false, default: false }],
+      truncated: false, exitCode: 0, errors: [], diagnostics: [], diagnosticsComplete: true,
+    };
+    const discover = vi.fn(async () => discovery);
+    const runScenario = vi.fn(async () => run);
+    const read = vi.fn(() => checkpoint);
+    const compare = vi.fn(() => ({ before: checkpoint, after, comparable: true, reason: "Same scenario and checkpoint name." }));
+    const tools = createAgentTools(
+      project, runner, projects, undefined, undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+      async () => ({
+        projectId: project.id, observedAt: 1, historyRetention: "daemon-memory",
+        preview: { status: "stopped", diagnostics: [] }, nativeSessions: [], captures: [], observationGrants: [], scenarioPlaytestsAvailable: true, scenarioRuns: [run], checks: [],
+      }),
+      undefined,
+      undefined,
+      undefined,
+      { discover, run: runScenario, checkpoint: read, compare },
+    );
+    const discoveryTool = tools.find(({ name }) => name === "engine_scenarios");
+    const runTool = tools.find(({ name }) => name === "engine_scenario_run");
+    const checkpointTool = tools.find(({ name }) => name === "engine_scenario_checkpoint");
+    const compareTool = tools.find(({ name }) => name === "engine_scenario_compare");
+    if (!discoveryTool || !runTool || !checkpointTool || !compareTool) throw new Error("Expected scenario tools");
+    const found = await discoveryTool.execute("discover", {}, undefined, undefined, {} as never);
+    expect(discover).toHaveBeenCalledWith(undefined);
+    expect((found.content[0] as { text: string }).text).toContain('"flow"');
+    const started = await runTool.execute("run", { scenario: "flow", mode: "regression", baselineDirectory: "tests/custom" }, undefined, undefined, {} as never);
+    expect(runScenario).toHaveBeenCalledWith({ scenario: "flow", mode: "regression", baselineDirectory: "tests/custom" }, undefined);
+    expect((started.content[0] as { text: string }).text).toContain('"status": "passed"');
+    const exact = await checkpointTool.execute("checkpoint", { checkpointId: "checkpoint-1" }, undefined, undefined, {} as never);
+    expect(read).toHaveBeenCalledWith("checkpoint-1");
+    expect(exact.content[1]).toEqual({ type: "image", data: checkpoint.data, mimeType: "image/png" });
+    const compared = await compareTool.execute("compare", { beforeCheckpointId: "checkpoint-1", afterCheckpointId: "checkpoint-2" }, undefined, undefined, {} as never);
+    expect(compare).toHaveBeenCalledWith("checkpoint-1", "checkpoint-2");
+    expect(compared.content).toHaveLength(3);
+    expect((compared.content[0] as { text: string }).text).toContain('"comparable": true');
+    expect(compared.content[1]).toEqual({ type: "image", data: checkpoint.data, mimeType: "image/png" });
+    const planning = projectPiToolNames("planning", [], tools.map(({ name }) => name));
+    expect(planning).toEqual(expect.arrayContaining(["engine_scenario_checkpoint", "engine_scenario_compare"]));
+    expect(planning).not.toContain("engine_scenarios");
+    expect(planning).not.toContain("engine_scenario_run");
+    const observationsTool = tools.find(({ name }) => name === "engine_observations");
+    if (!observationsTool) throw new Error("Expected engine observations tool");
+    const observations = await observationsTool.execute("observations", {}, undefined, undefined, {} as never);
+    const summary = (observations.content[0] as { text: string }).text;
+    expect(summary).toContain("scenario diagnostic secret");
+    expect(summary).toContain('"outputAvailable": true');
+    expect(summary).not.toContain("scenario output secret");
+    const scenarioRun = await observationsTool.execute("scenario-run", { runId: "run-1" }, undefined, undefined, {} as never);
+    const scenarioText = (scenarioRun.content[0] as { text: string }).text;
+    expect(scenarioText).toContain("scenario diagnostic secret");
+    expect(scenarioText).not.toContain("scenario output secret");
+    const scenarioOutput = await observationsTool.execute("scenario-run-output", { runId: "run-1", includeOutput: true }, undefined, undefined, {} as never);
+    expect((scenarioOutput.content[0] as { text: string }).text).toContain("scenario output secret");
   });
 
   it("returns provider metadata from the built-in web search tool", async () => {

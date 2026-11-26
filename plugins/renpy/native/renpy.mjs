@@ -102,7 +102,7 @@ const GAME_EXCLUDES = new Set(["saves", "cache"]);
  * Remove a disposable folder without letting a locked file hide the validation
  * result. A warning names the folder that remains so it can be cleaned later.
  */
-async function cleanupFolder(folder, label) {
+export async function cleanupFolder(folder, label) {
   let last;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -127,7 +127,7 @@ async function requireDirectory(folder, label) {
   return found;
 }
 
-function insideOrEqual(parent, child) {
+export function insideOrEqual(parent, child) {
   const relative = path.relative(parent, child);
   return relative === "" || (relative !== ".." && !relative.startsWith(".." + path.sep) && !path.isAbsolute(relative));
 }
@@ -145,7 +145,7 @@ function rootResourceKey(name) {
  * original game sources are never moved, and Ren'Py's generated saves stay in
  * the disposable copy.
  */
-async function validationMirror(project) {
+export async function validationMirror(project) {
   const game = path.join(project, "game");
   const state = path.join(project, "state");
   await requireDirectory(game, "game folder");
@@ -332,7 +332,7 @@ async function promoteCompiledScripts(mirror, project, signal) {
  * A throwaway savedir and redirected save-like state for a run inside the
  * disposable mirror.
  */
-async function validationIsolation() {
+export async function validationIsolation() {
   const savedir = await mkdtemp(path.join(tmpdir(), "ohmygame-renpy-validation-"));
   let savesBase;
   let multipersistentBase;
@@ -411,7 +411,7 @@ export async function runWithIsolatedSaves(command, project, args, options = {})
 
 /** Execute an SDK CLI task; cancellation and timeout are distinguished from CLI failures. */
 export function runRenpy(command, args, options = {}) {
-  const { cwd, signal, timeoutMs = DEFAULT_TIMEOUT, progress, env } = options;
+  const { cwd, signal, timeoutMs = DEFAULT_TIMEOUT, progress, env, stopOnReport = false } = options;
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(new Error("Ren'Py command cancelled"));
     const child = spawn(command.executable, [...command.prefixArgs, ...args], {
@@ -424,31 +424,57 @@ export function runRenpy(command, args, options = {}) {
     let outputTruncated = false;
     let timeout = false;
     let settled = false;
+    let reportedStatus;
+    const stop = () => child.kill();
     const append = (chunk) => {
       const part = chunk.toString("utf8");
       if (output.length + part.length > MAX_OUTPUT) outputTruncated = true;
       output = (output + part).slice(-MAX_OUTPUT);
       const last = part.trim().split(/\r?\n/).at(-1);
       if (last) progress?.(last);
+      // A failed Ren'Py test can leave the game waiting after its final report.
+      // The report is authoritative for the test outcome; stop the engine
+      // promptly instead of waiting for the full timeout.
+      if (stopOnReport && !reportedStatus) {
+        const match = /\[rpytest\]\s+Status:\s*(PASSED|FAILED|SKIPPED|XPASSED|XFAILED)\b/i.exec(output);
+        if (match) {
+          reportedStatus = match[1].toUpperCase();
+          stop();
+        }
+      }
     };
     child.stdout.on("data", append);
     child.stderr.on("data", append);
-    const stop = () => child.kill();
     const timer = setTimeout(() => { timeout = true; stop(); }, timeoutMs);
     const finish = (error, result) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       signal?.removeEventListener("abort", stop);
-      if (error) reject(error);
-      else resolve(result);
+      if (error) {
+        // Timeout and cancellation can happen after useful output. Keep it on
+        // the error so a scenario runner can retain partial evidence.
+        if (error instanceof Error) {
+          error.output = output;
+          error.errors = renpyErrors(output);
+          error.outputTruncated = outputTruncated;
+        }
+        reject(error);
+      } else resolve(result);
     };
     signal?.addEventListener("abort", stop, { once: true });
     child.on("error", (error) => finish(error));
     child.on("close", (exitCode) => {
       if (signal?.aborted) return finish(new Error("Ren'Py command cancelled"));
       if (timeout) return finish(new Error("Ren'Py command timed out"));
-      finish(undefined, { exitCode, output, errors: renpyErrors(output), outputTruncated });
+      const reportedExit = reportedStatus === "FAILED" || reportedStatus === "XPASSED" ? 1 : reportedStatus ? 0 : undefined;
+      finish(undefined, {
+        exitCode: reportedExit ?? exitCode,
+        output,
+        errors: renpyErrors(output),
+        outputTruncated,
+        ...(reportedStatus ? { reportedStatus } : {}),
+      });
     });
   });
 }

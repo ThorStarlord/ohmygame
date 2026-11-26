@@ -1,0 +1,32 @@
+{
+  "type": "object",
+  "properties": {
+    "testcase": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.]{0,199}$"
+    },
+    "mode": {
+      "enum": [
+        "exploratory",
+        "regression"
+      ]
+    },
+    "baselineDirectory": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 40,
+      "pattern": "^[a-z0-9]+$"
+    }
+  },
+  "required": [
+    "testcase"
+  ],
+  "additionalProperties": false
+}

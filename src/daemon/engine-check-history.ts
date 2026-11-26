@@ -18,6 +18,7 @@ export function renpyCheckOperation(plugin: string, tool: string): EngineCheckOp
     case "renpy_lint": return "lint";
     case "renpy_compile": return "compile";
     case "renpy_test": return "test";
+    case "renpy_scenario_run": return "test";
     case "renpy_export_web": return "export";
     default: return undefined;
   }
@@ -137,6 +138,7 @@ function diagnosticKey(item: EngineDiagnostic): string {
 /** A reported difference, never a claim of repair, source freshness or full coverage. */
 export function compareReportedChecks(current: EngineCheck, previous: EngineCheck): EngineDiagnosticComparison | undefined {
   if (current.plugin !== previous.plugin || current.version !== previous.version || current.operation !== previous.operation
+    || current.subject !== previous.subject
     || !current.diagnosticsComplete || !previous.diagnosticsComplete
     || (current.status !== "passed" && current.status !== "failed")
     || (previous.status !== "passed" && previous.status !== "failed")
@@ -170,7 +172,7 @@ export class EngineCheckHistory {
     return id;
   }
 
-  complete(folder: string, id: string, value: unknown, redact: Redact): void {
+  complete(folder: string, id: string, value: unknown, redact: Redact, subject?: string, skipped = false): void {
     const result = record(value);
     if (!result) { this.fail(folder, id, "Engine returned no structured result", false, redact); return; }
     const plugin = this.#projects.get(folder)?.find((candidate) => candidate.id === id)?.plugin ?? "";
@@ -181,8 +183,10 @@ export class EngineCheckHistory {
     // check's outcome, while exitCode keeps the engine's own signal.
     const reportedErrors = diagnostics.some((item) => item.severity === "error");
     this.#settle(folder, id, {
-      status: exitCode === 0 ? reportedErrors ? "failed" : "passed" : exitCode === null ? "unknown" : "failed",
+      status: skipped ? "unknown" : exitCode === 0 ? reportedErrors ? "failed" : "passed" : exitCode === null ? "unknown" : "failed",
       ...(reportedErrors ? { reportedErrors: true } : {}),
+      ...(subject ? { subject: subject.slice(0, 200) } : {}),
+      ...(skipped ? { failure: "The engine reported the scenario as skipped; no passing testcase was executed." } : {}),
       exitCode, diagnostics, diagnosticsComplete: complete,
       outputExcerpt: output.slice(-MAX_OUTPUT), outputOmitted: result.outputTruncated !== false || typeof result.output !== "string" || result.output.length > MAX_OUTPUT || output.length > MAX_OUTPUT,
       ...(result.validationCopy === true ? { validationCopy: true } : {}),
@@ -210,7 +214,9 @@ export class EngineCheckHistory {
     const runs = structuredClone(this.#projects.get(folder) ?? []);
     for (let index = 0; index < runs.length; index += 1) {
       const current = runs[index]!;
-      const previous = runs.slice(index + 1).find((run) => run.plugin === current.plugin && run.operation === current.operation);
+      const previous = runs.slice(index + 1).find((run) =>
+        run.plugin === current.plugin && run.version === current.version
+        && run.operation === current.operation && run.subject === current.subject);
       if (!previous) continue;
       const comparison = compareReportedChecks(current, previous);
       if (comparison) current.comparison = comparison;
