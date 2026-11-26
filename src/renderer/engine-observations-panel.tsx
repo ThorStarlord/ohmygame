@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import type { EngineCheck, EngineCheckStatus, EngineDiagnostic, EngineObservationSnapshot, NativeWindowCapture, NativeWindowCaptureSummary } from "../shared/engine-observations.js";
+import type { EngineCheck, EngineCheckStatus, EngineDiagnostic, EngineObservationSnapshot, NativeWindowCapture, NativeWindowCaptureSummary, ObservationGrantSummary } from "../shared/engine-observations.js";
 import type { NativeSessionView } from "../shared/native-sessions.js";
-import { request } from "./api.js";
+import { request, revokeObservationGrant } from "./api.js";
 import { usePluginSlot } from "./project-plugin-contributions.js";
 import { t } from "./i18n.js";
 import { Button } from "./ui/index.js";
@@ -32,7 +32,7 @@ function captureLabel(capture: NativeWindowCaptureSummary): string {
   return `${new Date(capture.capturedAt).toLocaleTimeString()} · ${capture.title}`;
 }
 function captureProvenance(capture: NativeWindowCaptureSummary): string {
-  return `${capture.width}×${capture.height} · ${capture.sessionId.slice(0, 8)}${capture.plugin ? ` · ${capture.plugin}` : ""}`;
+  return `${capture.width}×${capture.height} · ${capture.sessionId.slice(0, 8)}${capture.plugin ? ` · ${capture.plugin}` : ""}${capture.grantId ? ` · obs ${capture.grantId.slice(0, 8)}` : ""}`;
 }
 /** Keep a small viewed-image cache; the daemon still retains the exact captures. */
 function rememberCapture(current: Record<string, string>, id: string, data: string): Record<string, string> {
@@ -40,6 +40,27 @@ function rememberCapture(current: Record<string, string>, id: string, data: stri
   const keys = Object.keys(next);
   for (const key of keys.slice(0, Math.max(0, keys.length - 6))) delete next[key];
   return next;
+}
+
+/** The developer-facing remaining authority and its immediate revoke action. */
+export function ObservationGrantList({ grants, revoking, error, onRevoke }: {
+  grants: readonly ObservationGrantSummary[];
+  revoking?: string;
+  error?: string;
+  onRevoke: (grantId: string) => void;
+}) {
+  return <>
+    <p><strong>{t("engineObservations.observationGrants")}</strong></p>
+    {error ? <p role="alert">{error}</p> : null}
+    {grants.length ? grants.map((grant) => <div key={grant.id}>
+      <p>{grant.purpose}</p>
+      <p>{grant.sessionLabel} · {t("engineObservations.grantRemaining", { remaining: grant.remaining, max: grant.maxAttempts })} · {new Date(grant.expiresAt).toLocaleTimeString()}</p>
+      {grant.inFlight ? <p>{t("engineObservations.grantInFlight")}</p> : null}
+      <Button size="sm" variant="ghost" disabled={revoking === grant.id} onClick={() => onRevoke(grant.id)}>
+        {revoking === grant.id ? t("engineObservations.grantRevoking") : t("engineObservations.grantRevoke")}
+      </Button>
+    </div>) : <p>{t("engineObservations.grantNone")}</p>}
+  </>;
 }
 
 /** The same bounded evidence that engine_observations gives to coding agents. */
@@ -60,6 +81,8 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
   const [captureError, setCaptureError] = useState<string>();
   const [leftId, setLeftId] = useState<string>();
   const [rightId, setRightId] = useState<string>();
+  const [revokingGrant, setRevokingGrant] = useState<string>();
+  const [grantError, setGrantError] = useState<string>();
   const commands = usePluginSlot("game.more");
   const lint = commands.commands.find((command) => command.id === "thorstarlord/renpy:lint-renpy");
 
@@ -131,6 +154,19 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
       setCaptureError(cause instanceof Error ? cause.message : String(cause));
     }
   }
+  async function revokeGrant(grantId: string) {
+    if (revokingGrant) return;
+    setRevokingGrant(grantId);
+    setGrantError(undefined);
+    try {
+      await revokeObservationGrant(projectId, grantId);
+      setRefresh((value) => value + 1);
+    } catch (cause) {
+      setGrantError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setRevokingGrant(undefined);
+    }
+  }
 
   return <aside className="preview-logs" aria-label={t("engineObservations.title")} data-native-preview-overlay="">
     <header><strong>{t("engineObservations.title")}</strong>
@@ -175,6 +211,7 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
           ) : null}
         </div>;
       }) : <p>{t("engineObservations.nativeEmpty")}</p>}
+      <ObservationGrantList grants={current.observationGrants} revoking={revokingGrant} error={grantError} onRevoke={(grantId) => void revokeGrant(grantId)} />
       <p><strong>{t("engineObservations.compare")}</strong></p>
       {captures.length ? <>
         <div className="capture-compare-pickers">

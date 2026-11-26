@@ -7,6 +7,8 @@ interface Waiting<T, D> {
   projectId: string;
   detail: D;
   started: boolean;
+  /** Issued only by claimWithToken; binds later answers to this claimant. */
+  token?: string;
   declined: string[];
   timer?: NodeJS.Timeout;
   resolve(value: T): void;
@@ -88,6 +90,20 @@ export class WindowClaims<T, D> {
     return true;
   }
 
+  /**
+   * Claims a request and returns a one-time settlement token for this
+   * claimant. A different window that only knows the request ID cannot
+   * resolve or fail it.
+   */
+  claimWithToken(projectId: string, request: string, ms: number, message: string): string | undefined {
+    const waiting = this.#get(projectId, request);
+    if (!waiting || waiting.started) return undefined;
+    waiting.started = true;
+    waiting.token = randomUUID();
+    this.#arm(request, waiting, ms, "timeout", message);
+    return waiting.token;
+  }
+
   /** A window can't take a request; once every open window has said why, it fails with their reasons. */
   decline(projectId: string, request: string, reason: string): boolean {
     const waiting = this.#get(projectId, request);
@@ -119,10 +135,26 @@ export class WindowClaims<T, D> {
     return true;
   }
 
+  /** Builds and resolves only for the claimant that holds the settlement token. */
+  resolveWithToken(projectId: string, request: string, token: string, create: () => T): boolean {
+    const waiting = this.#get(projectId, request);
+    if (!waiting?.started || waiting.token !== token) return false;
+    waiting.resolve(create());
+    return true;
+  }
+
   /** Why the claiming window failed. False when nothing claimed waits for it. */
   fail(projectId: string, request: string, message: string): boolean {
     const waiting = this.#get(projectId, request);
     if (!waiting?.started) return false;
+    waiting.reject(this.options.error("failed", message));
+    return true;
+  }
+
+  /** Why the claimant failed; false for another window or a settled request. */
+  failWithToken(projectId: string, request: string, token: string, message: string): boolean {
+    const waiting = this.#get(projectId, request);
+    if (!waiting?.started || waiting.token !== token) return false;
     waiting.reject(this.options.error("failed", message));
     return true;
   }

@@ -1502,6 +1502,7 @@ export class PluginServices {
         ...(output ? { output: { stdout: redact(output.stdout, item.plugin), stderr: redact(output.stderr, item.plugin), omitted: output.omitted } } : {}),
       })),
       captures: captures.map((capture) => ({ ...capture, title: redact(capture.title) })),
+      observationGrants: [],
       checks: folder ? this.#engineChecks.read(folder) : [],
     };
   }

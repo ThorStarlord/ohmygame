@@ -42,13 +42,16 @@ describe("Native capture requests", () => {
     const request = String(published[0]!.data.request);
     expect(requests.target("project-b", request)).toBeUndefined();
     expect(requests.target("project-a", request)).toEqual(target);
-    expect(requests.claim("project-b", request)).toBe(false);
-    expect(requests.claim("project-a", request)).toBe(true);
-    expect(requests.claim("project-a", request)).toBe(false);
-    expect(requests.resolve("project-a", request, capture)).toBe(true);
+    expect(requests.claim("project-b", request)).toBeUndefined();
+    const token = requests.claim("project-a", request);
+    expect(token).toBeTypeOf("string");
+    expect(requests.claim("project-a", request)).toBeUndefined();
+    expect(requests.resolveWith("project-a", request, "wrong-token", () => capture)).toBe(false);
+    expect(requests.fail("project-a", request, "wrong-token", "not the claimant")).toBe(false);
+    expect(requests.resolveWith("project-a", request, token!, () => capture)).toBe(true);
     await expect(pending).resolves.toEqual(capture);
     expect(requests.target("project-a", request)).toBeUndefined();
-    expect(requests.resolve("project-a", request, { ...capture, id: "late" })).toBe(false);
+    expect(requests.resolveWith("project-a", request, token!, () => ({ ...capture, id: "late" }))).toBe(false);
   });
 
   it("does not build a capture for an unclaimed or already settled request", async () => {
@@ -56,13 +59,14 @@ describe("Native capture requests", () => {
     const pending = requests.request("project-a", target);
     const request = String(published[0]!.data.request);
     const create = vi.fn(() => capture);
-    expect(requests.resolveWith("project-a", request, create)).toBe(false);
+    expect(requests.resolveWith("project-a", request, "no-token", create)).toBe(false);
     expect(create).not.toHaveBeenCalled();
-    expect(requests.claim("project-a", request)).toBe(true);
-    expect(requests.resolveWith("project-a", request, create)).toBe(true);
+    const token = requests.claim("project-a", request);
+    expect(token).toBeTypeOf("string");
+    expect(requests.resolveWith("project-a", request, token!, create)).toBe(true);
     expect(create).toHaveBeenCalledOnce();
     await expect(pending).resolves.toEqual(capture);
-    expect(requests.resolveWith("project-a", request, create)).toBe(false);
+    expect(requests.resolveWith("project-a", request, token!, create)).toBe(false);
     expect(create).toHaveBeenCalledOnce();
   });
 
@@ -108,10 +112,13 @@ describe("Native capture requests", () => {
     const { requests, published } = setup();
     const pending = requests.request("project-a", target);
     const request = String(published[0]!.data.request);
-    expect(requests.fail("project-a", request, "no claim")).toBe(false);
-    expect(requests.resolve("project-a", request, capture)).toBe(false);
-    const rejection = expect(pending).rejects.toThrow("project closed");
-    requests.forget("project-a");
+    expect(requests.fail("project-a", request, "no-claim-token", "no claim")).toBe(false);
+    expect(requests.resolveWith("project-a", request, "no-claim-token", () => capture)).toBe(false);
+    const token = requests.claim("project-a", request)!;
+    const rejection = expect(pending).rejects.toThrow("not the claimant");
+    expect(requests.fail("project-a", request, "wrong-token", "not the claimant")).toBe(false);
+    expect(requests.fail("project-a", request, token, "not the claimant")).toBe(true);
     await rejection;
+    expect(requests.target("project-a", request)).toBeUndefined();
   });
 });

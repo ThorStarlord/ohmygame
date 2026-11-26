@@ -156,6 +156,47 @@ it("asks for one native capture with no remembered permission", async () => {
   expect(decide).toHaveBeenCalledWith("allow");
 });
 
+it("asks for a bounded observation session with its limits", async () => {
+  const decide = vi.fn(async () => true);
+  const expiresAt = Date.now() + 10 * 60_000;
+  await act(async () =>
+    root.render(
+      <ApprovalCard
+        request={{
+          ...request,
+          request: {
+            kind: "tool",
+            tool: "engine_observation_start",
+            title: "Observation session requested",
+            reason: "Check the dialogue layout across scenes",
+            nativeObservation: {
+              project: "Superhero Netorare Parody",
+              session: "Run in Ren'Py",
+              purpose: "Check the dialogue layout across scenes",
+              maxAttempts: 3,
+              durationMinutes: 10,
+              expiresAt,
+              operation: "still",
+            },
+          },
+        }}
+        waiting={0}
+        onDecide={decide}
+      />,
+    ),
+  );
+  expect(container.textContent).toContain("Observation session requested");
+  expect(container.textContent).toContain("Superhero Netorare Parody");
+  expect(container.textContent).toContain("Check the dialogue layout across scenes");
+  expect(container.textContent).toContain("Up to 3 capture attempts");
+  expect(container.textContent).toContain("temporary authorization");
+  expect([...container.querySelectorAll("button")].map((button) => button.textContent)).toEqual(["Authorize observation", "Deny"]);
+  await act(async () => {
+    [...container.querySelectorAll("button")].find((button) => button.textContent === "Authorize observation")!.click();
+  });
+  expect(decide).toHaveBeenCalledWith("allow");
+});
+
 it("words a Library add in the person's language instead of its English request", async () => {
   const library: Extract<ThreadItem, { type: "approvalRequest" }> = {
     ...request,

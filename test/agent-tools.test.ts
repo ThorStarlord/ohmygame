@@ -200,7 +200,7 @@ describe("agent tools", () => {
       undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       async () => ({
         projectId: project.id, observedAt: 1, historyRetention: "daemon-memory",
-        preview: { status: "stopped", diagnostics: [] }, nativeSessions: [], captures: [], checks: [],
+        preview: { status: "stopped", diagnostics: [] }, nativeSessions: [], captures: [], observationGrants: [], checks: [],
       }),
       read,
     );
@@ -239,7 +239,7 @@ describe("agent tools", () => {
       undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       async () => ({
         projectId: project.id, observedAt: 1, historyRetention: "daemon-memory",
-        preview: { status: "stopped", diagnostics: [] }, nativeSessions: [], captures: [], checks: [],
+        preview: { status: "stopped", diagnostics: [] }, nativeSessions: [], captures: [], observationGrants: [], checks: [],
       }),
       undefined,
       request,
@@ -249,6 +249,55 @@ describe("agent tools", () => {
     const result = await tool.execute("request", { sessionId: "session-1", reason: "Check the dialogue layout" }, undefined, undefined, {} as never);
     expect(request).toHaveBeenCalledWith("session-1", "Check the dialogue layout", "request", undefined);
     expect(result.content[1]).toEqual({ type: "image", data: capture.data, mimeType: "image/png" });
+  });
+
+  it("exposes the bounded observation session workflow", async () => {
+    const dataDirectory = await mkdtemp(path.join(tmpdir(), "ohmygame-agent-observation-"));
+    const projects = new ProjectManager(dataDirectory);
+    await projects.load();
+    const project = await projects.create("Observation session");
+    const runner = new ToolRunner(dataDirectory, { generate: async () => ({ bytes: Buffer.from("image"), mediaType: "image/webp" }) });
+    await runner.load();
+    const grant = {
+      id: "grant-1", sessionId: "session-1", sessionLabel: "Ren'Py", purpose: "Check dialogue", maxAttempts: 3,
+      admitted: 1, completed: 1, failed: 0, remaining: 2, inFlight: false, createdAt: 1, expiresAt: 2, status: "active" as const,
+    };
+    const capture = {
+      id: "capture-3", sessionId: "session-1", grantId: grant.id, requestId: "request-2", capturedAt: 1,
+      width: 640, height: 360, title: "Game", hwnd: "42", rootPid: 4321, pid: 4322,
+      mediaType: "image/png" as const,
+      analysis: { sampledPixels: 10, opaqueRatio: 1, luminanceMean: 20, luminanceVariance: 10, likelyBlank: false },
+      data: "iVBORw0KGgo=",
+    };
+    const start = vi.fn(async () => grant);
+    const status = vi.fn(async () => [grant]);
+    const captureObservation = vi.fn(async () => ({ capture, grant }));
+    const end = vi.fn(() => ({ ...grant, status: "ended" as const }));
+    const tools = createAgentTools(
+      project, runner, projects, undefined, undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+      async () => ({
+        projectId: project.id, observedAt: 1, historyRetention: "daemon-memory",
+        preview: { status: "stopped", diagnostics: [] }, nativeSessions: [], captures: [], observationGrants: [], checks: [],
+      }),
+      undefined,
+      undefined,
+      { start, status, capture: captureObservation, end },
+    );
+    const startTool = tools.find(({ name }) => name === "engine_observation_start");
+    const statusTool = tools.find(({ name }) => name === "engine_observation_status");
+    const captureTool = tools.find(({ name }) => name === "engine_observation_capture");
+    const endTool = tools.find(({ name }) => name === "engine_observation_end");
+    if (!startTool || !statusTool || !captureTool || !endTool) throw new Error("Expected observation session tools");
+    await startTool.execute("start", { sessionId: "session-1", purpose: "Check dialogue" }, undefined, undefined, {} as never);
+    expect(start).toHaveBeenCalledWith("session-1", "Check dialogue", "start", undefined);
+    await statusTool.execute("status", { grantId: "grant-1" }, undefined, undefined, {} as never);
+    expect(status).toHaveBeenCalledWith("grant-1");
+    const result = await captureTool.execute("capture", { grantId: "grant-1" }, undefined, undefined, {} as never);
+    expect(captureObservation).toHaveBeenCalledWith("grant-1", undefined);
+    expect(result.content[1]).toEqual({ type: "image", data: capture.data, mimeType: "image/png" });
+    await endTool.execute("end", { grantId: "grant-1" }, undefined, undefined, {} as never);
+    expect(end).toHaveBeenCalledWith("grant-1");
   });
 
   it("returns provider metadata from the built-in web search tool", async () => {
