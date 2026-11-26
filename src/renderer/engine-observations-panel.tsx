@@ -34,6 +34,13 @@ function captureLabel(capture: NativeWindowCaptureSummary): string {
 function captureProvenance(capture: NativeWindowCaptureSummary): string {
   return `${capture.width}×${capture.height} · ${capture.sessionId.slice(0, 8)}${capture.plugin ? ` · ${capture.plugin}` : ""}`;
 }
+/** Keep a small viewed-image cache; the daemon still retains the exact captures. */
+function rememberCapture(current: Record<string, string>, id: string, data: string): Record<string, string> {
+  const next = { ...current, [id]: data };
+  const keys = Object.keys(next);
+  for (const key of keys.slice(0, Math.max(0, keys.length - 6))) delete next[key];
+  return next;
+}
 
 /** The same bounded evidence that engine_observations gives to coding agents. */
 export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskAgent }: {
@@ -106,7 +113,7 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
         method: "POST",
         body: JSON.stringify(image),
       });
-      setCaptureImages((current) => ({ ...current, [saved.id]: image.data }));
+      setCaptureImages((current) => rememberCapture(current, saved.id, image.data));
       setRightId(saved.id);
       setRefresh((value) => value + 1);
     } catch (cause) {
@@ -119,7 +126,7 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
     setCaptureError(undefined);
     try {
       const image = await request<NativeWindowCapture>(`/projects/${encodeURIComponent(projectId)}/native-captures/${encodeURIComponent(captureId)}`);
-      setCaptureImages((current) => ({ ...current, [captureId]: image.data }));
+      setCaptureImages((current) => rememberCapture(current, captureId, image.data));
     } catch (cause) {
       setCaptureError(cause instanceof Error ? cause.message : String(cause));
     }
@@ -194,6 +201,7 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
           </figure> : null)}
         </div>
         <p>{t("engineObservations.compareHint")}</p>
+        {captures.length === 1 ? <p>{t("engineObservations.oneCaptureHint")}</p> : null}
       </> : <p>{t("engineObservations.noCaptures")}</p>}
       <p><strong>{t("engineObservations.history")}</strong></p>
       {selected ? <>
@@ -209,7 +217,7 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
         {onAskAgent ? <Button size="sm" variant="ghost" onClick={() => onAskAgent(`Inspect engine_observations for this project with runId ${selected.id}. Explain the observed findings, distinguish evidence from hypotheses, and use an explicit engine check to verify any authorized change. Do not treat absence of a reported diagnostic as proof of repair.`)}>{t("engineObservations.inspect")}</Button> : null}
         {onAskAgent && selected.status === "failed" ? <Button size="sm" onClick={() => onAskAgent("Use engine_observations with runId " + selected.id + " and includeOutput true as the before-check evidence. Inspect the reported project source, identify a specific warranted repair, and make only that bounded change. Preserve existing player saves, unrelated game content and the validation mirror. Explicitly rerun the same engine check, retrieve the new observation, compare what was newly or no longer reported, and explain the evidence and remaining uncertainty. Do not claim success from a lower count alone. If the SDK or required tool is unavailable, state the blocker. Do not launch a native game or export just to repair a lint finding.")}>{t("engineObservations.repair")}</Button> : null}
         {selected.diagnostics.length ? selected.diagnostics.map((item, index) => <div key={index}>
-          <p>{severity(item.severity)}{item.path ? ` · ${item.path}:${item.line}` : ""}</p>
+          <p>{severity(item.severity)}{item.path ? ` · ${item.path}${item.line != null ? `:${item.line}` : ""}` : ""}</p>
           <pre>{item.message}</pre>
           {item.path ? <Button size="sm" variant="ghost" onClick={() => onOpenFile(item.path!)}>{t("engineObservations.openFile")}</Button> : null}
         </div>) : <p>{t("engineObservations.noFindings")}</p>}

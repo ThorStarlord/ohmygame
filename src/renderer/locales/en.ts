@@ -51,6 +51,7 @@ const en = {
     after: "After",
     noCaptures: "No game-window captures are retained.",
     compareHint: "Compare the same game state and viewport where possible. A visible difference is evidence, not proof of improvement, and an identical image does not prove a change had no effect.",
+    oneCaptureHint: "Only one capture is retained. Request or take another observation to compare a before and after.",
     agentRequested: "Agent-requested with one-time permission",
     blankCapture: "likely blank",
     captureAlt: "Captured window for {{label}}",

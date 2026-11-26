@@ -7,7 +7,7 @@
 ## Delivered
 
 - `engine_capture_request` for the selected project's in-app coding agent. It names a managed native session, asks the person through the normal approval card for one still image, revalidates the session after approval, and returns the authorized image with its capture ID.
-- The approval card shows the project, game session and requested permission in the app's language. It offers **Allow** once and **Deny**, never a remembered permission.
+- The approval card shows the project, game session and requested permission in the app's language. It offers **Allow once** and **Deny**, never a remembered permission.
 - A one-time request service bound to one project, session and root process. It is published only to that project's open desktop windows; one window claims it before capturing. Denial, cancellation, expiry, a stopped or replaced session, an ambiguous window or a late duplicate answer cannot produce an extra capture.
 - Six recent captures per session and twelve per project, retaining exact capture IDs and provenance (`requestId`, plugin, session, dimensions, window ownership, blank-frame analysis). An evicted ID is reported as unavailable rather than silently replaced.
 - `engine_capture` can read an exact `captureId` or a session's latest image. The project agent and external MCP clients keep read-only access; only the in-app conversation can initiate a request.
@@ -32,7 +32,7 @@ The built desktop app was launched with a temporary data directory and a disposa
 - Ren'Py menu, 1920 x 1112, `likelyBlank: false`.
 - Atlas title, 1920 x 1124, `likelyBlank: false`.
 
-Problems & engine status showed both retained captures, both `View capture` actions returned the exact images, and the before/after selectors rendered them side by side with session, plugin and dimension metadata. The app was not asked to impersonate a person approving an agent request.
+Problems & engine status showed both retained captures, both `View capture` actions returned the exact images, and the before/after selectors rendered them side by side with an 8-character session id plus plugin and dimension metadata. The app was not asked to impersonate a person approving an agent request.
 
 ## Godot exercise
 

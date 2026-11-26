@@ -52,10 +52,11 @@ function scriptPath(value: unknown): value is string {
 
 /** A `res://` source location, without inventing one from unrelated text. */
 function godotSource(value: string): { path: string; line?: number } | undefined {
-  const match = /\bres:\/\/([^()\r\n]+?\.(?:gd|tscn|tres|godot|cfg))(?::(\d+))?/.exec(value);
+  const match = /\bres:\/\/([^()\r\n]+?\.(?:gd|tscn|tres|godot|cfg))(?![.\w])(?::(\d+))?/.exec(value);
   if (!match?.[1]) return undefined;
   const relative = match[1].replaceAll("\\", "/");
-  if (relative.includes("\0") || relative.split("/").some((part) => part === "" || part === "." || part === "..")) return undefined;
+  if (relative.includes("\0") || relative.includes(":") || relative.startsWith("/")
+    || relative.split("/").some((part) => part === "" || part === "." || part === "..")) return undefined;
   const line = match[2] ? Number(match[2]) : undefined;
   return { path: relative, ...(Number.isSafeInteger(line) && line! > 0 ? { line } : {}) };
 }
@@ -176,7 +177,7 @@ export class EngineCheckHistory {
     const exitCode = typeof result.exitCode === "number" && Number.isInteger(result.exitCode) ? result.exitCode : null;
     const { diagnostics, complete } = diagnosticsOf(plugin, result, redact);
     const output = typeof result.output === "string" ? redact(result.output) : "";
-    // Godot can report script errors and still exit 0; the errors are the
+    // An engine can report errors and still exit 0; the errors are the
     // check's outcome, while exitCode keeps the engine's own signal.
     const reportedErrors = diagnostics.some((item) => item.severity === "error");
     this.#settle(folder, id, {

@@ -52,6 +52,7 @@ const zhCN: typeof en = {
     after: "修改后",
     noCaptures: "尚未保留游戏窗口截图。",
     compareHint: "尽量比较相同的游戏状态和视口。看到差异只是证据，不等于改进；画面相同也不证明修改没有效果。",
+    oneCaptureHint: "目前只保留了一张截图。请再请求或截取一次，以比较修改前后。",
     agentRequested: "经一次性授权的代理请求",
     blankCapture: "可能为空白",
     captureAlt: "{{label}} 的窗口截图",

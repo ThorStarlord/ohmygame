@@ -113,9 +113,13 @@ describe("Engine check observations", () => {
     history.complete("G", id, {
       exitCode: 1,
       errors: ["ERROR: a path https://example.test/a.gd:1 is not a Godot resource"],
-      output: "ERROR: a path https://example.test/a.gd:1 is not a Godot resource",
+      output: [
+        "ERROR: a path https://example.test/a.gd:1 is not a Godot resource",
+        "ERROR: cannot open res://backup/main.gd.old",
+        "ERROR: res://C:/Users/x/secret.gd:1",
+      ].join("\n"),
     }, plain);
-    expect(history.read("G")[0]!.diagnostics[0]).toMatchObject({ severity: "error" });
-    expect(history.read("G")[0]!.diagnostics[0]!.path).toBeUndefined();
+    expect(history.read("G")[0]!.diagnostics).toHaveLength(3);
+    expect(history.read("G")[0]!.diagnostics.every((item) => item.path === undefined)).toBe(true);
   });
 });

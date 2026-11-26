@@ -5966,6 +5966,7 @@ export function createApp(options: AppOptions = {}) {
       else {
         openStreams.delete(project.id);
         fileWatches.close(project.workspacePath);
+        nativeCaptureRequests.forget(project.id);
       }
     });
   });
