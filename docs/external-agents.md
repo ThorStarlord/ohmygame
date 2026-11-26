@@ -212,7 +212,7 @@ bound project does not have returns an error that says why.
 | `generate_audio`                                                            | Run as jobs                                                                 |
 | `canvas_check`, `canvas_initialize`, `generate_canvas_media`                | `generate_canvas_media` runs as a job                                       |
 | `game_use`                                                                  | Needs the desktop app and a project with a game preview; opens a window     |
-| `engine_observations`, `engine_capture`                                     | Read retained engine checks, preview/native state and an exact or latest person-authorized native capture; never starts a check or capture |
+| `engine_observations`, `engine_capture`                                     | Read retained engine checks, preview/native state, active observation grants and an exact or latest person-authorized native capture; never starts a check or capture |
 | `browser_use` | Uses the selected project’s visible Browser panel in the desktop app; shared tabs remain open when the MCP session ends |
 | `panel_screenshot` | Captures one of the selected project’s plugin panels as the desktop app shows it; needs the project open there |
 | `web_fetch` | Reads HTTP(S) HTML or text without browser cookies or JavaScript |

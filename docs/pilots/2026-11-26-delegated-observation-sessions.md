@@ -20,11 +20,12 @@
 - `test/observation-grants.test.ts` — 7 passed: create, limits, admission, wrong conversation/session/process, exhaustion, expiry, revocation, invalidation, no transfer.
 - `test/observation-session-service.test.ts` — 10 passed: approval details, denial, revalidation, budget, expiry, replacement, cross-conversation isolation, one in-flight, revocation and failed-attempt accounting.
 - `test/native-capture-requests.test.ts` — 6 passed: claim tokens, wrong-token rejection, cancellation, project/session invalidation and atomic late-answer rejection.
+- `test/native-capture-routes.test.ts` — 3 passed: HTTP claim token, missing/wrong-token image and error rejection, decline, exact retrieval, late answer, Windows-only and session ownership.
 - `test/native-capture-integration.test.ts` — 3 passed: agent tool → approval → revalidation → request → claim → retention → exact retrieval; denial and replaced-session refusal.
 - `test/approval-card.test.tsx` — 16 passed, including the bounded observation card and its limits.
 - `test/engine-observations-grants.test.tsx` — 2 passed: remaining authority, revoke affordance and empty state.
 - `test/native-window-captures.test.ts` — 5 passed; `test/engine-check-history.test.ts` — 6 passed.
-- Combined focused grant/capture suite: 55 passed.
+- Combined focused grant/capture suite: 58 passed.
 - `test/app.test.ts` — 92 passed.
 - External MCP, Ren'Py plugin and Godot plugin suites — 62 passed.
 - `typecheck`, `lint`, `build:host` and `build:renderer` pass.

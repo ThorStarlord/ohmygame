@@ -20,8 +20,8 @@ export interface NativeCaptureTarget {
 export type NativeCaptureRequestAnswer =
   | { started: true }
   | { declined: string }
-  | { error: string }
-  | { image: NativeWindowCaptureInput };
+  | { error: string; claimToken: string }
+  | { image: NativeWindowCaptureInput; claimToken: string };
 
 export interface NativeCaptureRequestsOptions {
   publish<T extends "native.capture.request" | "native.capture.cancel">(

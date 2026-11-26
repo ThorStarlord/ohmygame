@@ -164,6 +164,7 @@ import { NativeCaptureRequests } from "./native-capture-requests.js";
 import { ObservationGrants } from "./observation-grants.js";
 import { ObservationSessionService } from "./observation-session-service.js";
 import { requestOneTimeCapture } from "./one-time-capture-service.js";
+import { registerNativeCaptureRoutes } from "./native-capture-routes.js";
 import { createPluginFolder, deletePluginFile, listPluginFiles, movePluginFile, openPluginFile, PLUGIN_FILE_MAX_BYTES, PluginFileError, writablePath, writePluginFile } from "./plugin-files.js";
 import { isOwned, ownedFolders, PluginPendingWrites, ProjectIdle } from "./plugin-pending-writes.js";
 import { PluginModelError, PluginModels } from "./plugin-models.js";
@@ -3227,91 +3228,14 @@ export function createApp(options: AppOptions = {}) {
       }, { plugin: session.plugin });
     },
   );
-  app.get<{ Params: { projectId: string; sessionId: string } }>(
-    "/projects/:projectId/native-sessions/:sessionId/capture",
-    async (request, reply) => {
-      const project = projects.get(request.params.projectId);
-      if (!project) return reply.code(404).send({ error: "Project not found" });
-      const capture = nativeWindowCaptures.latest(project.id, request.params.sessionId);
-      return capture ?? reply.code(404).send({ error: "No capture is retained for this session" });
-    },
-  );
-  // One exact retained capture, for comparing before and after observations.
-  app.get<{ Params: { projectId: string; captureId: string } }>(
-    "/projects/:projectId/native-captures/:captureId",
-    async (request, reply) => {
-      const project = projects.get(request.params.projectId);
-      if (!project) return reply.code(404).send({ error: "Project not found" });
-      const capture = nativeWindowCaptures.get(project.id, request.params.captureId);
-      return capture ?? reply.code(404).send({ error: "That capture is no longer retained" });
-    },
-  );
-  // A desktop window's answer to a person-authorized agent observation request.
-  app.post<{ Params: { projectId: string; request: string }; Body: unknown }>(
-    "/projects/:projectId/native-capture-requests/:request",
-    { bodyLimit: 20 * 1024 * 1024 },
-    async (request, reply) => {
-      if (process.platform !== "win32") return reply.code(409).send({ error: "Native window capture is available on Windows only" });
-      const project = projects.get(request.params.projectId);
-      if (!project) return reply.code(404).send({ error: "Project not found" });
-      const target = nativeCaptureRequests.target(project.id, request.params.request);
-      if (!target) return reply.code(404).send({ error: "No visual observation request is waiting" });
-      const body = request.body;
-      if (!body || typeof body !== "object" || Array.isArray(body)) return reply.code(400).send({ error: "Invalid observation answer" });
-      const answer = body as Record<string, unknown>;
-      const keys = Object.keys(answer);
-      if ("started" in answer) {
-        if (keys.length !== 1 || answer.started !== true) return reply.code(400).send({ error: "Invalid observation answer" });
-        const claimToken = nativeCaptureRequests.claim(project.id, request.params.request);
-        return claimToken
-          ? reply.send({ claimToken })
-          : reply.code(404).send({ error: "No visual observation request is waiting" });
-      }
-      if ("declined" in answer) {
-        if (keys.length !== 1 || typeof answer.declined !== "string" || answer.declined.length > 2_000)
-          return reply.code(400).send({ error: "Invalid observation answer" });
-        nativeCaptureRequests.decline(project.id, request.params.request, answer.declined);
-        return reply.code(204).send();
-      }
-      const claimToken = answer.claimToken;
-      if (typeof claimToken !== "string" || claimToken.length > 100) return reply.code(400).send({ error: "Invalid observation answer" });
-      if ("error" in answer) {
-        if (keys.length !== 2 || typeof answer.error !== "string" || answer.error.length > 2_000)
-          return reply.code(400).send({ error: "Invalid observation answer" });
-        return nativeCaptureRequests.fail(project.id, request.params.request, claimToken, answer.error)
-          ? reply.code(204).send()
-          : reply.code(409).send({ error: "The visual observation request is no longer waiting" });
-      }
-      if (!("image" in answer) || keys.length !== 2) return reply.code(400).send({ error: "Invalid observation answer" });
-      const session = (await pluginServices.native.sessions(project.workspacePath))
-        .find((item) => item.id === target.sessionId);
-      if (!session || session.state !== "running" || session.pid !== target.rootPid) {
-        nativeCaptureRequests.fail(project.id, request.params.request, claimToken, "The managed native session changed before the capture arrived.");
-        return reply.code(409).send({ error: "The managed native session changed before the capture arrived" });
-      }
-      const input = parseNativeWindowCapture(answer.image);
-      if (!input || input.rootPid !== target.rootPid) {
-        nativeCaptureRequests.fail(project.id, request.params.request, claimToken, "The capture did not belong to the approved session.");
-        return reply.code(400).send({ error: "Invalid window capture" });
-      }
-      let saved: import("../shared/engine-observations.js").NativeWindowCaptureSummary | undefined;
-      try {
-        const delivered = nativeCaptureRequests.resolveWith(project.id, request.params.request, claimToken, () => {
-          const summary = nativeWindowCaptures.add(project.id, target.sessionId, {
-            ...input,
-            title: pluginServices.redactObservationText(input.title, session.plugin),
-          }, { requestId: request.params.request, ...(target.grantId ? { grantId: target.grantId } : {}), plugin: session.plugin });
-          saved = summary;
-          return { ...summary, data: input.data };
-        });
-        if (!delivered) return reply.code(409).send({ error: "The visual observation request is no longer waiting" });
-      } catch {
-        nativeCaptureRequests.fail(project.id, request.params.request, claimToken, "The capture could not be retained.");
-        return reply.code(500).send({ error: "The capture could not be retained" });
-      }
-      return saved;
-    },
-  );
+  registerNativeCaptureRoutes(app, {
+    platform: process.platform,
+    projects,
+    sessions: (project) => pluginServices.native.sessions(project.workspacePath),
+    requests: nativeCaptureRequests,
+    captures: nativeWindowCaptures,
+    redactTitle: (text, plugin) => pluginServices.redactObservationText(text, plugin),
+  });
   // The person can revoke a delegated observation session immediately.
   app.post<{ Params: { projectId: string; grantId: string } }>(
     "/projects/:projectId/observation-grants/:grantId/revoke",
