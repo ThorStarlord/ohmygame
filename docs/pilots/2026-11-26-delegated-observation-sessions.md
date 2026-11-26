@@ -6,11 +6,11 @@
 
 ## Delivered
 
-- **Claimant-bound settlement.** A desktop window that claims a capture request receives a one-time settlement token. Image and error answers must carry it; a different window that only knows the request ID cannot settle the request.
+- **Claimant-bound settlement.** A desktop window that claims a capture request receives a one-time settlement token. Image and error answers must carry it; after another window has claimed a request, a different window that only knows the request ID cannot settle it.
 - **Connected one-time capture harness.** One test drives the actual agent tool, one-time capture service, approval decision, managed-session revalidation, capture event, claim token, atomic retention, returned image and exact `captureId` retrieval. Approval is simulated in the test, not claimed as person consent.
 - **Bounded observation grants.** An in-app agent can request one observation session for one project, conversation, running native session and root process. The person sees the agent, project, session, purpose, operation, three-attempt limit and absolute end time before choosing **Authorize observation** or **Deny**.
 - **Atomic budget accounting.** One attempt is admitted before any capture starts; failures stay consumed; only one capture is in flight per grant. Concurrent admissions cannot exceed the approved budget.
-- **Lifecycle boundaries.** A grant ends on expiry, attempt exhaustion, explicit agent end, person revocation, managed-session termination/replacement, conversation archive/delete, project close or daemon restart. It never transfers to a replacement game process.
+- **Lifecycle boundaries.** New admissions end at expiry, attempt exhaustion, explicit agent end, person revocation, managed-session termination/replacement, conversation archive/delete, project close or daemon restart. An attempt already admitted may finish. It never transfers to a replacement game process.
 - **Agent workflow:** `engine_observation_start`, `engine_observation_status`, `engine_observation_capture`, `engine_observation_end`. The existing `engine_capture_request` remains the one-time path, and `engine_capture` remains read-only.
 - **Developer surface.** Problems & engine status shows active observation sessions with purpose, session, remaining attempts, expiry and a revoke action. Captures produced under a grant retain `grantId` provenance alongside the request ID, plugin, session, process and image metadata.
 - **External MCP remains read-only.** It can read captures and see active grants through `engine_observations`, but cannot initiate one-time or delegated capture.
@@ -47,7 +47,9 @@ The fixture produced three capture requests and three retained captures. It is n
 
 - The initial grant limits are exactly three admitted attempts and ten minutes. The agent cannot extend or expand them; a new person approval is required.
 - Grants are daemon-memory only. No permanent preference or cross-session authorization exists.
-- Attempts are consumed at admission. A failed, cancelled or unavailable window still consumes its attempt.
+- Active grant summaries are project-wide in Problems & engine status and `engine_observations` so the person can revoke them; capture and end operations remain scoped to the requesting conversation.
+- Closing the project window cancels pending capture requests and makes a capture attempt fail, but does not itself revoke an active grant. Reopening the same project window within its limits can use the remaining authority; project deletion or daemon restart clears it.
+- Attempts are consumed at admission. A failed, cancelled or unavailable window still consumes its attempt. Expiry stops new admissions; a capture admitted before expiry may complete and be retained.
 - Revocation immediately prevents new admissions and cancels an outstanding request where possible. A screenshot already obtained by the operating system cannot be undone.
 - The claim token protects against another window settling a request by knowing its ID. It does not protect against a compromised trusted renderer that can read the claimant's token.
 - No authentic person-approved live grant was exercised. The actual desktop grant status/revoke surface was built and statically tested, but not driven through a real approval.

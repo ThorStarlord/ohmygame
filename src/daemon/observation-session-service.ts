@@ -35,7 +35,7 @@ export class ObservationSessionService {
     const first = await this.#runningSession(sessionId);
     if (this.options.grants.list(this.options.projectId)
       .some((grant) => grant.sessionId === sessionId && grant.status === "active"))
-      throw new Error("An observation session is already active for this game session in the project. End or revoke it before requesting another.");
+      throw new Error("An observation session is already active for this game session in the project. Ask the person to end or revoke it, or use it in its conversation, before requesting another.");
     const expiresAt = this.#now() + OBSERVATION_GRANT_DURATION_MS;
     const details: ApprovalRequestDetails = {
       kind: "tool",

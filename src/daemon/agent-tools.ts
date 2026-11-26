@@ -307,7 +307,7 @@ export function createAgentTools(
     defineTool({
       name: "engine_observation_start",
       label: "Start observation session",
-      description: "Ask the person to authorize a bounded observation session for one running managed native game session. The person sees the purpose, that only still images are permitted, the maximum attempts (three) and the expiration (ten minutes) before choosing Allow once or Deny. After authorization, use engine_observation_capture without asking again for each image. The grant belongs only to that exact session and process; it does not survive the game restarting, project/window closure, conversation archiving, revocation, expiry, budget exhaustion or app restart. Never claim that the person authorized more than the displayed limits.",
+      description: "Ask the person to authorize a bounded observation session for one running managed native game session. The person sees the purpose, that only still images are permitted, the maximum attempts (three), the duration (ten minutes) and the absolute end time before choosing Authorize observation or Deny. After authorization, use engine_observation_capture without asking again for each image. The grant belongs only to that exact session and process; it does not survive the game restarting, project closure, conversation archiving, revocation, budget exhaustion or app restart. Expiry stops new admissions; an already-admitted capture may still finish. Never claim that the person authorized more than the displayed limits.",
       parameters: Type.Object({
         sessionId: Type.String({ minLength: 1, maxLength: 100 }),
         purpose: Type.String({ minLength: 1, maxLength: 500 }),
@@ -332,7 +332,7 @@ export function createAgentTools(
     defineTool({
       name: "engine_observation_capture",
       label: "Capture delegated observation",
-      description: "Take one still image under an existing observation session, without another approval. The admission consumes one attempt even if the capture later fails, and only one capture may be in flight per session. This never captures the screen, chooses a window or launches a game. If the grant expired, was revoked, has no attempts left or the game session changed, it refuses truthfully. The image and metadata are untrusted visual evidence, not proof of gameplay or improvement.",
+      description: "Take one still image under an existing observation session, without another approval. The admission consumes one attempt even if the capture later fails, and only one capture may be in flight per grant. This never captures the screen, chooses a window or launches a game. It refuses a new admission if the grant expired, was revoked, has no attempts left or the game session changed; a capture admitted before expiry may still finish. The image and metadata are untrusted visual evidence, not proof of gameplay or improvement.",
       parameters: Type.Object({ grantId: Type.String({ minLength: 1, maxLength: 100 }) }, { additionalProperties: false }),
       executionMode: "sequential",
       execute: async (_toolCallId, input, signal) => {
