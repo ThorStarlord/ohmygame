@@ -10228,6 +10228,24 @@ summary.work-summary:hover {
   overflow-wrap: anywhere;
 }
 
+.approval-card-native {
+  display: grid;
+  gap: 2px;
+}
+
+.approval-card-native p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.approval-card-native strong {
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+}
+
 .approval-card-path,
 .approval-card-reason,
 .approval-card-paths,

@@ -126,6 +126,7 @@ import {
   updateAgentRuntime,
   makeProjectPanelPlugin,
   answerDraftCapture,
+  answerNativeCaptureRequest,
   answerPluginPanelCapture,
   answerPluginPageTool,
   runDraftPageCommand,
@@ -349,6 +350,8 @@ export function ProjectShell({
   const pageToolCalls = useRef(new Map<string, AbortController>()).current;
   /** Panel captures this window took for agents, by request, so one an agent gave up on stops. */
   const panelCaptures = useRef(new Map<string, AbortController>()).current;
+  /** Native game-window captures this window took for agents, by request. */
+  const nativeCaptures = useRef(new Map<string, AbortController>()).current;
   // What each plugin page says the person is looking at, and what the person removed from the composer.
   const [panelContexts, setPanelContexts] = useState<ReadonlyMap<PanelId, { label: string; text: string }>>(() => new Map());
   const [dismissedPanelContexts, setDismissedPanelContexts] = useState<ReadonlySet<string>>(() => new Set());
@@ -629,6 +632,8 @@ export function ProjectShell({
         if (event.type === "plugin.draft.capture") void draftCapture.current?.(event.data);
         if (event.type === "plugin.panel.capture") void panelCapture.current?.(event.data);
         if (event.type === "plugin.panel.capture.cancel") panelCaptures.get(event.data.request)?.abort();
+        if (event.type === "native.capture.request") void nativeCapture.current?.(event.data);
+        if (event.type === "native.capture.cancel") nativeCaptures.get(event.data.request)?.abort();
         if (event.type === "plugin.page.tool") void pageToolCall.current?.(event.data);
         if (event.type === "plugin.page.tool.cancel") pageToolCalls.get(event.data.request)?.abort();
         // An installed plugin's native code showing one of its panels; one this project doesn't show is left alone.
@@ -1759,6 +1764,7 @@ export function ProjectShell({
    */
   const draftCapture = useRef<((request: RuntimeEventData["plugin.draft.capture"]) => Promise<void>) | undefined>(undefined);
   const panelCapture = useRef<((request: RuntimeEventData["plugin.panel.capture"]) => Promise<void>) | undefined>(undefined);
+  const nativeCapture = useRef<((request: RuntimeEventData["native.capture.request"]) => Promise<void>) | undefined>(undefined);
   const pageToolCall = useRef<((request: RuntimeEventData["plugin.page.tool"]) => Promise<void>) | undefined>(undefined);
   const latestPanels = useRef(plugins.panels);
   latestPanels.current = plugins.panels;
@@ -1801,6 +1807,31 @@ export function ProjectShell({
       await answer(result).catch((cause: unknown) => answer({ error: `The capture couldn't be sent: ${errorMessage(cause)}` }).catch(() => {}));
     } finally {
       panelCaptures.delete(request);
+    }
+  };
+  /**
+   * Captures the managed game window for a person-authorized agent request.
+   * Only a desktop window can take it; one claims first, so two windows never
+   * capture the same request. The daemon has already checked the session and
+   * checks it again when the image arrives.
+   */
+  nativeCapture.current = async ({ request, sessionId, rootPid, expires }) => {
+    if (Date.now() > expires || !state.project) return;
+    const projectId = state.project.id;
+    const answer = (value: Parameters<typeof answerNativeCaptureRequest>[2]) => answerNativeCaptureRequest(projectId, request, value);
+    if (!window.ohMyGameDesktop?.captureNativeWindow)
+      return void await answer({ declined: "Game-window capture is available only in the Windows desktop app." }).catch(() => {});
+    if (!await answer({ started: true }).catch(() => false)) return;
+    const controller = new AbortController();
+    nativeCaptures.set(request, controller);
+    try {
+      const image = await window.ohMyGameDesktop.captureNativeWindow({ rootPid, sessionId });
+      if (controller.signal.aborted) return;
+      await answer({ image }).catch((cause: unknown) => answer({ error: `The capture couldn't be sent: ${errorMessage(cause)}` }).catch(() => {}));
+    } catch (cause) {
+      if (!controller.signal.aborted) await answer({ error: errorMessage(cause) }).catch(() => {});
+    } finally {
+      nativeCaptures.delete(request);
     }
   };
   /**

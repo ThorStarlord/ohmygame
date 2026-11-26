@@ -2032,6 +2032,21 @@ export async function answerPluginPanelCapture(projectId: string, requestId: str
   }
 }
 /**
+ * Answers a person-authorized agent request for one native game-window image:
+ * that this window took it, then the image or why there is none. False when
+ * nothing waits for it, as when another window took it or the person's turn
+ * ended.
+ */
+export async function answerNativeCaptureRequest(projectId: string, requestId: string, answer: { started: true } | { declined: string } | { image: import("../shared/engine-observations.js").NativeWindowCaptureInput } | { error: string }): Promise<boolean> {
+  try {
+    await request(`/projects/${encodeURIComponent(projectId)}/native-capture-requests/${encodeURIComponent(requestId)}`, { method: "POST", body: JSON.stringify(answer) });
+    return true;
+  } catch (cause) {
+    if (cause instanceof ApiError && cause.status === 404) return false;
+    throw cause;
+  }
+}
+/**
  * Answers a tool a plugin's panel page runs: that the page has the call,
  * its progress, then its result or error. False when nothing waits for it,
  * as when another window took the call or the caller gave up.

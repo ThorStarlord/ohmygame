@@ -121,6 +121,18 @@ export class WindowClaims<T, D> {
     for (const waiting of this.#waiting.values()) if (waiting.projectId === projectId && waiting.started) yield waiting.detail;
   }
 
+  /** Gives up every request for a project, as when it closes. */
+  cancelProject(projectId: string, message = "The project closed"): void {
+    this.cancelWhere(projectId, () => true, message);
+  }
+
+  /** Gives up project requests whose detail matches, as when their session ends. */
+  cancelWhere(projectId: string, matches: (detail: D) => boolean, message: string): void {
+    for (const [request, waiting] of [...this.#waiting]) {
+      if (waiting.projectId === projectId && matches(waiting.detail)) this.#give(request, waiting, "cancelled", message);
+    }
+  }
+
   #get(projectId: string, request: string): Waiting<T, D> | undefined {
     const waiting = this.#waiting.get(request);
     return waiting?.projectId === projectId ? waiting : undefined;

@@ -70,7 +70,7 @@ import { BrowserSettingsStore, BrowserStoreError, ProjectBrowserStore } from "./
 import { USER_INSTRUCTIONS_MAX_CHARACTERS, type AgentInstructionsView, type ConversationInstructions } from "../shared/agent-instructions.js";
 import { LocalMultiplayerRuntime } from "./local-multiplayer.js";
 import { moveLocalGameServices, moveWorkspaceMultiplayer, readWorkspaceMultiplayer } from "./multiplayer-workspace.js";
-import { ACCOUNT_RUNTIME_IDS, isAccountRuntimeId, isAccountProfileIds, isAgentRuntimeId, nativeEffort, type AgentRuntimeId, type AnswerApprovalRequest } from "../shared/agent-runtimes.js";
+import { ACCOUNT_RUNTIME_IDS, isAccountRuntimeId, isAccountProfileIds, isAgentRuntimeId, nativeEffort, type AgentRuntimeId, type AnswerApprovalRequest, type ApprovalRequestDetails } from "../shared/agent-runtimes.js";
 import { ConversationManager, sessionDirectory, type StoredConversation } from "./conversations.js";
 import { ConversationImageStore } from "./conversation-images.js";
 import { OwnedPlaytestDriver } from "./owned-playtest.js";
@@ -160,6 +160,7 @@ import { isPluginId, networkCovers, PLUGIN_MEDIA_KINDS, pluginApiIssue, type Plu
 import { PageToolError, PluginPageTools, type PageToolAnswer } from "./plugin-page-tools.js";
 import { PanelScreenshots, type PanelScreenshotAnswer } from "./panel-screenshots.js";
 import { NativeWindowCaptures, parseNativeWindowCapture } from "./native-window-captures.js";
+import { NativeCaptureRequests } from "./native-capture-requests.js";
 import { createPluginFolder, deletePluginFile, listPluginFiles, movePluginFile, openPluginFile, PLUGIN_FILE_MAX_BYTES, PluginFileError, writablePath, writePluginFile } from "./plugin-files.js";
 import { isOwned, ownedFolders, PluginPendingWrites, ProjectIdle } from "./plugin-pending-writes.js";
 import { PluginModelError, PluginModels } from "./plugin-models.js";
@@ -1039,6 +1040,13 @@ export function createApp(options: AppOptions = {}) {
   const pluginServicesReady = pluginServices.ready().catch((err: unknown) => app.log.warn({ err }, "Could not load the plugins"));
   /** Person-authorized captures of a project's managed native window. */
   const nativeWindowCaptures = new NativeWindowCaptures();
+  /** How many event streams each project has open: it is open in the app while it has one. */
+  const openStreams = new Map<string, number>();
+  /** One-time agent-requested captures, answered by a project's open desktop window. */
+  const nativeCaptureRequests = new NativeCaptureRequests({
+    publish: (projectId, type, data) => events.publish(projectId, type, data),
+    windows: (projectId) => openStreams.get(projectId) ?? 0,
+  });
   projects.recognizesEngine = (folder) => pluginServices.recognizesFolder(folder);
 
   const pluginConfiguration = new PluginConfigurationStore(dataDirectory);
@@ -1194,11 +1202,56 @@ export function createApp(options: AppOptions = {}) {
     if (!current) throw new Error("Project not found");
     return pluginServices.engineObservations(current, nativeWindowCaptures.list(current.id));
   };
-  const readEngineCapture = async (project: ProjectState, sessionId: string) =>
-    nativeWindowCaptures.latest(project.id, sessionId);
+  const readEngineCapture = async (project: ProjectState, query: { sessionId?: string; captureId?: string }) =>
+    query.captureId
+      ? nativeWindowCaptures.get(project.id, query.captureId)
+      : query.sessionId ? nativeWindowCaptures.latest(project.id, query.sessionId) : undefined;
   /** Native window capture is a Windows desktop capability, not a generic tool. */
   const engineCaptureReader = (project: ProjectState) =>
-    process.platform === "win32" ? (sessionId: string) => readEngineCapture(project, sessionId) : undefined;
+    process.platform === "win32" ? (query: { sessionId?: string; captureId?: string }) => readEngineCapture(project, query) : undefined;
+  /**
+   * One person-authorized still capture of a managed session. The approval is
+   * per call and bound to the session's root process; nothing is remembered.
+   */
+  const requestEngineCapture = async (
+    project: ProjectState,
+    conversation: StoredConversation,
+    sessionId: string,
+    reason: string | undefined,
+    toolCallId: string,
+    signal?: AbortSignal,
+  ) => {
+    const session = (await pluginServices.native.sessions(project.workspacePath))
+      .find((item) => item.id === sessionId);
+    if (!session) throw new Error("That managed native session is no longer retained for this project.");
+    if (session.state !== "running" || session.pid === undefined)
+      throw new Error("That managed native session is not running. Start the game and request a new observation.");
+    const details: ApprovalRequestDetails = {
+      kind: "tool",
+      tool: "engine_capture_request",
+      title: "Visual observation requested",
+      reason: reason?.trim() || `The coding agent wants to inspect the running ${session.label} game.`,
+      nativeCapture: { project: project.name, session: session.label, operation: "still" },
+    };
+    const decision = await agents.askApproval(
+      project.id,
+      conversation.summary.id,
+      `native-capture:${toolCallId}`,
+      details,
+      signal,
+    );
+    signal?.throwIfAborted();
+    if (decision !== "allow") throw new Error("The person did not allow this visual observation request.");
+    const current = (await pluginServices.native.sessions(project.workspacePath))
+      .find((item) => item.id === sessionId);
+    if (!current || current.state !== "running" || current.pid !== session.pid)
+      throw new Error("The native session changed after the person allowed the observation. Request a new one.");
+    return nativeCaptureRequests.request(project.id, {
+      sessionId: current.id,
+      rootPid: current.pid,
+      label: current.label,
+    }, signal);
+  };
   const projectAgentTools = async (project: ProjectState, conversation: StoredConversation) => {
     const playtest = await ownedPlaytest(project, `${project.id}:${conversation.summary.id}`);
     return [...createAgentTools(
@@ -1235,6 +1288,9 @@ export function createApp(options: AppOptions = {}) {
       panelScreenshots,
       () => observeEngine(project.id),
       engineCaptureReader(project),
+      process.platform === "win32"
+        ? (sessionId, reason, toolCallId, signal) => requestEngineCapture(project, conversation, sessionId, reason, toolCallId, signal)
+        : undefined,
     ), ...await pluginSetup.agentTools(project)];
   };
   const playtestTarget = async (project: ProjectState, signal?: AbortSignal): Promise<GameUseOpenTarget> => {
@@ -1540,8 +1596,6 @@ export function createApp(options: AppOptions = {}) {
     events.publish(project.id, "project.files.changed", change);
     void pluginHooks.notify(folder, "files.changed", change);
   });
-  /** How many event streams each project has open: it is open in the app while it has one. */
-  const openStreams = new Map<string, number>();
   /** Watches an open project's files while one of its plugins wants to know when they change. */
   const syncFileWatch = async (folder: string) => {
     const wanted = await pluginHooks.wantsFiles(folder);
@@ -3158,7 +3212,7 @@ export function createApp(options: AppOptions = {}) {
       return nativeWindowCaptures.add(project.id, session.id, {
         ...input,
         title: pluginServices.redactObservationText(input.title, session.plugin),
-      });
+      }, { plugin: session.plugin });
     },
   );
   app.get<{ Params: { projectId: string; sessionId: string } }>(
@@ -3168,6 +3222,72 @@ export function createApp(options: AppOptions = {}) {
       if (!project) return reply.code(404).send({ error: "Project not found" });
       const capture = nativeWindowCaptures.latest(project.id, request.params.sessionId);
       return capture ?? reply.code(404).send({ error: "No capture is retained for this session" });
+    },
+  );
+  // One exact retained capture, for comparing before and after observations.
+  app.get<{ Params: { projectId: string; captureId: string } }>(
+    "/projects/:projectId/native-captures/:captureId",
+    async (request, reply) => {
+      const project = projects.get(request.params.projectId);
+      if (!project) return reply.code(404).send({ error: "Project not found" });
+      const capture = nativeWindowCaptures.get(project.id, request.params.captureId);
+      return capture ?? reply.code(404).send({ error: "That capture is no longer retained" });
+    },
+  );
+  // A desktop window's answer to a person-authorized agent observation request.
+  app.post<{ Params: { projectId: string; request: string }; Body: unknown }>(
+    "/projects/:projectId/native-capture-requests/:request",
+    { bodyLimit: 20 * 1024 * 1024 },
+    async (request, reply) => {
+      if (process.platform !== "win32") return reply.code(409).send({ error: "Native window capture is available on Windows only" });
+      const project = projects.get(request.params.projectId);
+      if (!project) return reply.code(404).send({ error: "Project not found" });
+      const target = nativeCaptureRequests.target(project.id, request.params.request);
+      if (!target) return reply.code(404).send({ error: "No visual observation request is waiting" });
+      const body = request.body;
+      if (!body || typeof body !== "object" || Array.isArray(body)) return reply.code(400).send({ error: "Invalid observation answer" });
+      const answer = body as Record<string, unknown>;
+      const keys = Object.keys(answer);
+      if ("started" in answer) {
+        if (keys.length !== 1 || answer.started !== true) return reply.code(400).send({ error: "Invalid observation answer" });
+        return nativeCaptureRequests.claim(project.id, request.params.request)
+          ? reply.code(204).send()
+          : reply.code(404).send({ error: "No visual observation request is waiting" });
+      }
+      if ("declined" in answer) {
+        if (keys.length !== 1 || typeof answer.declined !== "string" || answer.declined.length > 2_000)
+          return reply.code(400).send({ error: "Invalid observation answer" });
+        nativeCaptureRequests.decline(project.id, request.params.request, answer.declined);
+        return reply.code(204).send();
+      }
+      if ("error" in answer) {
+        if (keys.length !== 1 || typeof answer.error !== "string" || answer.error.length > 2_000)
+          return reply.code(400).send({ error: "Invalid observation answer" });
+        return nativeCaptureRequests.fail(project.id, request.params.request, answer.error)
+          ? reply.code(204).send()
+          : reply.code(409).send({ error: "The visual observation request is no longer waiting" });
+      }
+      if (!("image" in answer) || keys.length !== 1) return reply.code(400).send({ error: "Invalid observation answer" });
+      const session = (await pluginServices.native.sessions(project.workspacePath))
+        .find((item) => item.id === target.sessionId);
+      if (!session || session.state !== "running" || session.pid !== target.rootPid) {
+        nativeCaptureRequests.fail(project.id, request.params.request, "The managed native session changed before the capture arrived.");
+        return reply.code(409).send({ error: "The managed native session changed before the capture arrived" });
+      }
+      const input = parseNativeWindowCapture(answer.image);
+      if (!input || input.rootPid !== target.rootPid) {
+        nativeCaptureRequests.fail(project.id, request.params.request, "The capture did not belong to the approved session.");
+        return reply.code(400).send({ error: "Invalid window capture" });
+      }
+      const capture = nativeWindowCaptures.add(project.id, target.sessionId, {
+        ...input,
+        title: pluginServices.redactObservationText(input.title, session.plugin),
+      }, { requestId: request.params.request, plugin: session.plugin });
+      if (!nativeCaptureRequests.resolve(project.id, request.params.request, { ...capture, data: input.data })) {
+        nativeWindowCaptures.remove(project.id, capture.id);
+        return reply.code(409).send({ error: "The visual observation request is no longer waiting" });
+      }
+      return capture;
     },
   );
   // Native engine processes a project's plugins own, and deliberate stop.
@@ -3181,6 +3301,7 @@ export function createApp(options: AppOptions = {}) {
     if (!project) return reply.code(404).send({ error: "Project not found" });
     try {
       await pluginServices.native.stopSession(project.workspacePath, request.params.sessionId);
+      nativeCaptureRequests.cancelSession(project.id, request.params.sessionId);
       return { stopped: true };
     } catch (cause) {
       if (cause instanceof ExtensionHostError) return reply.code(cause.code === "unavailable" ? 409 : 503).send({ error: cause.message });
@@ -4169,6 +4290,7 @@ export function createApp(options: AppOptions = {}) {
     await previews.forget(project);
     await pluginServices.forgetEngineObservations(project.workspacePath);
     nativeWindowCaptures.forget(project.id);
+    nativeCaptureRequests.forget(project.id);
     gameTuning.forget(project);
     agents.forgetProject(project.id);
     conversations.forget(project);

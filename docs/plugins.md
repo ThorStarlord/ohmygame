@@ -2597,7 +2597,14 @@ for that plugin.
 - **Godot:** the `ohmygame/godot` plugin brings the Godot game type
   (played in the game panel as a web build), native tools (`godot_status`,
   `run_headless`, `export_web`), **Run in Godot**, a Godot Skill, and the
-  pinned `@coding-solo/godot-mcp@0.1.1` as its MCP server. Godot game projects
+  pinned `@coding-solo/godot-mcp@0.1.1` as its MCP server. `run_headless` and
+  `export_web` calls appear in the shared engine-check history as test and export
+  checks; `run_headless` errors and `res://` locations are extracted. Godot can
+  report a parse error and still exit 0, so a check with reported errors is
+  marked as such while its actual exit code stays visible. A thrown export that
+  names Godot's exit code is a failed export; a template or setup error before
+  Godot runs remains an invocation failure, not a fabricated structured result.
+  Godot game projects
   have it: creating one with the app's `godot-game` kind makes it the
   plugin's type while the plugin is on. A General project turns Godot on in
   its plugins and approves it for its folder.
@@ -2739,4 +2746,4 @@ compiled Node daemon.
 
 Native session start accepts optional `captureOutput: true` for an explicitly launched, owned engine child. Existing launches without this option keep ignored stdio. The host drains stdout and stderr separately, keeps only the last 4,096 characters of each, and sends bounded updates without changing process state or holding the host independently of its session. A bounded final drain prevents inherited output pipes from indefinitely delaying a leader's close. Output is not a guarantee that a launcher-owned descendant has been observed; use capture on a process that owns the game lifetime. The local Ren'Py plugin opts in for Run in Ren'Py. Ordinary native-session lists exclude output; the project observation surface returns a redacted excerpt. Older hosts may ignore the optional request.
 
-The Windows desktop app can also capture one visible top-level window owned by a managed session's process tree after the person presses Capture window in Problems & engine status. It stores a bounded PNG and blank-frame analysis in daemon memory; `engine_capture` reads the latest capture but cannot trigger one. Captures are limited to 12 MiB decoded, 16 million pixels and 32 MiB encoded per project, with a 128 MiB daemon-wide budget. It never captures an unrelated window or guesses ownership from a title. The capture is a scaled still image, not proof of gameplay, and native input automation remains unavailable.
+The Windows desktop app can capture one visible top-level window owned by a managed session's process tree after the person presses Capture window in Problems & engine status, or after an in-app agent calls `engine_capture_request` and the person allows that one request in the conversation. It stores a bounded PNG and blank-frame analysis in daemon memory; `engine_capture` reads an exact capture or a session's latest image but cannot trigger one. A request is bound to one session and root process, expires, and is removed when it settles; nothing is remembered. Six recent captures per session and twelve per project are retained, limited to 12 MiB decoded, 16 million pixels and 32 MiB encoded per project, with a 128 MiB daemon-wide budget. It never captures an unrelated window or guesses ownership from a title. The capture is a scaled still image, not proof of gameplay, and native input automation remains unavailable.

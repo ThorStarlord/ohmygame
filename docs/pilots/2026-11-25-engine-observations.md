@@ -4,6 +4,7 @@
 **Status:** PR #10 integration completed locally, including a real desktop workflow against a disposable Ren'Py project; Web playtesting and native input remain unsupported.
 **OhMyGame:** `ThorStarlord/ohmygame`, branch `feat/engine-observations`, based on `dev` `792e9e19884b1900dd5049d7e843e542486f2042`; candidate `1a3dc93c366c5d569cc8cb8484b6c6372909c5e1` (continues `4ca7e63a8e568b55280ba93206c79cda61322539`).
 **Disposable project:** `H:\GithubRepositories\renpy-pilot`, a pilot copy of Superhero-Netorare-Parody; canonical game source and player data were not used for the exercise.
+**Later extension:** the [2026-11-26 pilot](2026-11-26-agent-directed-visual-feedback.md) adds agent-requested one-time capture, retains six recent captures per session and twelve per project, and compares exact before/after images.
 
 ## Delivered
 

@@ -123,6 +123,39 @@ it("offers only a single answer when the agent cannot remember one", async () =>
   ).toEqual(["Allow", "Deny"]);
 });
 
+it("asks for one native capture with no remembered permission", async () => {
+  const decide = vi.fn(async () => true);
+  await act(async () =>
+    root.render(
+      <ApprovalCard
+        request={{
+          ...request,
+          request: {
+            kind: "tool",
+            tool: "engine_capture_request",
+            title: "Visual observation requested",
+            reason: "Check the dialogue layout",
+            nativeCapture: { project: "Superhero Netorare Parody", session: "Run in Ren'Py", operation: "still" },
+          },
+        }}
+        waiting={0}
+        onDecide={decide}
+      />,
+    ),
+  );
+  expect(container.textContent).toContain("Visual observation requested");
+  expect(container.textContent).toContain("Superhero Netorare Parody");
+  expect(container.textContent).toContain("Run in Ren'Py");
+  expect(container.textContent).toContain("Capture one image of this game window");
+  expect(container.textContent).toContain("Check the dialogue layout");
+  expect(container.textContent).toContain("cannot be remembered or reused");
+  expect([...container.querySelectorAll("button")].map((button) => button.textContent)).toEqual(["Allow", "Deny"]);
+  await act(async () => {
+    [...container.querySelectorAll("button")].find((button) => button.textContent === "Allow")!.click();
+  });
+  expect(decide).toHaveBeenCalledWith("allow");
+});
+
 it("words a Library add in the person's language instead of its English request", async () => {
   const library: Extract<ThreadItem, { type: "approvalRequest" }> = {
     ...request,
