@@ -519,7 +519,7 @@ export interface ProjectState extends ProjectPreviewSettings {
    * A plugin project type, `publisher/name:type`, and how its game is
    * previewed, recorded for the app's screens. `ohmygame.json` decides what runs.
    */
-  pluginType?: { id: string; plugin: string; preview: "web" | "web-build" | "native" };
+  pluginType?: { id: string; plugin: string; preview: "web" | "web-build" | "native"; gameUse?: boolean };
   /** General Game's explicit Web preview opt-in; missing means disabled. */
   webPreviewEnabled?: boolean;
   /** Directory, relative to the workspace root, in which the Web Game preview starts. */

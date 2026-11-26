@@ -84,19 +84,18 @@ export function ScenarioPlaytestsPanel({ projectId, runs, onChanged, onAskAgent 
     .filter((checkpoint) => checkpoint.retained)
     .map((checkpoint) => ({ run, checkpoint })));
   const retainedKey = retained.map(({ checkpoint }) => checkpoint.id).join("|");
+  const newestRunId = runs[0]?.id;
 
   useEffect(() => {
     if (!retained.length) return;
-    setAfterId((id) => (id && retained.some((item) => item.checkpoint.id === id) ? id : retained[0]!.checkpoint.id));
-    setBeforeId((id) => {
-      if (id && retained.some((item) => item.checkpoint.id === id)) return id;
-      const newest = retained[0]!;
-      const match = retained.slice(1).find((item) => item.checkpoint.scenario === newest.checkpoint.scenario
-        && item.checkpoint.name === newest.checkpoint.name
-        && item.checkpoint.mode === newest.checkpoint.mode);
-      return match?.checkpoint.id ?? retained[1]?.checkpoint.id ?? newest.checkpoint.id;
-    });
-  }, [retainedKey]);
+    const newest = retained[0]!;
+    setAfterId(newest.checkpoint.id);
+    const match = retained.find((item) => item.run.id !== newest.run.id
+      && item.checkpoint.scenario === newest.checkpoint.scenario
+      && item.checkpoint.name === newest.checkpoint.name
+      && item.checkpoint.mode === newest.checkpoint.mode);
+    setBeforeId(match?.checkpoint.id);
+  }, [retainedKey, newestRunId]);
 
   const before = retained.find((item) => item.checkpoint.id === beforeId);
   const after = retained.find((item) => item.checkpoint.id === afterId);
@@ -237,9 +236,16 @@ export function ScenarioPlaytestsPanel({ projectId, runs, onChanged, onAskAgent 
 
     <p><strong>{t("engineObservations.scenarioCompare")}</strong></p>
     {retained.length >= 2 ? <>
+      {!before ? <p>{t("engineObservations.scenarioNeedMatchingRun")}</p> : null}
       <div className="capture-compare-pickers">
         <label>{t("engineObservations.scenarioBefore")}
-          <select value={beforeId ?? ""} onChange={(event) => { setBeforeId(event.target.value); void viewCheckpoint(event.target.value); }}>
+          <select value={beforeId ?? ""} onChange={(event) => {
+            const id = event.target.value;
+            if (!id) { setBeforeId(undefined); return; }
+            setBeforeId(id);
+            void viewCheckpoint(id);
+          }}>
+            {!beforeId ? <option value="">{t("engineObservations.scenarioChooseCheckpoint")}</option> : null}
             {retained.map(({ run, checkpoint }) => <option key={checkpoint.id} value={checkpoint.id}>
               {run.scenario} · {checkpoint.name} · {new Date(run.startedAt).toLocaleTimeString()}
             </option>)}
@@ -253,7 +259,7 @@ export function ScenarioPlaytestsPanel({ projectId, runs, onChanged, onAskAgent 
           </select>
         </label>
       </div>
-      <p>{comparable ? t("engineObservations.scenarioComparable") : t("engineObservations.scenarioNotComparable", { reason: reasons.join("; ") })}</p>
+      {before && after ? <p>{comparable ? t("engineObservations.scenarioComparable") : t("engineObservations.scenarioNotComparable", { reason: reasons.join("; ") })}</p> : null}
       <div className="capture-compare-images">
         {[before, after].map((item, index) => item ? <figure key={`${index}:${item.checkpoint.id}`}>
           <figcaption>{index === 0 ? t("engineObservations.scenarioBefore") : t("engineObservations.scenarioAfter")} · {item.checkpoint.name}</figcaption>

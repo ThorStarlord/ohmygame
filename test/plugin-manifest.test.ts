@@ -539,7 +539,7 @@ describe("plugin manifest", () => {
     ).toContainEqual(expect.stringContaining("additional properties"));
   });
 
-  it("lets only a native type with native code declare its game for game_use, with what each operation needs", () => {
+  it("lets a native or web-build type with native code declare its game for game_use, with what each operation needs", () => {
     const type = (gameUse: object, preview = "native") => messages({
       ...minimal,
       entrypoints: { native: "./native/index.mjs" },
@@ -548,13 +548,15 @@ describe("plugin manifest", () => {
     });
     expect(type({ operations: ["captureFrame"], maxFrame: 600 })).toEqual([]);
     expect(type({ operations: ["act", "capture"], input: ["pointer", "keyboard"] })).toEqual([]);
+    expect(type({ operations: ["inspect", "act", "capture"], input: ["narrative"] }, "web-build")).toEqual([]);
     expect(type({ operations: ["captureFrame"], maxFrame: 600 }, "web")).toEqual([
-      expect.stringContaining("only a \"native\" type"),
+      expect.stringContaining("only a native or web-build type"),
     ]);
     expect(type({ operations: ["captureFrame"] })).toEqual([expect.stringContaining("highest frame")]);
     expect(type({ operations: ["capture"], maxFrame: 600 })).toEqual([expect.stringContaining("only captureFrame")]);
     expect(type({ operations: ["act"] })).toEqual([expect.stringContaining("act needs the input")]);
     expect(type({ operations: ["capture"], input: ["pointer"] })).toEqual([expect.stringContaining("only act")]);
+    expect(type({ operations: ["act"], input: ["narrative"] })).toEqual([]);
     // Text needs page elements; open and close every runtime has.
     expect(type({ operations: ["act"], input: ["text"] })).not.toEqual([]);
     expect(type({ operations: ["open"] })).not.toEqual([]);

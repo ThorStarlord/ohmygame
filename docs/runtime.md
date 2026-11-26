@@ -495,19 +495,28 @@ must not be presented as gameplay verification.
 
 ### Plugin game runtimes
 
-A plugin's `native` project type that declares
+A plugin's native or web-build project type that declares
 [`gameUse`](plugins.md#routes) gets `game_use` through its plugin
 (`src/daemon/plugin-game-runtime.ts`). The daemon makes one runtime per
 project, shared by its conversations, from the type the version pinned in
 `ohmygame.json` declares, while the plugin is on and allowed there. It makes
 the runtime again, closing its sessions, when the project moves to another
 version or that declaration changes. The tool then offers only
-the operations and input the type declares, with clicks at a point, no
-bridge and no `path`; each call checks again that the project's version
-still declares it. `captureFrame` runs the game again from its start and
-captures frame N. The result says `source: "fresh-run"` and the frame the
-plugin kept, which may be later than asked while the game loads. Two runs
-are not promised to match.
+the operations and input the type declares, with clicks at a point for
+pointer input, no bridge and no `path`; each call checks again that the
+project's version still declares it. `captureFrame` runs the game again from
+its start and captures frame N. The result says `source: "fresh-run"` and the
+frame the plugin kept, which may be later than asked while the game loads.
+Two runs are not promised to match.
+
+A type that declares `narrative` input also receives `advance` and `choose`
+actions. Its `gameState` is plugin-defined; the Ren'Py runtime returns the
+current dialogue, choices, screens, state status and an interaction id. A
+`transitioning` state is not awaiting input, and `advance` is refused until
+dialogue is available. A choice carries the interaction id it was observed
+in, so the runtime refuses a stale choice instead of applying it to a
+different screen. A web-build type may keep its Web preview and still use its
+plugin for `game_use`.
 
 - **Sessions.** The agent sees ids the daemon gives, never the plugin's own.
   Each is tied to the host process that opened it: once that host stops, the

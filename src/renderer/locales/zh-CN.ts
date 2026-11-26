@@ -96,6 +96,8 @@ const zhCN: typeof en = {
     scenarioReasonKind: "差异图不是渲染检查点",
     scenarioReasonSize: "图像尺寸不同",
     scenarioNeedTwo: "请运行两次场景，或保留两个检查点，以便比较。",
+    scenarioNeedMatchingRun: "再次运行同一场景，以比较相同名称的检查点。你仍可在下方选择两个不同的保留检查点。",
+    scenarioChooseCheckpoint: "选择一个检查点",
     scenarioHint: "检查点是隔离验证副本中的引擎渲染图像，不是桌面截图。可见差异只是证据，不等于改进。",
     scenarioStatusPassed: "通过",
     scenarioStatusFailed: "失败",

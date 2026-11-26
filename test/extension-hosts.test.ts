@@ -2133,6 +2133,9 @@ describe("project types", () => {
       await createTypedProject({ folder, type: "acme/board:board", name: "Game", services });
       const found = await projectGameUse(folder, services);
       expect(found).toEqual({ provider: "acme/board:board", version: "1.0.0", spec: { operations: ["captureFrame"], maxFrame: 600 } });
+      expect(await projectKindAt(folder, services)).toMatchObject({
+        pluginType: { id: "acme/board:board", preview: "native", gameUse: true },
+      });
       const runtime = new PluginGameRuntime({ ...found!, hooks: projectGameHooks(folder, services, found!) });
       const opened = await runtime.request({ operation: "open", target: { runtime: "plugin", provider: found!.provider, projectPath: folder } });
       if (opened.operation !== "open") throw new Error("not opened");

@@ -139,6 +139,34 @@ describe("game use tool", () => {
     expect(tool.parameters.properties).not.toHaveProperty("frame");
   });
 
+  it("offers semantic narrative actions to a plugin that declares them", async () => {
+    const driver = new FakeDriver(pluginGameCapabilities({ operations: ["inspect", "act", "capture"], input: ["narrative"] }));
+    const tool = createGameUseTool(driver, async () => ({ runtime: "plugin", provider: "a/b:c", projectPath: "/game" }));
+    const actions = (tool.parameters.properties.actions as unknown as { items: { anyOf: { properties: { type: { const: string } } }[] } }).items.anyOf;
+    expect(actions.map((action) => action.properties.type.const)).toEqual(["advance", "choose", "wait"]);
+    await tool.execute("advance", {
+      operation: "act", sessionId: "session-1",
+      actions: [{ type: "advance", interactionId: "interaction-1" }],
+    }, undefined, undefined, {} as never);
+    expect(driver.requests.at(-1)).toMatchObject({
+      operation: "act", sessionId: "session-1",
+      actions: [{ type: "advance", interactionId: "interaction-1" }],
+    });
+    await tool.execute("choose", {
+      operation: "act", sessionId: "session-1",
+      actions: [{ type: "choose", choiceId: "choice-0", interactionId: "interaction-1" }],
+    }, undefined, undefined, {} as never);
+    expect(driver.requests.at(-1)).toMatchObject({
+      operation: "act", sessionId: "session-1",
+      actions: [{ type: "choose", choiceId: "choice-0", interactionId: "interaction-1" }],
+    });
+    const web = createGameUseTool(new FakeDriver(), async () => ({ runtime: "web", url: "http://127.0.0.1:43210/" }));
+    await expect(web.execute("advance", {
+      operation: "act", sessionId: "session-1",
+      actions: [{ type: "advance" }],
+    }, undefined, undefined, {} as never)).rejects.toThrow("narrative");
+  });
+
   it("starts the current preview and opens a project-local route", async () => {
     const driver = new FakeDriver();
     const resolveOpenTarget = vi.fn(async () => ({ runtime: "web" as const, url: "http://127.0.0.1:43210/" }));

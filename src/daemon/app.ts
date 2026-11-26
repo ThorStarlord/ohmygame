@@ -1113,11 +1113,9 @@ export function createApp(options: AppOptions = {}) {
     pluginGames.get(projectId)?.close();
     pluginGames.delete(projectId);
   };
-  /** The runtime of a `"native"` type's plugin for `game_use`, made again when the project's type changes what it declares. */
+  /** The runtime of a plugin type that declares `gameUse`, made again when the project's type changes what it declares. */
   const pluginGameRuntime = async (project: ProjectState): Promise<PluginGameRuntime | undefined> => {
-    const found = project.pluginType?.preview === "native"
-      ? await projectGameUse(project.workspacePath, pluginServices).catch(() => undefined)
-      : undefined;
+    const found = await projectGameUse(project.workspacePath, pluginServices).catch(() => undefined);
     const existing = pluginGames.get(project.id);
     if (existing && found && existing.provider === found.provider && existing.version === found.version && isDeepStrictEqual(existing.spec, found.spec)) return existing;
     closePluginGame(project.id);

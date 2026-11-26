@@ -97,6 +97,11 @@ it("discovers engine scenarios, runs one explicitly, and views exact checkpoints
   expect(container.textContent).toContain("No scenario has run in this app session.");
   await act(async () => root.render(<ScenarioPlaytestsPanel projectId="project" runs={[after, before]} onChanged={changed} />));
   expect(container.textContent).toContain("These checkpoints share the same scenario");
+  await vi.waitFor(() => {
+    const picks = [...container.querySelectorAll("select")];
+    expect((picks[0] as HTMLSelectElement).value).toBe("checkpoint-1");
+    expect((picks[1] as HTMLSelectElement).value).toBe("checkpoint-2");
+  });
 
   await act(async () => {
     [...container.querySelectorAll("button")].find((button) => button.textContent === "Discover scenarios")!.click();
@@ -133,6 +138,18 @@ it("discovers engine scenarios, runs one explicitly, and views exact checkpoints
   });
   await vi.waitFor(() => expect(container.querySelector("img")).not.toBeNull());
   expect(container.querySelector("img")?.getAttribute("src")).toBe("data:image/png;base64,iVBORw0KGgo=");
+});
+
+it("does not claim a comparison when no prior run has the same checkpoint name", async () => {
+  const changed = vi.fn();
+  const older = run({ id: "run-old", startedAt: 1, checkpointId: "old-first", name: "scene/01-opening" });
+  const newer = run({ id: "run-new", startedAt: 2, checkpointId: "new-second", name: "scene/02-choice" });
+  await act(async () => root.render(<ScenarioPlaytestsPanel projectId="project" runs={[newer, older]} onChanged={changed} />));
+  expect(container.textContent).toContain("Run the same scenario again to compare the same checkpoint name.");
+  expect(container.textContent).not.toContain("These checkpoints share the same scenario");
+  const picks = [...container.querySelectorAll("select")];
+  expect((picks[0] as HTMLSelectElement).value).toBe("");
+  expect((picks[1] as HTMLSelectElement).value).toBe("new-second");
 });
 
 it("shows run evidence, evicted metadata and a regression baseline count", async () => {

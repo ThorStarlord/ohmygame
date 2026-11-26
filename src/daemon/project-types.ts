@@ -51,6 +51,8 @@ export interface AvailableProjectType {
   title: string;
   description?: string;
   preview?: ProjectTypeContribution["preview"];
+  /** Whether the type's plugin runs its game for game_use. */
+  gameUse?: boolean;
   /** For plugin types: the plugin and the version new projects use. */
   plugin?: { id: string; version: string };
   /** Whether new projects of it start from files or from the plugin's hook. */
@@ -370,7 +372,12 @@ export function projectKind(type: AvailableProjectType): {
   // its plugin's commands.
   return {
     kind: alias ?? "general",
-    pluginType: { id: type.id, plugin: type.plugin.id, preview: type.preview },
+    pluginType: {
+      id: type.id,
+      plugin: type.plugin.id,
+      preview: type.preview,
+      ...(type.gameUse ? { gameUse: true } : {}),
+    },
   };
 }
 
@@ -393,6 +400,7 @@ export async function projectKindAt(
     id: read.file.type,
     title: contributed.title,
     preview: contributed.preview,
+    ...(contributed.gameUse ? { gameUse: true } : {}),
     plugin: { id: entry.id, version: entry.version },
   });
 }
@@ -415,9 +423,10 @@ export async function projectPreviewMode(
 }
 
 /**
- * The game `game_use` opens through the project's type: a `"native"` type
- * that declares `gameUse`, in the version the project pins, while its plugin
- * is on and allowed there. `provider` is the type, `publisher/name:type`.
+ * The game `game_use` opens through the project's type: a native or web-build
+ * type that declares `gameUse`, in the version the project pins, while its
+ * plugin is on and allowed there. `provider` is the type,
+ * `publisher/name:type`.
  */
 export async function projectGameUse(
   folder: string,
@@ -429,7 +438,7 @@ export async function projectGameUse(
   const owner = projectTypePlugin(type);
   const entry = resolved.plugins.find((plugin) => plugin.providesType)?.entry;
   const contributed = owner && entry ? contribution(entry, type.slice(owner.length + 1)) : undefined;
-  if (contributed?.preview !== "native" || !contributed.gameUse) return undefined;
+  if (!contributed?.gameUse || (contributed.preview !== "native" && contributed.preview !== "web-build")) return undefined;
   return { provider: type, version: entry!.version, spec: contributed.gameUse as PluginGameUseSpec };
 }
 
