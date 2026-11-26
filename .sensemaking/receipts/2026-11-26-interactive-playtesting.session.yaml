@@ -1,0 +1,101 @@
+﻿artifact_id: sensemaking_session_receipt
+schema_version: 1
+session_ref: 2026-11-26-interactive-playtesting
+state: completed
+created_at: "2026-11-26T21:06:10Z"
+updated_at: "2026-11-26T22:00:00Z"
+target_repository: ThorStarlord/ohmygame
+source_identity:
+  start_ref: 0e3726fbb1be8e7eb63f15c4a967143191bc780c
+  end_ref: 24dced7427e2e0edf0a81d5211038752a18108f0
+  worktree_clean_at_end: true
+skill_identity:
+  load_mode: harness_discovered
+  sensemaking_source_ref: c5b8feead0e11369e31463d0439f313d358ca051
+goal:
+  statement: "Advance OhMyGame to Interactive Engine-Aware Playtesting v1: app-integrated scenarios, adaptive investigation, live Ren'Py interaction, evidence, and canonical Iris repair."
+  source: owner_message
+  source_ref: null
+delegation:
+  granted: [read, local_write, run_local_commands, commit, push, open_pr, merge]
+  withheld: [release, deploy, tracker_write, knowledge_edit]
+continuity:
+  resumes: null
+  campaign_ref: null
+  resolves_questions:
+    - "Whether Ren'Py 8.5.2 supports a reliable live observation-action-observation loop."
+    - "Whether live play can reuse game_use without becoming a competing playtest system."
+    - "Whether the canonical Iris focused portrait defect remained and how to repair it from repository provenance."
+responsibilities:
+  - responsibility: "Actual app scenario workflow"
+    status: completed
+    artifact: "Scenario discovery, two exploratory runs, exact checkpoint retrieval, and comparison through the built Electron app; matching checkpoint comparison repaired and re-verified."
+    evidence: "app-scenario/engine-observations.json, comparison-ui.png, before-01-opening.png, after-01-opening.png"
+  - responsibility: "Adaptive scenario investigation guidance"
+    status: completed_with_limit
+    artifact: "Existing scenario tools retained as reproducible instruments; Ren'Py Skill distinguishes scripted, adaptive and live investigation. The app exercise used an existing testcase; no agent-authored temporary scenario was claimed."
+    evidence: "plugins/renpy/skills/renpy-game/SKILL.md, docs/pilots/2026-11-26-interactive-playtesting.md"
+  - responsibility: "Live Ren'Py interaction contract"
+    status: completed
+    artifact: "Disposable engine-native adapter runs inside a copied project and exposes token-authenticated inspect/start/advance/choose/capture/close. Choice selection uses Ren'Py focus and test-mouse; transitions and refusals are explicit."
+    evidence: "plugins/renpy/native/interactive.mjs, probe/probe.json, probe-2/probe.json"
+  - responsibility: "Interactive playtesting vertical slice"
+    status: completed
+    artifact: "Plugin-backed game_use declares narrative input and inspect/act/capture; semantic advance and choose carry interaction identity; capture returns the current engine frame."
+    evidence: "session plugin-df94ae14-4467-4f6a-8edd-78b007c7b02e and plugin-061a9b8c-4a8f-44a2-9da4-151bf9dc118a in app-live/conversation-live.json"
+  - responsibility: "game_use integration and developer surface"
+    status: completed
+    artifact: "The daemon reuses PluginGameRuntime, records pluginType.gameUse, permits web-build types to keep Web preview, and shows the live actions in the existing agent timeline."
+    evidence: "src/daemon/project-types.ts, src/daemon/agent-prompts.ts, src/renderer/locales/en.ts"
+  - responsibility: "Isolation and runtime authority"
+    status: completed_with_limits
+    artifact: "Live copy excludes saves, cache and symlinks; throwaway savedir, persistent and MultiPersistent paths; capture path containment; child and copy cleanup on close."
+    evidence: "plugins/renpy/native/interactive.mjs, docs/renpy-integration.md"
+  - responsibility: "Visual evidence and interaction continuity"
+    status: completed
+    artifact: "Live captures are engine-rendered observations kept as bounded conversation images, distinct from scenario checkpoints and desktop captures; exact app captures retained with hashes."
+    evidence: "app-live/captures/01-campus-walkway.jpg, 02-sylvie-reveal.jpg, 03-choice-consequence.jpg"
+  - responsibility: "Canonical Iris repair"
+    status: completed
+    artifact: "PR #349 merged into game main at 4b192ebd34fa76258ad7e360f2e8de729a55bf8c; focused portrait repaired and engine-tested."
+    evidence: "Superhero-Netorare-Parody PR #349, repair commit 18b3311f, final asset SHA-256 4f333b5f025cf33f63fc9f40052a07f0e2d2bfe8d4bc438a212327e91e4c27ac"
+  - responsibility: "Authentic interactive development exercise"
+    status: completed
+    artifact: "Two Codex gpt-6.2-sol sessions in the built app observed dialogue, advanced from the latest interaction id, handled transitions, reached a real choice, selected from observed captions, observed Sylvie's greeting, captured frames and closed."
+    evidence: "app-live/conversation-live.json"
+  - responsibility: "Proportionate verification"
+    status: completed_with_environment_limits
+    artifact: "Focused live-session, tool, scenario-panel, plugin, prompt, and extension-host tests pass; typecheck, lint, plugin check and builds pass. Full suite has pre-existing Windows symlink/parallel-environment failures, confirmed on untouched dev for the representative renderer failure."
+    evidence: "focused logs; full-suite-final.log; baseline project-shell failure on origin/dev"
+findings:
+  - statement: "A live Ren'Py observation-action-observation loop is feasible on the installed SDK and can reuse game_use rather than adding a second playtest system."
+    evidence: "Real app sessions and direct SDK probes in app-live and probe-2."
+    confidence: high
+  - statement: "Refusing a non-awaiting advance must not re-raise inside the engine main-thread callback; doing so terminated the session."
+    evidence: "First probe-2 run closed the session after a transition refusal; after the recovery fix the same probe observed four transitions, received the refusal, and still reached the choice."
+    confidence: high
+  - statement: "The previous scenario comparison default hid the intended before/after pair by choosing different checkpoint names; the repaired panel selects the same name from a prior run and verified it in the app."
+    evidence: "comparison-ui.png shows 01-opening 19:08:14 before and 01-opening 19:08:46 after, comparable."
+    confidence: high
+  - statement: "The full test suite is not green on this Windows host for reasons outside this change, including EPERM symlink creation, port exhaustion, locale-dependent assertions and existing renderer fixture failures."
+    evidence: "94 failures, 31 EPERM errors, 41 project-shell failures reproduced identically on untouched origin/dev."
+    confidence: high
+  - statement: "The Iris repair is canonical and engine-verified, but the source asset came from an unmerged branch and no fresh human/artistic approval is claimed."
+    evidence: "PR #349 provenance record and engine testcase output."
+    confidence: high
+open_questions:
+  - "The app live evidence predates the final transition classification; the direct SDK probe verifies the final transition, refusal and recovery behavior."
+  - "The choice session stopped at Sylvie's greeting; the other branch and later narrative remain unverified."
+  - "Custom save paths and absolute paths in project code are not sandboxed by the copied project."
+  - "An extension host killed without disposal may leave an engine child for separate cleanup."
+  - "Other Iris evaluating roles were not repaired and may retain the same alpha defect."
+stop:
+  disposition: COMPLETE
+  reason: "The selected interactive playtesting vertical slice, app workflow repair, canonical Iris repair, authentic agent exercise, documentation, and proportionate verification are complete. Remaining items are explicit limits or environment failures."
+next:
+  warranted_responsibility: "Use the new live instrument for a bounded real game-development improvement (an evidence-driven narrative or presentation change), rather than adding more runtime infrastructure; keep Godot managed-session parity as a separate decision."
+  blocked_on: []
+persistence: committed
+claim_ceiling: "Real engine execution and authentic app-agent decisions are established for the recorded sessions. No claim is made for other branches, other games, macOS/Linux, Godot parity, artistic approval, or a green full suite on this Windows host."
+action_authorized_by_receipt: false
+immutable: false
