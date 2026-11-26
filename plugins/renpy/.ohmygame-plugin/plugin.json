@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.ohmygame.ai/schema/plugin-2.json",
   "id": "thorstarlord/renpy",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "engines": {
     "ohmygame-api": "^2.37.0"
   },
@@ -78,10 +78,24 @@
       },
       {
         "name": "renpy_test",
-        "description": "Run automated Ren'Py testcases declared by the project with the installed Ren'Py SDK.",
+        "description": "Run the project's enabled Ren'Py testcases with the installed SDK. Without a selection this is the engine's default global suite.",
         "input": "./tools/empty.json",
         "output": "./tools/run-output.json",
         "timeoutSeconds": 300
+      },
+      {
+        "name": "renpy_scenarios",
+        "description": "Ask the loaded Ren'Py engine which project testcases and testsuites it registered. Runs a generated discovery testcase in the disposable validation mirror; it does not run gameplay or write project screenshots.",
+        "input": "./tools/empty.json",
+        "output": "./tools/scenario-list-output.json",
+        "timeoutSeconds": 360
+      },
+      {
+        "name": "renpy_scenario_run",
+        "description": "Run one project-defined Ren'Py testcase or testsuite in a disposable mirror and return its outcome and engine-rendered screenshot checkpoints. Exploratory mode saves fresh checkpoints. Regression mode compares against the project's existing tests/screenshots and reports mismatches without changing them.",
+        "input": "./tools/scenario-input.json",
+        "output": "./tools/scenario-output.json",
+        "timeoutSeconds": 360
       },
       {
         "name": "renpy_export_web",

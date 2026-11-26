@@ -56,7 +56,7 @@ async function setup() {
     undefined, undefined, undefined, undefined, undefined, undefined, undefined,
     async () => ({
       projectId: project.id, observedAt: 1, historyRetention: "daemon-memory",
-      preview: { status: "stopped", diagnostics: [] }, nativeSessions: sessions, captures: captures.list(project.id), observationGrants: [], checks: [],
+      preview: { status: "stopped", diagnostics: [] }, nativeSessions: sessions, captures: captures.list(project.id), observationGrants: [], scenarioPlaytestsAvailable: false, scenarioRuns: [], checks: [],
     }),
     (query) => Promise.resolve(query.captureId ? captures.get(project.id, query.captureId) : query.sessionId ? captures.latest(project.id, query.sessionId) : undefined),
     (sessionId, reason, toolCallId, signal) => requestOneTimeCapture({

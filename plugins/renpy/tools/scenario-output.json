@@ -1,0 +1,220 @@
+{
+  "type": "object",
+  "properties": {
+    "exitCode": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "errors": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "string"
+      }
+    },
+    "output": {
+      "type": "string"
+    },
+    "outputTruncated": {
+      "type": "boolean"
+    },
+    "validationCopy": {
+      "type": "boolean"
+    },
+    "cleanupWarning": {
+      "type": "string"
+    },
+    "diagnostics": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "properties": {
+          "severity": {
+            "enum": [
+              "error",
+              "warning",
+              "info",
+              "unknown"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "path": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "severity",
+          "message"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "diagnosticsTruncated": {
+      "type": "boolean"
+    },
+    "scenario": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 40,
+          "pattern": "^[a-z0-9]+$"
+        },
+        "requested": {
+          "type": "string"
+        },
+        "executedSelection": {
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "exploratory",
+            "regression"
+          ]
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "failed",
+            "skipped",
+            "timed-out",
+            "cancelled",
+            "not-found",
+            "invocation-error",
+            "unknown"
+          ]
+        },
+        "startedAt": {
+          "type": "number"
+        },
+        "completedAt": {
+          "type": "number"
+        },
+        "timedOut": {
+          "type": "boolean"
+        },
+        "cancelled": {
+          "type": "boolean"
+        },
+        "failure": {
+          "type": "string"
+        },
+        "baselineDirectory": {
+          "type": "string"
+        },
+        "baselineFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "checkpointOrder": {
+          "type": "string"
+        },
+        "checkpointDirectory": {
+          "type": "string"
+        },
+        "checkpointBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "checkpointLimitReached": {
+          "type": "boolean"
+        },
+        "checkpointWarnings": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string"
+          }
+        },
+        "checkpoints": {
+          "type": "array",
+          "maxItems": 40,
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "file": {
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "exploratory",
+                  "mismatched",
+                  "no-baseline",
+                  "difference"
+                ]
+              },
+              "order": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "capturedAt": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "file",
+              "kind",
+              "order",
+              "width",
+              "height",
+              "bytes",
+              "capturedAt"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "runId",
+        "requested",
+        "mode",
+        "status",
+        "startedAt",
+        "completedAt",
+        "timedOut",
+        "cancelled",
+        "checkpointOrder",
+        "checkpointDirectory",
+        "checkpointBytes",
+        "checkpointLimitReached",
+        "checkpointWarnings",
+        "checkpoints"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "exitCode",
+    "errors",
+    "output",
+    "scenario"
+  ],
+  "additionalProperties": false
+}

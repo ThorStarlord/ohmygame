@@ -3,6 +3,7 @@ import type { EngineCheck, EngineCheckStatus, EngineDiagnostic, EngineObservatio
 import type { NativeSessionView } from "../shared/native-sessions.js";
 import { request, revokeObservationGrant } from "./api.js";
 import { usePluginSlot } from "./project-plugin-contributions.js";
+import { ScenarioPlaytestsPanel } from "./scenario-playtests-panel.js";
 import { t } from "./i18n.js";
 import { Button } from "./ui/index.js";
 
@@ -212,6 +213,12 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
         </div>;
       }) : <p>{t("engineObservations.nativeEmpty")}</p>}
       <ObservationGrantList grants={current.observationGrants} revoking={revokingGrant} error={grantError} onRevoke={(grantId) => void revokeGrant(grantId)} />
+      {current.scenarioPlaytestsAvailable ? <ScenarioPlaytestsPanel
+        projectId={projectId}
+        runs={current.scenarioRuns ?? []}
+        onChanged={() => setRefresh((value) => value + 1)}
+        onAskAgent={onAskAgent}
+      /> : null}
       <p><strong>{t("engineObservations.compare")}</strong></p>
       {captures.length ? <>
         <div className="capture-compare-pickers">
@@ -245,7 +252,7 @@ export function EngineObservationsPanel({ projectId, onClose, onOpenFile, onAskA
         <select aria-label={t("engineObservations.history")} value={selected.id} onChange={(event) => setSelectedId(event.target.value)}>
           {current.checks.map((run) => <option key={run.id} value={run.id}>{run.operation} · {checkStatus(run)} · {new Date(run.startedAt).toLocaleTimeString()}</option>)}
         </select>
-        <p>{t("engineObservations.sdk")}: {selected.plugin} {selected.version} · {t("engineObservations.phase")}: {selected.operation}{selected.exitCode != null ? ` · ${selected.exitCode}` : ""}</p>
+        <p>{t("engineObservations.sdk")}: {selected.plugin} {selected.version} · {t("engineObservations.phase")}: {selected.operation}{selected.subject ? ` · ${selected.subject}` : ""}{selected.exitCode != null ? ` · ${selected.exitCode}` : ""}</p>
         {selected.validationCopy ? <p>{t("engineObservations.mirror")}</p> : null}
         {selected.failure ? <pre>{selected.failure}</pre> : null}
         {selected.cleanupWarning ? <p>{t("engineObservations.cleanup")}: {selected.cleanupWarning}</p> : null}

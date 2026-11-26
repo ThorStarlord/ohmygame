@@ -2631,6 +2631,8 @@ for that plugin.
   after testing. Viewport capture and gameplay input are not supplied by this
   MCP or the web `game_use` integration.
 
+The fork's Ren'Py development plugin also adds engine-native scenario playtesting. `renpy_scenarios` asks the loaded engine which project testcases and testsuites it registered; `renpy_scenario_run` executes one in the validation mirror and redirects its `screenshot` statements into bounded evidence. The app's `engine_scenario_*` tools and Problems & engine status add exact checkpoint retrieval and comparability-aware before/after comparison. Scenario evidence is distinct from native window capture; the screenshot mechanism is contained to the run folder and a regression run never writes project baselines, while project code can still write through linked resources with the user's authority. The 32 MiB project budget is best used with focused comparison scenarios. See [Ren'Py integration](renpy-integration.md#scenario-playtesting).
+
 For a local Blender integration check, set `BLENDER_EXECUTABLE` to its absolute
 executable path and run `bun run test -- test/blender-export.test.ts`. This
 checks real GLB output, packed textures, transparency, hierarchy, skin animation,

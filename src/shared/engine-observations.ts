@@ -23,6 +23,8 @@ export interface EngineCheck {
   plugin: string;
   version: string;
   operation: EngineCheckOperation;
+  /** The exact scenario and observation mode a test check observed, when it did. */
+  subject?: string;
   startedAt: number;
   completedAt?: number;
   status: EngineCheckStatus;
@@ -41,6 +43,95 @@ export interface EngineCheck {
   failure?: string;
   comparison?: EngineDiagnosticComparison;
 }
+export type ScenarioRunMode = "exploratory" | "regression";
+export type ScenarioRunStatus = "passed" | "failed" | "skipped" | "timed-out" | "cancelled" | "not-found" | "invocation-error" | "unknown";
+export type ScenarioCheckpointKind = "exploratory" | "mismatched" | "no-baseline" | "difference";
+
+/** One engine-rendered screenshot produced by a scripted scenario run. */
+export interface ScenarioCheckpointSummary {
+  id: string;
+  runId: string;
+  plugin: string;
+  scenario: string;
+  /** The screenshot statement's stable name within the run, without its extension. */
+  name: string;
+  /** The engine-created file, relative to the run's checkpoint folder. */
+  file: string;
+  kind: ScenarioCheckpointKind;
+  mode: ScenarioRunMode;
+  /** File-write order within this run; the engine does not expose a step counter. */
+  order: number;
+  width: number;
+  height: number;
+  mediaType: "image/png";
+  bytes: number;
+  /** The time the engine wrote the file, not the exact frame time. */
+  capturedAt: number;
+  /** False when no image is retained: bounded retention evicted it, or it was missing/invalid at ingestion. Run warnings say which. */
+  retained: boolean;
+}
+
+/** A retained checkpoint; `data` is base64 PNG and only returned on request. */
+export interface ScenarioCheckpoint extends ScenarioCheckpointSummary {
+  data: string;
+}
+
+/** One scripted scenario execution and its checkpoint evidence. */
+export interface ScenarioRunSummary {
+  id: string;
+  projectId: string;
+  plugin: string;
+  pluginVersion: string;
+  /** The run identity the plugin used for its staging files. */
+  engineRunId: string;
+  scenario: string;
+  /** The selection the engine itself reported as running, when it did. */
+  executedSelection?: string;
+  mode: ScenarioRunMode;
+  status: ScenarioRunStatus;
+  startedAt: number;
+  completedAt: number;
+  exitCode: number | null;
+  timedOut: boolean;
+  cancelled: boolean;
+  failure?: string;
+  baselineDirectory?: string;
+  /** Baseline files available to the engine; not a count of screenshots that matched. */
+  baselineFiles?: number;
+  checkpointOrder: "file-write-time";
+  checkpointLimitReached: boolean;
+  checkpointWarnings: string[];
+  checkpoints: ScenarioCheckpointSummary[];
+  diagnostics: EngineDiagnostic[];
+  diagnosticsComplete: boolean;
+  outputExcerpt?: string;
+  outputOmitted?: boolean;
+}
+
+export interface ScenarioSummary {
+  name: string;
+  kind: "testcase" | "testsuite";
+  file?: string;
+  line?: number;
+  parameterized: boolean;
+  default: boolean;
+}
+
+/** The engine-registered scenarios a project can select. */
+export interface ScenarioDiscovery {
+  status: ScenarioRunStatus;
+  authority: "engine";
+  scenarios: ScenarioSummary[];
+  truncated: boolean;
+  exitCode: number | null;
+  errors: string[];
+  diagnostics: EngineDiagnostic[];
+  diagnosticsComplete: boolean;
+  outputExcerpt?: string;
+  outputOmitted?: boolean;
+  failure?: string;
+}
+
 export type ObservationGrantStatus = "active" | "exhausted" | "expired" | "revoked" | "ended" | "invalidated";
 
 /** A bounded, person-authorized observation session for one native session. */
@@ -129,5 +220,8 @@ export interface EngineObservationSnapshot {
   nativeSessions: NativeSessionView[];
   captures: NativeWindowCaptureSummary[];
   observationGrants: ObservationGrantSummary[];
+  /** True when the project has an active Ren'Py plugin with scenario execution. */
+  scenarioPlaytestsAvailable: boolean;
+  scenarioRuns: ScenarioRunSummary[];
   checks: EngineCheck[];
 }

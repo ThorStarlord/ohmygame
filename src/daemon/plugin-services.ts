@@ -69,6 +69,23 @@ import { libraryEmbedHosts } from "../shared/library-embeds.js";
 /** Model-facing text past this length is cut; `structuredContent` keeps the whole result. */
 const TOOL_TEXT_MAX_CHARS = 100_000;
 
+/** The scenario and mode a scenario check actually observed, for same-subject comparison. */
+function scenarioCheckSubject(value: unknown): string | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const scenario = (value as Record<string, unknown>).scenario;
+  if (!scenario || typeof scenario !== "object" || Array.isArray(scenario)) return undefined;
+  const item = scenario as Record<string, unknown>;
+  if (typeof item.requested !== "string" || !item.requested) return undefined;
+  return `${item.requested.slice(0, 190)}:${item.mode === "regression" ? "regression" : "exploratory"}`;
+}
+
+function scenarioCheckSkipped(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const scenario = (value as Record<string, unknown>).scenario;
+  return Boolean(scenario && typeof scenario === "object" && !Array.isArray(scenario)
+    && (scenario as Record<string, unknown>).status === "skipped");
+}
+
 /** A tool's input or result that doesn't match the schema its manifest names. */
 export class PluginToolSchemaError extends Error {
   /** Bad input is the caller's to fix; a bad result is the plugin's. */
@@ -1458,7 +1475,11 @@ export class PluginServices {
         return this.#redacting(entry.id, this.native.callTool(`${entry.id}:${tool}`, { ...options, input, version: entry.version }));
       });
       if (folder && run) {
-        try { this.#engineChecks.complete(folder, run, result, redact); } catch { /* Observation is best effort. */ }
+        try {
+          this.#engineChecks.complete(folder, run, result, redact,
+            name === "renpy_scenario_run" ? scenarioCheckSubject(result) : undefined,
+            name === "renpy_scenario_run" && scenarioCheckSkipped(result));
+        } catch { /* Observation is best effort. */ }
       }
       return result;
     } catch (error) {
@@ -1503,6 +1524,8 @@ export class PluginServices {
       })),
       captures: captures.map((capture) => ({ ...capture, title: redact(capture.title) })),
       observationGrants: [],
+      scenarioPlaytestsAvailable: false,
+      scenarioRuns: [],
       checks: folder ? this.#engineChecks.read(folder) : [],
     };
   }

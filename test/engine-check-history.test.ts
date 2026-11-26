@@ -55,6 +55,41 @@ describe("Engine check observations", () => {
     expect(history.read("A")[0]!.comparison).toBeUndefined();
   });
 
+  it("compares scenario checks only with the same scenario and observation mode", () => {
+    const history = new EngineCheckHistory();
+    const firstId = history.begin("A", plugin, "0.2.0", "test");
+    history.complete("A", firstId, result([diagnostic("same")]), plain, "flow:exploratory");
+    let id = history.begin("A", plugin, "0.2.0", "test");
+    history.complete("A", id, result([diagnostic("other")]), plain, "other:exploratory");
+    expect(history.read("A")[0]!.comparison).toBeUndefined();
+    id = history.begin("A", plugin, "0.2.0", "test");
+    history.complete("A", id, result([diagnostic("same")]), plain, "flow:exploratory");
+    const [current] = history.read("A");
+    expect(current).toMatchObject({ subject: "flow:exploratory", status: "failed" });
+    expect(current!.comparison).toEqual({ previousRunId: firstId, recurring: 1, newlyReported: 0, noLongerReported: 0 });
+    expect(pluginCheckOperation(plugin, "renpy_scenario_run")).toBe("test");
+  });
+
+  it("marks a skipped scenario unknown and finds the same-version subject history", () => {
+    const history = new EngineCheckHistory();
+    const first = history.begin("A", plugin, "0.2.0", "test");
+    history.complete("A", first, result([diagnostic("same")], { exitCode: 0 }), plain, "flow:exploratory");
+    const otherVersion = history.begin("A", plugin, "0.1.0", "test");
+    history.complete("A", otherVersion, result([diagnostic("other")], { exitCode: 0 }), plain, "flow:exploratory");
+    const newest = history.begin("A", plugin, "0.2.0", "test");
+    history.complete("A", newest, result([diagnostic("same")], { exitCode: 0 }), plain, "flow:exploratory");
+    const [current, middle] = history.read("A");
+    expect(current!.comparison?.previousRunId).toBe(first);
+    expect(middle!.comparison).toBeUndefined();
+    const skipped = history.begin("A", plugin, "0.2.0", "test");
+    history.complete("A", skipped, result([], { exitCode: 0 }), plain, "flow:exploratory", true);
+    expect(history.read("A")[0]).toMatchObject({
+      status: "unknown",
+      subject: "flow:exploratory",
+      failure: "The engine reported the scenario as skipped; no passing testcase was executed.",
+    });
+  });
+
   it("bounds output, refuses unsafe source paths, and forgets removed projects", () => {
     const history = new EngineCheckHistory();
     const id = history.begin("A", plugin, "1", "lint");
