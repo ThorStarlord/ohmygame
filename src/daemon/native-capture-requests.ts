@@ -86,6 +86,11 @@ export class NativeCaptureRequests {
     return this.#claims.resolve(projectId, request, capture);
   }
 
+  /** Stores a capture only while its request is still claimed. */
+  resolveWith(projectId: string, request: string, create: () => NativeWindowCapture): boolean {
+    return this.#claims.resolveWith(projectId, request, create);
+  }
+
   /** A stopped or replaced session no longer authorizes an outstanding request. */
   cancelSession(projectId: string, sessionId: string): void {
     this.#claims.cancelWhere(projectId, (target) => target.sessionId === sessionId,

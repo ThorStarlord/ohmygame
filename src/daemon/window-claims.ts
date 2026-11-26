@@ -108,6 +108,17 @@ export class WindowClaims<T, D> {
     return true;
   }
 
+  /**
+   * Builds and resolves a value only while the request is still claimed, so a
+   * duplicate or late answer cannot have a side effect before it is rejected.
+   */
+  resolveWith(projectId: string, request: string, create: () => T): boolean {
+    const waiting = this.#get(projectId, request);
+    if (!waiting?.started) return false;
+    waiting.resolve(create());
+    return true;
+  }
+
   /** Why the claiming window failed. False when nothing claimed waits for it. */
   fail(projectId: string, request: string, message: string): boolean {
     const waiting = this.#get(projectId, request);

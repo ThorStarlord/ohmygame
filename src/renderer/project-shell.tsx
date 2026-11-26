@@ -1821,10 +1821,13 @@ export function ProjectShell({
     const answer = (value: Parameters<typeof answerNativeCaptureRequest>[2]) => answerNativeCaptureRequest(projectId, request, value);
     if (!window.ohMyGameDesktop?.captureNativeWindow)
       return void await answer({ declined: "Game-window capture is available only in the Windows desktop app." }).catch(() => {});
-    if (!await answer({ started: true }).catch(() => false)) return;
+    // Registered before the claim, so a cancellation arriving while the daemon
+    // records the claim is not missed.
     const controller = new AbortController();
     nativeCaptures.set(request, controller);
     try {
+      if (controller.signal.aborted || !await answer({ started: true }).catch(() => false)) return;
+      if (controller.signal.aborted) return;
       const image = await window.ohMyGameDesktop.captureNativeWindow({ rootPid, sessionId });
       if (controller.signal.aborted) return;
       await answer({ image }).catch((cause: unknown) => answer({ error: `The capture couldn't be sent: ${errorMessage(cause)}` }).catch(() => {}));

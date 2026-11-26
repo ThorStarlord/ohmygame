@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { NativeCaptureRequests, type NativeCaptureTarget } from "../src/daemon/native-capture-requests.js";
 import type { NativeWindowCapture } from "../src/shared/engine-observations.js";
 
@@ -49,6 +49,21 @@ describe("Native capture requests", () => {
     await expect(pending).resolves.toEqual(capture);
     expect(requests.target("project-a", request)).toBeUndefined();
     expect(requests.resolve("project-a", request, { ...capture, id: "late" })).toBe(false);
+  });
+
+  it("does not build a capture for an unclaimed or already settled request", async () => {
+    const { requests, published } = setup();
+    const pending = requests.request("project-a", target);
+    const request = String(published[0]!.data.request);
+    const create = vi.fn(() => capture);
+    expect(requests.resolveWith("project-a", request, create)).toBe(false);
+    expect(create).not.toHaveBeenCalled();
+    expect(requests.claim("project-a", request)).toBe(true);
+    expect(requests.resolveWith("project-a", request, create)).toBe(true);
+    expect(create).toHaveBeenCalledOnce();
+    await expect(pending).resolves.toEqual(capture);
+    expect(requests.resolveWith("project-a", request, create)).toBe(false);
+    expect(create).toHaveBeenCalledOnce();
   });
 
   it("refuses a request when the only desktop window declines", async () => {

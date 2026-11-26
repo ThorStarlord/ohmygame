@@ -3279,15 +3279,22 @@ export function createApp(options: AppOptions = {}) {
         nativeCaptureRequests.fail(project.id, request.params.request, "The capture did not belong to the approved session.");
         return reply.code(400).send({ error: "Invalid window capture" });
       }
-      const capture = nativeWindowCaptures.add(project.id, target.sessionId, {
-        ...input,
-        title: pluginServices.redactObservationText(input.title, session.plugin),
-      }, { requestId: request.params.request, plugin: session.plugin });
-      if (!nativeCaptureRequests.resolve(project.id, request.params.request, { ...capture, data: input.data })) {
-        nativeWindowCaptures.remove(project.id, capture.id);
-        return reply.code(409).send({ error: "The visual observation request is no longer waiting" });
+      let saved: import("../shared/engine-observations.js").NativeWindowCaptureSummary | undefined;
+      try {
+        const delivered = nativeCaptureRequests.resolveWith(project.id, request.params.request, () => {
+          const summary = nativeWindowCaptures.add(project.id, target.sessionId, {
+            ...input,
+            title: pluginServices.redactObservationText(input.title, session.plugin),
+          }, { requestId: request.params.request, plugin: session.plugin });
+          saved = summary;
+          return { ...summary, data: input.data };
+        });
+        if (!delivered) return reply.code(409).send({ error: "The visual observation request is no longer waiting" });
+      } catch {
+        nativeCaptureRequests.fail(project.id, request.params.request, "The capture could not be retained.");
+        return reply.code(500).send({ error: "The capture could not be retained" });
       }
-      return capture;
+      return saved;
     },
   );
   // Native engine processes a project's plugins own, and deliberate stop.

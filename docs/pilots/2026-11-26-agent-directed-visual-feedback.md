@@ -16,7 +16,7 @@
 
 ## Verification
 
-- `test/native-capture-requests.test.ts` — 5 passed: one claim/one answer, wrong project, denial, cancellation, project/session invalidation and unclaimed answers.
+- `test/native-capture-requests.test.ts` — 6 passed: one claim/one answer, wrong project, denial, cancellation, project/session invalidation, unclaimed answers and no side effect from a late duplicate.
 - `test/native-window-captures.test.ts` — 5 passed: exact retrieval, per-session history, eviction, metadata and payload/budget checks.
 - `test/engine-check-history.test.ts` — 6 passed: Godot mapping, real parse-error shape, `res://` source extraction, false-source refusal, exit-0 reported errors and export failure classification.
 - `test/approval-card.test.tsx` — native capture wording and only Allow/Deny.
