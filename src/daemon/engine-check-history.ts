@@ -23,6 +23,21 @@ export function renpyCheckOperation(plugin: string, tool: string): EngineCheckOp
   }
 }
 
+/** The official Godot plugin's validation and export tools, observed as checks. */
+export function godotCheckOperation(plugin: string, tool: string): EngineCheckOperation | undefined {
+  if (plugin !== "ohmygame/godot") return undefined;
+  switch (tool) {
+    case "run_headless": return "test";
+    case "export_web": return "export";
+    default: return undefined;
+  }
+}
+
+/** A check tool for either engine; each engine keeps its own meaning. */
+export function pluginCheckOperation(plugin: string, tool: string): EngineCheckOperation | undefined {
+  return renpyCheckOperation(plugin, tool) ?? godotCheckOperation(plugin, tool);
+}
+
 /** A read-only command that runs a recognized check outside the tool list. */
 export function renpyCommandOperation(plugin: string, command: string): EngineCheckOperation | undefined {
   return plugin === "thorstarlord/renpy" && command === "lint-renpy" ? "lint" : undefined;
@@ -35,7 +50,68 @@ function scriptPath(value: unknown): value is string {
     && !/^game\/(?:saves|cache)(?:\/|$)/i.test(value);
 }
 
-function diagnosticsOf(result: Record<string, unknown>, redact: Redact): { diagnostics: EngineDiagnostic[]; complete: boolean } {
+/** A `res://` source location, without inventing one from unrelated text. */
+function godotSource(value: string): { path: string; line?: number } | undefined {
+  const match = /\bres:\/\/([^()\r\n]+?\.(?:gd|tscn|tres|godot|cfg))(?![.\w])(?::(\d+))?/.exec(value);
+  if (!match?.[1]) return undefined;
+  const relative = match[1].replaceAll("\\", "/");
+  if (relative.includes("\0") || relative.includes(":") || relative.startsWith("/")
+    || relative.split("/").some((part) => part === "" || part === "." || part === "..")) return undefined;
+  const line = match[2] ? Number(match[2]) : undefined;
+  return { path: relative, ...(Number.isSafeInteger(line) && line! > 0 ? { line } : {}) };
+}
+
+/**
+ * Godot prints errors and warnings as lines, with a following `at:` line that
+ * often names a `res://` script and line. Its pinned plugin returns bounded
+ * output and an error-line list; keep both meanings and do not infer a source
+ * when neither names one. The 50-error/40,000-character caps are the plugin's,
+ * so a result at either bound is reported as possibly incomplete.
+ */
+function godotDiagnostics(result: Record<string, unknown>, redact: Redact): { diagnostics: EngineDiagnostic[]; complete: boolean } {
+  const output = typeof result.output === "string" ? result.output : "";
+  const errors = Array.isArray(result.errors) ? result.errors : [];
+  const diagnostics: EngineDiagnostic[] = [];
+  let current: EngineDiagnostic | undefined;
+  const flush = () => {
+    if (current) diagnostics.push(current);
+    current = undefined;
+  };
+  for (const raw of output.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const severity = /^(?:SCRIPT ERROR|ERROR|Parse Error|USER ERROR)\b/i.test(line) ? "error"
+      : /^WARNING\b/i.test(line) ? "warning" : undefined;
+    if (severity) {
+      flush();
+      current = { severity, message: redact(line).slice(0, MAX_MESSAGE) };
+      const source = godotSource(line);
+      if (source) Object.assign(current, source);
+      continue;
+    }
+    if (current && line.startsWith("at:")) {
+      current.message = `${current.message}\n${redact(line)}`.slice(0, MAX_MESSAGE);
+      const source = godotSource(line);
+      if (source) Object.assign(current, source);
+    }
+  }
+  flush();
+  if (!diagnostics.length) {
+    for (const value of errors.slice(0, MAX_DIAGNOSTICS)) {
+      if (typeof value !== "string" || !value.trim()) continue;
+      const message = redact(value.trim()).slice(0, MAX_MESSAGE);
+      const source = godotSource(message);
+      const diagnostic: EngineDiagnostic = { severity: "error", message };
+      if (source) Object.assign(diagnostic, source);
+      diagnostics.push(diagnostic);
+    }
+  }
+  const bounded = output.length < 40_000 && errors.length < 50 && diagnostics.length <= MAX_DIAGNOSTICS;
+  return { diagnostics: diagnostics.slice(0, MAX_DIAGNOSTICS), complete: bounded };
+}
+
+function diagnosticsOf(plugin: string, result: Record<string, unknown>, redact: Redact): { diagnostics: EngineDiagnostic[]; complete: boolean } {
+  if (plugin === "ohmygame/godot") return godotDiagnostics(result, redact);
   const structured = Array.isArray(result.diagnostics);
   const values: unknown[] = structured ? result.diagnostics as unknown[]
     : Array.isArray(result.errors) ? result.errors : [];
@@ -97,11 +173,16 @@ export class EngineCheckHistory {
   complete(folder: string, id: string, value: unknown, redact: Redact): void {
     const result = record(value);
     if (!result) { this.fail(folder, id, "Engine returned no structured result", false, redact); return; }
+    const plugin = this.#projects.get(folder)?.find((candidate) => candidate.id === id)?.plugin ?? "";
     const exitCode = typeof result.exitCode === "number" && Number.isInteger(result.exitCode) ? result.exitCode : null;
-    const { diagnostics, complete } = diagnosticsOf(result, redact);
+    const { diagnostics, complete } = diagnosticsOf(plugin, result, redact);
     const output = typeof result.output === "string" ? redact(result.output) : "";
+    // An engine can report errors and still exit 0; the errors are the
+    // check's outcome, while exitCode keeps the engine's own signal.
+    const reportedErrors = diagnostics.some((item) => item.severity === "error");
     this.#settle(folder, id, {
-      status: exitCode === 0 ? "passed" : exitCode === null ? "unknown" : "failed",
+      status: exitCode === 0 ? reportedErrors ? "failed" : "passed" : exitCode === null ? "unknown" : "failed",
+      ...(reportedErrors ? { reportedErrors: true } : {}),
       exitCode, diagnostics, diagnosticsComplete: complete,
       outputExcerpt: output.slice(-MAX_OUTPUT), outputOmitted: result.outputTruncated !== false || typeof result.output !== "string" || result.output.length > MAX_OUTPUT || output.length > MAX_OUTPUT,
       ...(result.validationCopy === true ? { validationCopy: true } : {}),
@@ -110,8 +191,13 @@ export class EngineCheckHistory {
     });
   }
 
-  fail(folder: string, id: string, message: string, cancelled: boolean, redact: Redact): void {
-    this.#settle(folder, id, { status: cancelled ? "cancelled" : "invocation-error", failure: redact(message).slice(0, MAX_MESSAGE) });
+  fail(folder: string, id: string, message: string, cancelled: boolean, redact: Redact, exitCode?: number): void {
+    const failed = !cancelled && exitCode !== undefined;
+    this.#settle(folder, id, {
+      status: cancelled ? "cancelled" : failed ? "failed" : "invocation-error",
+      ...(failed ? { exitCode } : {}),
+      failure: redact(message).slice(0, MAX_MESSAGE),
+    });
   }
 
   #settle(folder: string, id: string, patch: Partial<EngineCheck>): void {

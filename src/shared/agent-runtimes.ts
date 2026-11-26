@@ -239,6 +239,8 @@ export interface ApprovalRequestDetails {
   input?: string;
   /** Host-managed plugin target consent; only allow-always persists it. */
   pluginAccess?: { plugin: string; label: string };
+  /** One still image of a running managed game window; never rememberable. */
+  nativeCapture?: { project: string; session: string; operation: "still" };
   /**
    * `library_use` adding a source's result: what it is, for the window to
    * word in the person's language. `title` and `reason` say the same in

@@ -108,6 +108,17 @@ export class WindowClaims<T, D> {
     return true;
   }
 
+  /**
+   * Builds and resolves a value only while the request is still claimed, so a
+   * duplicate or late answer cannot have a side effect before it is rejected.
+   */
+  resolveWith(projectId: string, request: string, create: () => T): boolean {
+    const waiting = this.#get(projectId, request);
+    if (!waiting?.started) return false;
+    waiting.resolve(create());
+    return true;
+  }
+
   /** Why the claiming window failed. False when nothing claimed waits for it. */
   fail(projectId: string, request: string, message: string): boolean {
     const waiting = this.#get(projectId, request);
@@ -119,6 +130,18 @@ export class WindowClaims<T, D> {
   /** What each claimed request waiting under this project was made with. */
   *claimed(projectId: string): Iterable<D> {
     for (const waiting of this.#waiting.values()) if (waiting.projectId === projectId && waiting.started) yield waiting.detail;
+  }
+
+  /** Gives up every request for a project, as when it closes. */
+  cancelProject(projectId: string, message = "The project closed"): void {
+    this.cancelWhere(projectId, () => true, message);
+  }
+
+  /** Gives up project requests whose detail matches, as when their session ends. */
+  cancelWhere(projectId: string, matches: (detail: D) => boolean, message: string): void {
+    for (const [request, waiting] of [...this.#waiting]) {
+      if (waiting.projectId === projectId && matches(waiting.detail)) this.#give(request, waiting, "cancelled", message);
+    }
   }
 
   #get(projectId: string, request: string): Waiting<T, D> | undefined {

@@ -28,6 +28,8 @@ export interface EngineCheck {
   status: EngineCheckStatus;
   sourceFreshness: "unknown";
   exitCode?: number | null;
+  /** The engine reported at least one error even though its exit code may be 0. */
+  reportedErrors?: boolean;
   diagnostics: EngineDiagnostic[];
   /** Whether the supported extraction was bounded or truncated, not complete engine coverage. */
   diagnosticsComplete: boolean;
@@ -43,6 +45,10 @@ export interface EngineCheck {
 export interface NativeWindowCaptureSummary {
   id: string;
   sessionId: string;
+  /** The one-time agent request this capture satisfied, when one did. */
+  requestId?: string;
+  /** The plugin that owned the native session, for provenance. */
+  plugin?: string;
   capturedAt: number;
   width: number;
   height: number;
@@ -62,7 +68,7 @@ export interface NativeWindowCapture extends NativeWindowCaptureSummary {
 }
 
 /** What the desktop capture adapter returns before the daemon gives it an ID. */
-export type NativeWindowCaptureInput = Omit<NativeWindowCaptureSummary, "id" | "sessionId" | "capturedAt"> & {
+export type NativeWindowCaptureInput = Omit<NativeWindowCaptureSummary, "id" | "sessionId" | "capturedAt" | "requestId" | "plugin"> & {
   data: string;
 };
 

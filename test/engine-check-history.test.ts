@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EngineCheckHistory, compareReportedChecks, renpyCheckOperation, renpyCommandOperation } from "../src/daemon/engine-check-history.js";
+import { EngineCheckHistory, compareReportedChecks, godotCheckOperation, pluginCheckOperation, renpyCheckOperation, renpyCommandOperation } from "../src/daemon/engine-check-history.js";
 import type { EngineDiagnostic } from "../src/shared/engine-observations.js";
 
 const plugin = "thorstarlord/renpy";
@@ -34,6 +34,9 @@ describe("Engine check observations", () => {
     const failure = history.begin("A", plugin, "1", "test");
     history.fail("A", failure, "SDK absent", false, plain);
     expect(history.read("A")[0]?.status).toBe("invocation-error");
+    const exportFailure = history.begin("A", "ohmygame/godot", "1.0.3", "export");
+    history.fail("A", exportFailure, "The web export failed (exit 2): parse error", false, plain, 2);
+    expect(history.read("A")[0]).toMatchObject({ status: "failed", exitCode: 2 });
   });
 
   it("compares reported multisets only for compatible sequential complete extractions", () => {
@@ -71,5 +74,52 @@ describe("Engine check observations", () => {
     expect(renpyCheckOperation(plugin, "renpy_lint")).toBe("lint");
     expect(renpyCommandOperation(plugin, "lint-renpy")).toBe("lint");
     expect(renpyCommandOperation(plugin, "run-in-renpy")).toBeUndefined();
+  });
+
+  it("observes Godot runs and extracts res:// source locations", () => {
+    const godot = "ohmygame/godot";
+    expect(godotCheckOperation(godot, "run_headless")).toBe("test");
+    expect(godotCheckOperation(godot, "export_web")).toBe("export");
+    expect(godotCheckOperation(godot, "godot_status")).toBeUndefined();
+    expect(pluginCheckOperation(godot, "export_web")).toBe("export");
+    const history = new EngineCheckHistory();
+    const id = history.begin("G", godot, "1.0.3", "test");
+    history.complete("G", id, {
+      exitCode: 0,
+      errors: ["SCRIPT ERROR: Parse Error: unexpected token"],
+      output: [
+        "SCRIPT ERROR: Parse Error: unexpected token",
+        "   at: GDScript::reload (res://scripts/player.gd:12)",
+        "WARNING: something to inspect",
+        "   at: res://scenes/main.tscn:4",
+      ].join("\n"),
+    }, plain);
+    const run = history.read("G")[0]!;
+    expect(run.status).toBe("failed");
+    expect(run.exitCode).toBe(0);
+    expect(run.reportedErrors).toBe(true);
+    expect(run.diagnosticsComplete).toBe(true);
+    expect(run.diagnostics).toEqual([
+      expect.objectContaining({ severity: "error", path: "scripts/player.gd", line: 12 }),
+      expect.objectContaining({ severity: "warning", path: "scenes/main.tscn", line: 4 }),
+    ]);
+    expect(run.diagnostics[0]!.message).toContain("unexpected token");
+    expect(run.diagnostics[0]!.message).toContain("GDScript::reload");
+  });
+
+  it("does not invent a Godot source from unrelated text", () => {
+    const history = new EngineCheckHistory();
+    const id = history.begin("G", "ohmygame/godot", "1.0.3", "test");
+    history.complete("G", id, {
+      exitCode: 1,
+      errors: ["ERROR: a path https://example.test/a.gd:1 is not a Godot resource"],
+      output: [
+        "ERROR: a path https://example.test/a.gd:1 is not a Godot resource",
+        "ERROR: cannot open res://backup/main.gd.old",
+        "ERROR: res://C:/Users/x/secret.gd:1",
+      ].join("\n"),
+    }, plain);
+    expect(history.read("G")[0]!.diagnostics).toHaveLength(3);
+    expect(history.read("G")[0]!.diagnostics.every((item) => item.path === undefined)).toBe(true);
   });
 });

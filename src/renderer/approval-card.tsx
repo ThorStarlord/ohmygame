@@ -31,7 +31,10 @@ export function ApprovalCard({
   const details = request.request;
   const agent = agentName ?? t("approval.theAgent");
   const library = details.libraryAdd;
-  const title = details.pluginAccess
+  const native = details.nativeCapture;
+  const title = native
+    ? t("approval.nativeCaptureTitle")
+    : details.pluginAccess
     ? t("pluginAccess.approveTitle", { label: details.pluginAccess.label })
     : library
       ? t("approval.libraryAddTitle", { name: library.name, source: library.source })
@@ -72,6 +75,12 @@ export function ApprovalCard({
           <small>{t("approval.waiting", { count: waiting })}</small>
         ) : null}
       </header>
+      {native ? <div className="approval-card-native">
+        <p><strong>{t("approval.nativeCaptureProject")}</strong> {native.project}</p>
+        <p><strong>{t("approval.nativeCaptureSession")}</strong> {native.session}</p>
+        <p><strong>{t("approval.nativeCapturePermission")}</strong> {t("approval.nativeCaptureStill")}</p>
+        <p className="approval-card-reason">{t("approval.nativeCaptureOnce")}</p>
+      </div> : null}
       {details.command !== undefined ? (
         <pre className="approval-card-detail">
           <code>{details.command}</code>
@@ -131,7 +140,7 @@ export function ApprovalCard({
           disabled={submitting}
           onClick={() => void decide(details.pluginAccess ? "allow-always" : "allow")}
         >
-          {t(details.pluginAccess ? "pluginAccess.allowRemember" : "approval.allow")}
+          {t(details.pluginAccess ? "pluginAccess.allowRemember" : native ? "approval.nativeCaptureAllow" : "approval.allow")}
         </Button>
         {details.pluginAccess ? <Button size="sm" disabled={submitting} onClick={() => void decide("allow")}>{t("pluginAccess.allowOnce")}</Button> : details.always ? (
           <Button
@@ -165,6 +174,7 @@ export function approvalOutcomeLabel(
   item: Extract<ThreadItem, { type: "approvalRequest" }>,
 ): string {
   const subject =
+    (item.request.nativeCapture ? `${item.request.nativeCapture.project} · ${item.request.nativeCapture.session}` : undefined) ??
     item.request.pluginAccess?.label ??
     item.request.libraryAdd?.name ??
     item.request.command ??

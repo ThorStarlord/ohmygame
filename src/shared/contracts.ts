@@ -1555,6 +1555,15 @@ export interface RuntimeEventData {
   /** The agent stopped waiting for a panel's screenshot; the window that took it stops. */
   "plugin.panel.capture.cancel": { request: string };
   /**
+   * An agent asked for one still image of a running managed native session
+   * after the person allowed it. A desktop window claims it, captures the
+   * session's window and answers at
+   * `/projects/:id/native-capture-requests/:request`. Stale after `expires`.
+   */
+  "native.capture.request": { request: string; sessionId: string; rootPid: number; label: string; expires: number };
+  /** The request was cancelled, timed out or its project/session ended. */
+  "native.capture.cancel": { request: string };
+  /**
    * A tool a plugin's panel page answers: the window shows the panel, hands
    * its page the call and answers at `/projects/:id/plugin-page-tools/:request`.
    * Stale after `expires` (epoch milliseconds), as one replayed later is.
@@ -1609,6 +1618,8 @@ export const RUNTIME_EVENT_TYPES = [
   "plugin.draft.capture",
   "plugin.panel.capture",
   "plugin.panel.capture.cancel",
+  "native.capture.request",
+  "native.capture.cancel",
   "plugin.page.tool",
   "plugin.page.tool.cancel",
   "plugin.panel.open",

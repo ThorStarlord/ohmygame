@@ -4,6 +4,7 @@ import { isNativeWindowCaptureInput } from "../shared/engine-observations.js";
 
 const MAX_PROJECTS = 24;
 const MAX_CAPTURES = 12;
+const MAX_SESSION_CAPTURES = 6;
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 const MAX_PIXELS = 16_000_000;
 const MAX_PROJECT_BYTES = 32 * 1024 * 1024;
@@ -57,10 +58,17 @@ export class NativeWindowCaptures {
   readonly #bytes = new Map<string, number>();
   #totalBytes = 0;
 
-  add(projectId: string, sessionId: string, input: NativeWindowCaptureInput): NativeWindowCaptureSummary {
+  add(
+    projectId: string,
+    sessionId: string,
+    input: NativeWindowCaptureInput,
+    metadata: { requestId?: string; plugin?: string } = {},
+  ): NativeWindowCaptureSummary {
     const capture: NativeWindowCapture = {
       id: randomUUID(),
       sessionId,
+      ...(metadata.requestId ? { requestId: metadata.requestId } : {}),
+      ...(metadata.plugin ? { plugin: metadata.plugin } : {}),
       capturedAt: Date.now(),
       width: input.width,
       height: input.height,
@@ -72,14 +80,20 @@ export class NativeWindowCaptures {
       analysis: { ...input.analysis },
       data: input.data,
     };
-    const candidates = [capture, ...(this.#projects.get(projectId) ?? [])]
-      .filter((item, index, all) => item.sessionId !== sessionId || all.findIndex((other) => other.sessionId === sessionId) === index);
+    // Keep the newest captures, including more than one for a session so the
+    // agent can compare a before and an after; never replace an older image
+    // silently when the caller names a specific ID.
+    const candidates = [capture, ...(this.#projects.get(projectId) ?? [])];
     const captures: NativeWindowCapture[] = [];
+    const perSession = new Map<string, number>();
     let bytes = 0;
     for (const item of candidates) {
       if (captures.length >= MAX_CAPTURES) break;
+      const sessionCount = perSession.get(item.sessionId) ?? 0;
+      if (sessionCount >= MAX_SESSION_CAPTURES) continue;
       if (bytes + item.data.length > MAX_PROJECT_BYTES) continue;
       captures.push(item);
+      perSession.set(item.sessionId, sessionCount + 1);
       bytes += item.data.length;
     }
     this.#projects.delete(projectId);
@@ -109,6 +123,29 @@ export class NativeWindowCaptures {
   latest(projectId: string, sessionId: string): NativeWindowCapture | undefined {
     const found = this.#projects.get(projectId)?.find((item) => item.sessionId === sessionId);
     return found ? { ...found, analysis: { ...found.analysis } } : undefined;
+  }
+
+  /** One exact retained capture; undefined means it is no longer retained or is another project's. */
+  get(projectId: string, captureId: string): NativeWindowCapture | undefined {
+    const found = this.#projects.get(projectId)?.find((item) => item.id === captureId);
+    return found ? { ...found, analysis: { ...found.analysis } } : undefined;
+  }
+
+  /** Drops a capture that could not be associated with the request that caused it. */
+  remove(projectId: string, captureId: string): void {
+    const captures = this.#projects.get(projectId);
+    if (!captures) return;
+    const kept = captures.filter((item) => item.id !== captureId);
+    if (kept.length === captures.length) return;
+    const bytes = kept.reduce((total, item) => total + item.data.length, 0);
+    if (kept.length) {
+      this.#projects.set(projectId, kept);
+      this.#bytes.set(projectId, bytes);
+    } else {
+      this.#projects.delete(projectId);
+      this.#bytes.delete(projectId);
+    }
+    this.#totalBytes = this.#total();
   }
 
   forget(projectId: string): void {

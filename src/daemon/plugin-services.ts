@@ -20,7 +20,7 @@ import type { PluginUiCapabilities } from "../shared/plugin-ui-protocol.js";
 import type { LibrarySource, ProjectState } from "../shared/contracts.js";
 import type { EngineObservationSnapshot, NativeWindowCaptureSummary } from "../shared/engine-observations.js";
 import { createLogRedactor } from "../shared/log-redaction.js";
-import { EngineCheckHistory, renpyCheckOperation, renpyCommandOperation } from "./engine-check-history.js";
+import { EngineCheckHistory, pluginCheckOperation, renpyCommandOperation } from "./engine-check-history.js";
 import type { PluginBrowserShortcut } from "../shared/browser.js";
 import { PROJECT_FILE_NAME, projectTypePlugin } from "../shared/project-file.js";
 import { appWidePluginSuits } from "../shared/project-runtime.js";
@@ -1444,7 +1444,7 @@ export class PluginServices {
   ): Promise<unknown> {
     // Observe only recognized engine checks at the existing validated tool boundary.
     // Diagnostics never change the outcome of the underlying tool call.
-    const operation = renpyCheckOperation(entry.id, name);
+    const operation = pluginCheckOperation(entry.id, name);
     const folder = operation ? await projectFolderKey(options.folder).catch(() => undefined) : undefined;
     const run = folder && operation ? this.#engineChecks.begin(folder, entry.id, entry.version, operation) : undefined;
     const redact = (text: string) => this.#engineRedactor(redactCredentials(text, this.values.secrets(entry.id)), { maxLength: 64_000 });
@@ -1464,8 +1464,15 @@ export class PluginServices {
     } catch (error) {
       if (folder && run) {
         try {
+          // The pinned Godot plugin throws on a nonzero export and names the
+          // exit code in its message; keep that as a failed export, not a
+          // failed tool call. A setup error before Godot runs has no code.
+          const exit = operation === "export" && entry.id === "ohmygame/godot" && error instanceof Error
+            ? /\(exit (-?\d+)\)/i.exec(error.message)?.[1]
+            : undefined;
           this.#engineChecks.fail(folder, run, error instanceof Error ? error.message : String(error),
-            options.signal?.aborted === true || (error instanceof ExtensionHostError && error.code === "cancelled"), redact);
+            options.signal?.aborted === true || (error instanceof ExtensionHostError && error.code === "cancelled"), redact,
+            exit === undefined ? undefined : Number(exit));
         } catch { /* Preserve the original tool failure. */ }
       }
       throw error;

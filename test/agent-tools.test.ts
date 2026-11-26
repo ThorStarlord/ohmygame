@@ -193,7 +193,8 @@ describe("agent tools", () => {
       analysis: { sampledPixels: 10, opaqueRatio: 1, luminanceMean: 20, luminanceVariance: 10, likelyBlank: false },
       data: "iVBORw0KGgo=",
     };
-    const read = vi.fn(async (sessionId: string) => sessionId === capture.sessionId ? capture : undefined);
+    const read = vi.fn(async (query: { sessionId?: string; captureId?: string }) =>
+      query.captureId === capture.id || query.sessionId === capture.sessionId ? capture : undefined);
     const tools = createAgentTools(
       project, runner, projects, undefined, undefined, undefined, undefined, undefined,
       undefined, undefined, undefined, undefined, undefined, undefined, undefined,
@@ -206,11 +207,48 @@ describe("agent tools", () => {
     const tool = tools.find(({ name }) => name === "engine_capture");
     if (!tool) throw new Error("Expected engine capture tool");
     const result = await tool.execute("capture", { sessionId: "session-1" }, undefined, undefined, {} as never);
-    expect(read).toHaveBeenCalledWith("session-1");
+    expect(read).toHaveBeenCalledWith({ sessionId: "session-1" });
     expect(result.content[0]).toMatchObject({ type: "text" });
     expect(result.content[1]).toEqual({ type: "image", data: capture.data, mimeType: "image/png" });
+    const exact = await tool.execute("capture-id", { captureId: "capture-1" }, undefined, undefined, {} as never);
+    expect(read).toHaveBeenCalledWith({ captureId: "capture-1" });
+    expect(exact.content[1]).toEqual({ type: "image", data: capture.data, mimeType: "image/png" });
     await expect(tool.execute("capture-2", { sessionId: "missing" }, undefined, undefined, {} as never))
       .rejects.toThrow(/person-authorized capture/);
+    await expect(tool.execute("capture-3", { sessionId: "session-1", captureId: "capture-1" }, undefined, undefined, {} as never))
+      .rejects.toThrow(/exactly one/);
+  });
+
+  it("requests one native capture through the approval callback and returns its image", async () => {
+    const dataDirectory = await mkdtemp(path.join(tmpdir(), "ohmygame-agent-engine-request-"));
+    const projects = new ProjectManager(dataDirectory);
+    await projects.load();
+    const project = await projects.create("Engine request");
+    const runner = new ToolRunner(dataDirectory, { generate: async () => ({ bytes: Buffer.from("image"), mediaType: "image/webp" }) });
+    await runner.load();
+    const capture = {
+      id: "capture-2", sessionId: "session-1", requestId: "request-1", capturedAt: 1,
+      width: 640, height: 360, title: "Game", hwnd: "42", rootPid: 4321, pid: 4322,
+      mediaType: "image/png" as const,
+      analysis: { sampledPixels: 10, opaqueRatio: 1, luminanceMean: 20, luminanceVariance: 10, likelyBlank: false },
+      data: "iVBORw0KGgo=",
+    };
+    const request = vi.fn(async () => capture);
+    const tools = createAgentTools(
+      project, runner, projects, undefined, undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+      async () => ({
+        projectId: project.id, observedAt: 1, historyRetention: "daemon-memory",
+        preview: { status: "stopped", diagnostics: [] }, nativeSessions: [], captures: [], checks: [],
+      }),
+      undefined,
+      request,
+    );
+    const tool = tools.find(({ name }) => name === "engine_capture_request");
+    if (!tool) throw new Error("Expected engine capture request tool");
+    const result = await tool.execute("request", { sessionId: "session-1", reason: "Check the dialogue layout" }, undefined, undefined, {} as never);
+    expect(request).toHaveBeenCalledWith("session-1", "Check the dialogue layout", "request", undefined);
+    expect(result.content[1]).toEqual({ type: "image", data: capture.data, mimeType: "image/png" });
   });
 
   it("returns provider metadata from the built-in web search tool", async () => {

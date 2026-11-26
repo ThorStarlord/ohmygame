@@ -26,17 +26,35 @@ const capture = (title = "Ren'Py") => ({
 });
 
 describe("Native window captures", () => {
-  it("keeps one latest capture per session and isolates projects", () => {
+  it("keeps a bounded history for one session and retrieves an exact capture", () => {
     const captures = new NativeWindowCaptures();
     const first = captures.add("project-a", "session-1", capture("first"));
-    captures.add("project-a", "session-1", capture("second"));
-    expect(captures.list("project-a")).toHaveLength(1);
+    const second = captures.add("project-a", "session-1", capture("second"), { requestId: "request-1", plugin: "thorstarlord/renpy" });
+    expect(captures.list("project-a")).toHaveLength(2);
     expect(captures.latest("project-a", "session-1")?.title).toBe("second");
     expect(captures.latest("project-a", "session-1")?.data).toBe(pngData());
-    expect(captures.list("project-a")[0]?.id).not.toBe(first.id);
-    expect(captures.list("project-b")).toEqual([]);
+    expect(captures.get("project-a", first.id)?.title).toBe("first");
+    expect(captures.get("project-a", second.id)).toMatchObject({
+      requestId: "request-1",
+      plugin: "thorstarlord/renpy",
+    });
+    expect(captures.get("project-a", "gone")).toBeUndefined();
+    expect(captures.get("project-b", first.id)).toBeUndefined();
+    captures.remove("project-a", first.id);
+    expect(captures.get("project-a", first.id)).toBeUndefined();
+    expect(captures.list("project-a")).toHaveLength(1);
     captures.forget("project-a");
     expect(captures.list("project-a")).toEqual([]);
+    expect(captures.get("project-a", second.id)).toBeUndefined();
+  });
+
+  it("evicts the oldest capture beyond a session's history limit", () => {
+    const captures = new NativeWindowCaptures();
+    const saved = Array.from({ length: 7 }, (_, index) => captures.add("project", "session", capture(`shot-${index}`)));
+    expect(captures.list("project")).toHaveLength(6);
+    expect(captures.get("project", saved[0]!.id)).toBeUndefined();
+    expect(captures.get("project", saved[1]!.id)?.title).toBe("shot-1");
+    expect(captures.get("project", saved[6]!.id)?.title).toBe("shot-6");
   });
 
   it("bounds retained sessions per project", () => {

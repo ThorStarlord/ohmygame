@@ -197,6 +197,47 @@
   color: var(--text-secondary, #999);
   overflow-wrap: anywhere;
 }
+.capture-compare-pickers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 6px 0;
+}
+.capture-compare-pickers label {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 180px;
+  font-size: 11px;
+  color: var(--text-secondary, #999);
+}
+.capture-compare-pickers select {
+  min-width: 0;
+  max-width: 100%;
+}
+.capture-compare-images {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0;
+}
+.capture-compare-images figure {
+  min-width: 0;
+  margin: 0;
+}
+.capture-compare-images figcaption,
+.capture-compare-images small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.capture-compare-images small {
+  color: var(--text-secondary, #999);
+}
+@media (max-width: 720px) {
+  .capture-compare-images {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 
 .coding-workspace {
   position: relative;

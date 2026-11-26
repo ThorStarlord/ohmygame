@@ -4,6 +4,7 @@
 **Status:** PR #10 integration completed locally, including a real desktop workflow against a disposable Ren'Py project; Web playtesting and native input remain unsupported.
 **OhMyGame:** `ThorStarlord/ohmygame`, branch `feat/engine-observations`, based on `dev` `792e9e19884b1900dd5049d7e843e542486f2042`; candidate `1a3dc93c366c5d569cc8cb8484b6c6372909c5e1` (continues `4ca7e63a8e568b55280ba93206c79cda61322539`).
 **Disposable project:** `H:\GithubRepositories\renpy-pilot`, a pilot copy of Superhero-Netorare-Parody; canonical game source and player data were not used for the exercise.
+**Later extension:** the [2026-11-26 pilot](2026-11-26-agent-directed-visual-feedback.md) adds agent-requested one-time capture, retains six recent captures per session and twelve per project, and compares exact before/after images.
 
 ## Delivered
 
@@ -11,7 +12,7 @@
 - `engine_observations` for the project agent and external MCP clients; bounded history and output on request.
 - Bounded stdout/stderr observation for a managed native session whose plugin opts in at launch.
 - Person-authorized Capture window for the Windows desktop app. It finds a visible top-level window owned by the session's process tree, excludes console classes, captures a scaled PNG with blank-frame analysis, and stores it in daemon memory. The capture records the session root PID separately from the window-owner PID so a child-owned game window remains usable.
-- `engine_capture` returns the latest authorized capture as image content; it cannot trigger a capture, choose a window or request permission.
+- `engine_capture` returns a retained authorized capture as image content (the latest per session in this pilot); it cannot trigger a capture, choose a window or request permission.
 - The panel lint action is a read-only native command, records check history, and does not create an Undo entry.
 
 ## Desktop exercise
