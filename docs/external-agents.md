@@ -324,7 +324,7 @@ project folder in the client, generate an image and a 3D model through
 
 ### Inspect observed engine results
 
-`engine_observations` reads observations for the selected project. Without arguments it lists preview diagnostics, managed native sessions and recent recognized checks with diagnostic samples. Supply a retained `runId` to inspect that run; set `includeOutput: true` to include its bounded, redacted output excerpt. It does not execute a check, launch a process, read arbitrary files or grant permission to modify the game. History is limited to daemon memory, source freshness is unknown and reported diagnostic differences are not proof of a repair. Use existing engine tools to run a new check explicitly.
+`engine_observations` reads observations for the selected project. Without arguments it lists preview diagnostics, managed native sessions, active observation grants and recent recognized checks with diagnostic samples. Supply a retained `runId` to inspect that run; set `includeOutput: true` to include its bounded, redacted output excerpt. It does not execute a check, launch a process, read arbitrary files or grant permission to modify the game. History is limited to daemon memory, source freshness is unknown and reported diagnostic differences are not proof of a repair. Use existing engine tools to run a new check explicitly.
 
 For native output, select a retained `nativeSessionId` instead of `runId`, and explicitly set `includeOutput: true`. The summary exposes only output availability. Output capture must have been requested by the native plugin at launch; this call cannot turn it on, attach to a process or capture a window.
 
