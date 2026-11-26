@@ -3,6 +3,7 @@
 **Date:** 2026-11-26
 **Status:** Implemented locally; the agent-request path is covered by focused tests, but no authentic person approval was available for a live end-to-end request. Historical comparison and Godot check history were exercised with real captures and a real Godot run.
 **OhMyGame:** `ThorStarlord/ohmygame`, branch `feat/agent-directed-visual-feedback`, based on `dev` `51bf59cb30fb1644bb96bfdd45fe603bdaba4094`.
+**Later extension:** the [delegated observation sessions pilot](2026-11-26-delegated-observation-sessions.md) adds claimant-bound settlement and bounded three-attempt observation grants.
 
 ## Delivered
 

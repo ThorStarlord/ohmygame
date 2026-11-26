@@ -12,6 +12,8 @@ export interface NativeCaptureTarget {
   sessionId: string;
   rootPid: number;
   label: string;
+  /** Set when this capture is one attempt inside a delegated observation grant. */
+  grantId?: string;
 }
 
 /** A window's answer to a visual observation request. */
@@ -69,8 +71,9 @@ export class NativeCaptureRequests {
     return this.#claims.detail(projectId, request);
   }
 
-  claim(projectId: string, request: string): boolean {
-    return this.#claims.claim(projectId, request, NATIVE_CAPTURE_FINISH_MS,
+  /** Claims a request for one window and returns its settlement token. */
+  claim(projectId: string, request: string): string | undefined {
+    return this.#claims.claimWithToken(projectId, request, NATIVE_CAPTURE_FINISH_MS,
       "The game window was not captured in time. Make sure it is visible and try again.");
   }
 
@@ -78,23 +81,25 @@ export class NativeCaptureRequests {
     return this.#claims.decline(projectId, request, reason);
   }
 
-  fail(projectId: string, request: string, message: string): boolean {
-    return this.#claims.fail(projectId, request, message);
+  fail(projectId: string, request: string, token: string, message: string): boolean {
+    return this.#claims.failWithToken(projectId, request, token, message);
   }
 
-  resolve(projectId: string, request: string, capture: NativeWindowCapture): boolean {
-    return this.#claims.resolve(projectId, request, capture);
-  }
-
-  /** Stores a capture only while its request is still claimed. */
-  resolveWith(projectId: string, request: string, create: () => NativeWindowCapture): boolean {
-    return this.#claims.resolveWith(projectId, request, create);
+  /** Stores a capture only for the claimant holding the settlement token. */
+  resolveWith(projectId: string, request: string, token: string, create: () => NativeWindowCapture): boolean {
+    return this.#claims.resolveWithToken(projectId, request, token, create);
   }
 
   /** A stopped or replaced session no longer authorizes an outstanding request. */
   cancelSession(projectId: string, sessionId: string): void {
     this.#claims.cancelWhere(projectId, (target) => target.sessionId === sessionId,
       "The managed native session ended before it was captured.");
+  }
+
+  /** Revocation or conversation invalidation ends an outstanding delegated capture. */
+  cancelGrant(projectId: string, grantId: string): void {
+    this.#claims.cancelWhere(projectId, (target) => target.grantId === grantId,
+      "The observation session is no longer active.");
   }
 
   forget(projectId: string): void {

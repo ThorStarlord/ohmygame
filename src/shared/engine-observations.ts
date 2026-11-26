@@ -41,12 +41,35 @@ export interface EngineCheck {
   failure?: string;
   comparison?: EngineDiagnosticComparison;
 }
+export type ObservationGrantStatus = "active" | "exhausted" | "expired" | "revoked" | "ended" | "invalidated";
+
+/** A bounded, person-authorized observation session for one native session. */
+export interface ObservationGrantSummary {
+  id: string;
+  sessionId: string;
+  sessionLabel: string;
+  plugin?: string;
+  purpose: string;
+  maxAttempts: number;
+  /** Admitted attempts, including ones that later failed. */
+  admitted: number;
+  completed: number;
+  failed: number;
+  remaining: number;
+  inFlight: boolean;
+  createdAt: number;
+  expiresAt: number;
+  status: ObservationGrantStatus;
+}
+
 /** Metadata for one person-authorized native window capture. */
 export interface NativeWindowCaptureSummary {
   id: string;
   sessionId: string;
   /** The one-time agent request this capture satisfied, when one did. */
   requestId?: string;
+  /** The delegated observation grant this capture was admitted under, when any. */
+  grantId?: string;
   /** The plugin that owned the native session, for provenance. */
   plugin?: string;
   capturedAt: number;
@@ -68,7 +91,7 @@ export interface NativeWindowCapture extends NativeWindowCaptureSummary {
 }
 
 /** What the desktop capture adapter returns before the daemon gives it an ID. */
-export type NativeWindowCaptureInput = Omit<NativeWindowCaptureSummary, "id" | "sessionId" | "capturedAt" | "requestId" | "plugin"> & {
+export type NativeWindowCaptureInput = Omit<NativeWindowCaptureSummary, "id" | "sessionId" | "capturedAt" | "requestId" | "grantId" | "plugin"> & {
   data: string;
 };
 
@@ -105,5 +128,6 @@ export interface EngineObservationSnapshot {
   preview: Pick<PreviewRuntimeState, "status" | "phase" | "revision" | "startedAt" | "error"> & { diagnostics: PreviewDiagnostic[] };
   nativeSessions: NativeSessionView[];
   captures: NativeWindowCaptureSummary[];
+  observationGrants: ObservationGrantSummary[];
   checks: EngineCheck[];
 }

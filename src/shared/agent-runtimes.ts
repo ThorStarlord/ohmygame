@@ -241,6 +241,15 @@ export interface ApprovalRequestDetails {
   pluginAccess?: { plugin: string; label: string };
   /** One still image of a running managed game window; never rememberable. */
   nativeCapture?: { project: string; session: string; operation: "still" };
+  /** A bounded series of still images under one explicit observation authorization. */
+  nativeObservation?: {
+    project: string;
+    session: string;
+    purpose: string;
+    maxAttempts: number;
+    expiresAt: number;
+    operation: "still";
+  };
   /**
    * `library_use` adding a source's result: what it is, for the window to
    * word in the person's language. `title` and `reason` say the same in

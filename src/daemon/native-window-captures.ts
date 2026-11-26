@@ -62,12 +62,13 @@ export class NativeWindowCaptures {
     projectId: string,
     sessionId: string,
     input: NativeWindowCaptureInput,
-    metadata: { requestId?: string; plugin?: string } = {},
+    metadata: { requestId?: string; grantId?: string; plugin?: string } = {},
   ): NativeWindowCaptureSummary {
     const capture: NativeWindowCapture = {
       id: randomUUID(),
       sessionId,
       ...(metadata.requestId ? { requestId: metadata.requestId } : {}),
+      ...(metadata.grantId ? { grantId: metadata.grantId } : {}),
       ...(metadata.plugin ? { plugin: metadata.plugin } : {}),
       capturedAt: Date.now(),
       width: input.width,

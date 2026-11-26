@@ -127,6 +127,7 @@ import {
   makeProjectPanelPlugin,
   answerDraftCapture,
   answerNativeCaptureRequest,
+  claimNativeCaptureRequest,
   answerPluginPanelCapture,
   answerPluginPageTool,
   runDraftPageCommand,
@@ -1825,14 +1826,15 @@ export function ProjectShell({
     // records the claim is not missed.
     const controller = new AbortController();
     nativeCaptures.set(request, controller);
+    let claimToken: string | undefined;
     try {
-      if (controller.signal.aborted || !await answer({ started: true }).catch(() => false)) return;
-      if (controller.signal.aborted) return;
+      claimToken = await claimNativeCaptureRequest(projectId, request).catch(() => undefined);
+      if (!claimToken || controller.signal.aborted) return;
       const image = await window.ohMyGameDesktop.captureNativeWindow({ rootPid, sessionId });
       if (controller.signal.aborted) return;
-      await answer({ image }).catch((cause: unknown) => answer({ error: `The capture couldn't be sent: ${errorMessage(cause)}` }).catch(() => {}));
+      await answer({ image, claimToken }).catch((cause: unknown) => answer({ error: `The capture couldn't be sent: ${errorMessage(cause)}`, claimToken: claimToken! }).catch(() => {}));
     } catch (cause) {
-      if (!controller.signal.aborted) await answer({ error: errorMessage(cause) }).catch(() => {});
+      if (claimToken && !controller.signal.aborted) await answer({ error: errorMessage(cause), claimToken }).catch(() => {});
     } finally {
       nativeCaptures.delete(request);
     }

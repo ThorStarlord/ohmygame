@@ -2031,13 +2031,28 @@ export async function answerPluginPanelCapture(projectId: string, requestId: str
     throw cause;
   }
 }
+/** Revokes a person-authorized observation session immediately. */
+export async function revokeObservationGrant(projectId: string, grantId: string): Promise<import("../shared/engine-observations.js").ObservationGrantSummary> {
+  return request(`/projects/${encodeURIComponent(projectId)}/observation-grants/${encodeURIComponent(grantId)}/revoke`, { method: "POST" });
+}
+/** Claims a native game-window request for this window and returns its one-time settlement token. */
+export async function claimNativeCaptureRequest(projectId: string, requestId: string): Promise<string | undefined> {
+  try {
+    const result = await request<{ claimToken?: unknown }>(`/projects/${encodeURIComponent(projectId)}/native-capture-requests/${encodeURIComponent(requestId)}`, {
+      method: "POST",
+      body: JSON.stringify({ started: true }),
+    });
+    return typeof result.claimToken === "string" && result.claimToken ? result.claimToken : undefined;
+  } catch (cause) {
+    if (cause instanceof ApiError && cause.status === 404) return undefined;
+    throw cause;
+  }
+}
 /**
- * Answers a person-authorized agent request for one native game-window image:
- * that this window took it, then the image or why there is none. False when
- * nothing waits for it, as when another window took it or the person's turn
- * ended.
+ * Answers a claimed native game-window request with its image or error. The
+ * settlement token is the one claimNativeCaptureRequest issued to this window.
  */
-export async function answerNativeCaptureRequest(projectId: string, requestId: string, answer: { started: true } | { declined: string } | { image: import("../shared/engine-observations.js").NativeWindowCaptureInput } | { error: string }): Promise<boolean> {
+export async function answerNativeCaptureRequest(projectId: string, requestId: string, answer: { declined: string } | { image: import("../shared/engine-observations.js").NativeWindowCaptureInput; claimToken: string } | { error: string; claimToken: string }): Promise<boolean> {
   try {
     await request(`/projects/${encodeURIComponent(projectId)}/native-capture-requests/${encodeURIComponent(requestId)}`, { method: "POST", body: JSON.stringify(answer) });
     return true;

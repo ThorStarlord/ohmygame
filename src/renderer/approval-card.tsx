@@ -32,7 +32,10 @@ export function ApprovalCard({
   const agent = agentName ?? t("approval.theAgent");
   const library = details.libraryAdd;
   const native = details.nativeCapture;
-  const title = native
+  const observation = details.nativeObservation;
+  const title = observation
+    ? t("approval.nativeObservationTitle")
+    : native
     ? t("approval.nativeCaptureTitle")
     : details.pluginAccess
     ? t("pluginAccess.approveTitle", { label: details.pluginAccess.label })
@@ -81,6 +84,16 @@ export function ApprovalCard({
         <p><strong>{t("approval.nativeCapturePermission")}</strong> {t("approval.nativeCaptureStill")}</p>
         <p className="approval-card-reason">{t("approval.nativeCaptureOnce")}</p>
       </div> : null}
+      {observation ? <div className="approval-card-native">
+        <p><strong>{t("approval.nativeObservationAgent")}</strong> {agent}</p>
+        <p><strong>{t("approval.nativeCaptureProject")}</strong> {observation.project}</p>
+        <p><strong>{t("approval.nativeCaptureSession")}</strong> {observation.session}</p>
+        <p><strong>{t("approval.nativeObservationPurpose")}</strong> {observation.purpose}</p>
+        <p><strong>{t("approval.nativeCapturePermission")}</strong> {t("approval.nativeObservationStill")}</p>
+        <p><strong>{t("approval.nativeObservationLimit")}</strong> {t("approval.nativeObservationLimitValue", { count: observation.maxAttempts })}</p>
+        <p><strong>{t("approval.nativeObservationUntil")}</strong> {new Date(observation.expiresAt).toLocaleTimeString()}</p>
+        <p className="approval-card-reason">{t("approval.nativeObservationOnce")}</p>
+      </div> : null}
       {details.command !== undefined ? (
         <pre className="approval-card-detail">
           <code>{details.command}</code>
@@ -105,7 +118,7 @@ export function ApprovalCard({
           <code>{details.path}</code>
         </p>
       ) : null}
-      {details.reason && !library ? (
+      {details.reason && !library && !observation ? (
         <p className="approval-card-reason">{details.reason}</p>
       ) : null}
       {details.paths?.length ? (
@@ -140,7 +153,7 @@ export function ApprovalCard({
           disabled={submitting}
           onClick={() => void decide(details.pluginAccess ? "allow-always" : "allow")}
         >
-          {t(details.pluginAccess ? "pluginAccess.allowRemember" : native ? "approval.nativeCaptureAllow" : "approval.allow")}
+          {t(details.pluginAccess ? "pluginAccess.allowRemember" : observation ? "approval.nativeObservationAllow" : native ? "approval.nativeCaptureAllow" : "approval.allow")}
         </Button>
         {details.pluginAccess ? <Button size="sm" disabled={submitting} onClick={() => void decide("allow")}>{t("pluginAccess.allowOnce")}</Button> : details.always ? (
           <Button
@@ -174,6 +187,7 @@ export function approvalOutcomeLabel(
   item: Extract<ThreadItem, { type: "approvalRequest" }>,
 ): string {
   const subject =
+    (item.request.nativeObservation ? `${item.request.nativeObservation.project} · ${item.request.nativeObservation.session}` : undefined) ??
     (item.request.nativeCapture ? `${item.request.nativeCapture.project} · ${item.request.nativeCapture.session}` : undefined) ??
     item.request.pluginAccess?.label ??
     item.request.libraryAdd?.name ??

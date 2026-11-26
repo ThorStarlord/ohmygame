@@ -29,13 +29,14 @@ describe("Native window captures", () => {
   it("keeps a bounded history for one session and retrieves an exact capture", () => {
     const captures = new NativeWindowCaptures();
     const first = captures.add("project-a", "session-1", capture("first"));
-    const second = captures.add("project-a", "session-1", capture("second"), { requestId: "request-1", plugin: "thorstarlord/renpy" });
+    const second = captures.add("project-a", "session-1", capture("second"), { requestId: "request-1", grantId: "grant-1", plugin: "thorstarlord/renpy" });
     expect(captures.list("project-a")).toHaveLength(2);
     expect(captures.latest("project-a", "session-1")?.title).toBe("second");
     expect(captures.latest("project-a", "session-1")?.data).toBe(pngData());
     expect(captures.get("project-a", first.id)?.title).toBe("first");
     expect(captures.get("project-a", second.id)).toMatchObject({
       requestId: "request-1",
+      grantId: "grant-1",
       plugin: "thorstarlord/renpy",
     });
     expect(captures.get("project-a", "gone")).toBeUndefined();
