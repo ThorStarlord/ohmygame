@@ -1,0 +1,174 @@
+artifact_id: sensemaking_session_receipt
+schema_version: 1
+session_ref: 2026-11-27-experience-driven-development-v2
+state: final
+created_at: "2026-11-27T12:10:00Z"
+updated_at: "2026-11-27T12:35:00Z"
+target_repository: ThorStarlord/ohmygame
+persistence: committed
+source_identity:
+  start_ref: ca190e7cdf64df35f5a74fae453fbaaa883dc92d
+  end_ref: 8ca9492da357e9c54421becce5bf38e96a3b50f6
+  worktree_clean_at_end: true
+skill_identity:
+  load_mode: harness_discovered
+  sensemaking_source_ref: 9ae5338b9f5be80cec3af02b7fed30965b7a7503
+goal:
+  statement: "Improve a real Superhero-Netorare-Parody chapter through OhMyGame, repair consequential product limitations exposed by the work, and preserve the evidence."
+  source: owner_message
+  source_ref: null
+delegation:
+  granted: [read, local_write, run_local_commands, commit, push, open_pr, merge]
+  withheld: [release, deploy, tracker_write, knowledge_edit, external_publication]
+continuity:
+  resumes: 2026-11-27-experience-driven-development
+  campaign_ref: null
+  resolves_questions: []
+responsibilities:
+  - id: R-1
+    responsibility: "Select a real chapter and recover its intended experience"
+    capability: "using-sensemaking and repository evidence"
+    status: completed
+    reason: "Compared Iris ch4, ch10 and non-Iris candidates; ch10 had four bespoke states, a route and an explicit composition contract without Iris's deeper continuity problems."
+    artifact_refs:
+      - docs/pilots/2026-11-27-experience-driven-development-v2.md
+    validation:
+      - command: "git diff --check"
+        result: PASS
+  - id: R-2
+    responsibility: "Reach the chapter through the app and observe it"
+    capability: "game_use live session at an engine label"
+    status: completed
+    reason: "Opened ch10 at its label and advanced from returned state. Direct entry omits ch9 setup, route music and the normal call stack."
+    artifact_refs:
+      - docs/pilots/2026-11-27-experience-driven-development-v2.md
+    validation:
+      - command: "live game_use open start: arc3_ch10"
+        result: PASS
+  - id: R-3
+    responsibility: "Repair the bridge confrontation presentation"
+    capability: "Ren'Py assets and native scenario QA"
+    status: completed
+    reason: "Distinct tags, alpha inversion, letterbox and top-sliver cleanup; final QA shows both figures with intact faces at M2 and H2."
+    artifact_refs:
+      - docs/pilots/2026-11-27-experience-driven-development-v2.md
+    validation:
+      - command: "OhMyGame scenario arc3_ch10_presentation_qa"
+        result: PASS
+  - id: R-4
+    responsibility: "Add the smallest targeted live-entry capability"
+    capability: "plugin game_use start label"
+    status: completed
+    reason: "Manifest field, tool schema, Ren'Py has_label validation, refusal, cleanup, docs and tests; no arbitrary state injection."
+    artifact_refs:
+      - plugins/renpy/native/interactive.mjs
+      - src/daemon/playtest-tools.ts
+      - docs/renpy-integration.md
+      - test/playtest-tools.test.ts
+    validation:
+      - command: "bun run test -- test/playtest-tools.test.ts test/plugin-game-runtime.test.ts"
+        result: PASS
+      - command: "bun run typecheck && bun run lint && bun run build:host"
+        result: PASS
+  - id: R-5
+    responsibility: "Reuse the capability in the motivating workflow"
+    capability: "live packaged 0.3.1 app session"
+    status: completed
+    reason: "Opened ch10 with start, reported the label and first line, and captured both figures. A missing label refused without fallback."
+    artifact_refs:
+      - docs/pilots/2026-11-27-experience-driven-development-v2.md
+    validation:
+      - command: "live game_use open start: arc3_ch10 (plugin 0.3.1)"
+        result: PASS
+      - command: "live game_use open start: ohmygame_missing_label_probe"
+        result: PASS
+  - id: R-6
+    responsibility: "Preserve the pilot, receipt and separate candidates"
+    capability: "documentation and Git"
+    status: completed
+    reason: "Pilot and Episode 12 record preserved; game PRs #363 and #364 remain draft; PR #355 is untouched."
+    artifact_refs:
+      - docs/pilots/2026-11-27-experience-driven-development-v2.md
+      - .sensemaking/receipts/2026-11-27-experience-driven-development.session.yaml
+    validation:
+      - command: "gh pr view 363, 364, 355"
+        result: PASS
+findings:
+  - id: F-1
+    statement: "ch10 used one shared sprite tag; the second character replaced the first, so only one card was on stage."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "Live ch10 session plugin-24238b1c-1e27-464a-bdcd-d9839c0ad64d"
+      - "Game PR #364"
+    disposition: resolved
+  - id: F-2
+    statement: "The four state PNGs had opaque card backdrops and transparent character pixels; faces revealed the bridge and black bars and top slivers remained."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "Live before/after captures in evidence/experience-v2/ch10-live and ch10-final3"
+      - "state/expression_production/position165 provenance JSON"
+    disposition: resolved
+  - id: F-3
+    statement: "After repair both figures are visible with intact faces, and the M2 and H2 changes preserve the other figure on stage."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "QA run 296fde11-1ee2-40db-82cc-25c9b4ec465b"
+      - "Live after session plugin-0198c10d-2805-4385-96df-54ec7bec5099"
+    disposition: resolved
+  - id: F-4
+    statement: "The NVL plate still dims the opening figures; the ADV panel covers Marcus's mouth and chin and the lower torsos."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "ch10-final3/01-opening-both.png"
+      - "Live after-repair agent report"
+    disposition: open
+  - id: F-5
+    statement: "game_use start is validated by Ren'Py, reported in the snapshot, refuses a missing label, and cleans up without fallback."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "OhMyGame PR #19 merged at 8ca9492d"
+      - "Packaged 0.3.1 ch10 session"
+      - "Missing-label probe error ValueError"
+    disposition: resolved
+  - id: F-6
+    statement: "Arc 3 Iris chapters request canonical expression IDs that had no declarations; adding them resolves the approved assets."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "Game PR #363"
+      - "Iris QA run e9f10308-a758-413d-9181-90933a0360eb"
+    disposition: handed_off
+open_questions:
+  - id: Q-1
+    question: "Does the dim NVL opening weaken the intended two-hander enough to warrant a scene-specific layout change?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-experience-driven-development-v2.md
+  - id: Q-2
+    question: "Will players read the M2 and H2 changes as argument turns rather than costume or pose swaps?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-experience-driven-development-v2.md
+  - id: Q-3
+    question: "Should the Iris chapter's deeper creative concerns be addressed after PR #363?"
+    source: owner_intent
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-experience-driven-development-v2.md
+    options:
+      - option: "Review #363 as a declaration-only fix"
+        consequence: "Keeps the approved assets usable while leaving manuscript, outfit and background concerns open."
+      - option: "Hold #363 and review the chapter's creative direction first"
+        consequence: "Avoids a piecemeal fix but leaves canonical expressions broken for longer."
+  - id: Q-4
+    question: "Which Godot-specific state and interaction primitives are needed for a real Atlas Midgard scene exercise?"
+    source: repository_evidence
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-experience-driven-development-v2.md
+stop:
+  disposition: GOAL_SATISFIED
+  reason: "A real chapter was investigated, repaired and evidenced, a reviewable candidate was retained, and the targeted-entry limitation was repaired, merged and reused."
+next:
+  warranted_responsibility: "Run a bounded Atlas Midgard scene-improvement mission to test which live-entry, state-inspection, scenario and evidence practices transfer to Godot; do not build full parity."
+  blocked_on: []
+claim_ceiling: "The ch10 and Iris changes are engine-rendered, app-exercised draft PRs; not merged, not human-approved, not player-validated. The start capability is merged to OhMyGame dev at 8ca9492d. No comparative Sensemaking improvement is claimed."
+action_authorized_by_receipt: false
+immutable: true
