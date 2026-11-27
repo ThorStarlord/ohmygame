@@ -158,7 +158,7 @@
     {
       "id": "observation:ep14-mark-succeeded-transfer-not",
       "kind": "observation",
-      "statement": "The Episode 14 Warden produced the completed Command Roar, a mark selected by the lowest-ratio rule, and two empowered Reavers; its focused tests and full journey passed, while the full verifier was not cleanly completed. The pilot records the Castellan as sharing the same cast/vulnerability grammar, but the design review found the Warden-to-Castellan experiential transfer claim unsupported; the Castellan's Rupture remained uncovered by the Warden's grace and was often skipped in the fast boss fight.",
+      "statement": "The Episode 14 Warden produced the completed Command Roar, a mark selected by the lowest-ratio rule, and two empowered Reavers; its focused tests and full journey passed, while the full verifier was not cleanly completed. The pilot records the transfer as structural, but the design review found the Warden-to-Castellan transfer claim unsupported; the Castellan's Rupture remained uncovered by the Warden's grace and was often skipped in the fast boss fight.",
       "authority_kind": "document",
       "authority_ref": "docs/pilots/2026-11-27-autonomous-feature-v1.md",
       "evidence_refs": [
@@ -196,7 +196,7 @@
     {
       "id": "observation:ep14-evidence-layers-recorded-separately",
       "kind": "observation",
-      "statement": "Episode 14 recorded direct native engine probes, input-driven native journey runs, app-managed Web runs, and agent review separately, applying the reviewed v3 distinction that Web game_use establishes app-integrated browser input and observation but not native engine behavior; the Web run's pre-revision build could not be attributed to the final candidate's native behavior.",
+      "statement": "Episode 14 recorded direct native engine probes, input-driven native journey runs, app-managed Web runs, and agent review separately, applying the reviewed v3 distinction that Web game_use establishes app-integrated browser input and observation but not native engine behavior; the Web run's pre-revision build could not be attributed to the reviewed candidate's native behavior.",
       "authority_kind": "document",
       "authority_ref": "docs/pilots/2026-11-27-autonomous-feature-v1.md",
       "evidence_refs": [
@@ -370,6 +370,19 @@
         "file:docs/pilots/2026-11-27-autonomous-feature-v1.md",
         "file:docs/pilots/2026-11-27-atlas-cross-engine-v3.md"
       ]
+    },
+    {
+      "id": "rel:separate-engine-references-godot-evidence-layers",
+      "subject": "lesson:separate-engine-findings-from-transferable-responsibility",
+      "predicate": "references",
+      "object": "lesson:godot-evidence-layers",
+      "evidence_refs": [
+        "file:docs/pilots/2026-11-27-autonomous-feature-v1.md",
+        "file:docs/pilots/2026-11-27-atlas-cross-engine-v3.md"
+      ],
+      "attributes": {
+        "conceptual_relation": "buildsOn"
+      }
     }
   ]
 }
