@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "claims": [
+    {
+      "id": "cap:godot-web-game-use",
+      "kind": "capability",
+      "statement": "OhMyGame can open a Godot project's Web export in its browser game_use runtime, send pointer and keyboard input, and capture the rendered canvas at the reported viewport.",
+      "authority_kind": "document",
+      "authority_ref": "docs/pilots/2026-11-27-atlas-cross-engine-v3.md",
+      "evidence_refs": [
+        "file:docs/pilots/2026-11-27-atlas-cross-engine-v3.md"
+      ],
+      "epistemic_status": "observed"
+    },
+    {
+      "id": "constraint:godot-plugin-native-game-gap",
+      "kind": "constraint",
+      "statement": "The pinned official ohmygame/godot 1.0.3 plugin declares no gameUse contribution, no managed native game session, and no viewport capture; its run-in-godot command starts the Godot editor rather than the game.",
+      "authority_kind": "document",
+      "authority_ref": "docs/pilots/2026-11-27-atlas-cross-engine-v3.md",
+      "evidence_refs": [
+        "file:config/preinstalled-plugins.json",
+        "file:docs/pilots/2026-11-27-atlas-cross-engine-v3.md"
+      ],
+      "epistemic_status": "observed"
+    },
+    {
+      "id": "lesson:godot-evidence-layers",
+      "kind": "lesson",
+      "statement": "Godot gameplay evidence is layered: OhMyGame-managed Web game_use establishes app-integrated browser input and observation but not native engine behavior; direct native project execution establishes engine-rendered behavior but not OhMyGame-managed native play.",
+      "authority_kind": "document",
+      "authority_ref": "docs/pilots/2026-11-27-atlas-cross-engine-v3.md",
+      "evidence_refs": [
+        "file:docs/pilots/2026-11-27-atlas-cross-engine-v3.md"
+      ],
+      "epistemic_status": "observed"
+    }
+  ],
+  "relations": [
+    {
+      "id": "rel:godot-evidence-layers-references-web",
+      "subject": "lesson:godot-evidence-layers",
+      "predicate": "references",
+      "object": "cap:godot-web-game-use",
+      "evidence_refs": [
+        "file:docs/pilots/2026-11-27-atlas-cross-engine-v3.md"
+      ]
+    },
+    {
+      "id": "rel:godot-evidence-layers-references-native-gap",
+      "subject": "lesson:godot-evidence-layers",
+      "predicate": "references",
+      "object": "constraint:godot-plugin-native-game-gap",
+      "evidence_refs": [
+        "file:docs/pilots/2026-11-27-atlas-cross-engine-v3.md"
+      ]
+    }
+  ]
+}
