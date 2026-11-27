@@ -1,0 +1,252 @@
+artifact_id: sensemaking_session_receipt
+schema_version: 1
+session_ref: 2026-11-27-autonomous-feature-v1
+state: in_progress
+created_at: "2026-11-27T17:00:00Z"
+updated_at: "2026-11-27T17:00:00Z"
+target_repository: ThorStarlord/ohmygame
+persistence: pending
+source_identity:
+  start_ref: 6e47ed154965866bf8d9c4a9db48550bdcfa4e6b
+  end_ref: null
+  worktree_clean_at_end: false
+skill_identity:
+  load_mode: harness_discovered
+  sensemaking_source_ref: "clean a6291c2d4815dec585526e3f21f142375169b98c via pinned uv tool; installed copy 6321125E"
+goal:
+  statement: "Develop the Atlas Chain Warden into a coherent tactical encounter in which Command Roar is readable, consequential, counterable and recoverable, and preserve the resulting cross-engine development intelligence."
+  source: owner_message
+  source_ref: null
+delegation:
+  granted: [read, local_write, run_local_commands, commit, push, open_pr, merge]
+  withheld: [release, deploy, tracker_write, knowledge_edit, external_publication]
+continuity:
+  resumes: 2026-11-27-atlas-cross-engine-v3
+  campaign_ref: null
+  resolves_questions:
+    - 2026-11-27-atlas-cross-engine-v3#Q-2
+responsibilities:
+  - id: R-1
+    responsibility: "Verify current state and recover the v3 evidence"
+    capability: "Git, PR inspection and the merged v3 pilot/receipt"
+    status: completed
+    reason: "OhMyGame dev is 6e47ed15; Atlas canonical main is 5aab42d0; PR #93 is draft at 2e8d6e8; preserved game PRs are unchanged."
+    artifact_refs:
+      - docs/pilots/2026-11-27-atlas-cross-engine-v3.md
+    validation:
+      - command: "git/gh state inspection"
+        result: PASS
+  - id: R-2
+    responsibility: "Establish an authentic semantic preservation-retrieval-application loop"
+    capability: "pinned repository-semantic-steward CLI and reviewed knowledge"
+    status: completed
+    reason: "A reviewed OhMyGame knowledge pack was merged and indexed at dbf985cf; a fresh agent retrieved the three claims and changed the evidence plan; the index has no Atlas encounter content."
+    artifact_refs:
+      - .sensemaking/knowledge/godot-development.json
+      - .sensemaking/receipts/2026-11-27-autonomous-feature-v1.query.yaml
+    validation:
+      - command: "knowledge-proposal-check and knowledge-build"
+        result: PASS
+      - command: "fresh-context knowledge-query search/explain/context-for"
+        result: PASS
+  - id: R-3
+    responsibility: "Select a coherent Chain Warden encounter design"
+    capability: "game design exploration against actual mechanics"
+    status: completed
+    reason: "The exploration compared pre-spawned Reavers, a solo pulse, a Warden/support and the Muster. The Muster/mark/focus/vulnerability/grace was selected, with an opening roar and 420 health."
+    artifact_refs:
+      - docs/pilots/2026-11-27-autonomous-feature-v1.md
+    validation:
+      - command: "independent design exploration against the actual mechanics"
+        result: PASS
+  - id: R-4
+    responsibility: "Implement the selected encounter on a reviewable Atlas candidate"
+    capability: "Atlas combat, presentation and tests"
+    status: completed
+    reason: "The Atlas candidate is committed at 06a1e79a and 6bb04c4b on feat/chain-warden-command-roar; the implementation/evidence docs are pending final evidence."
+    artifact_refs:
+      - docs/pilots/2026-11-27-autonomous-feature-v1.md
+    validation:
+      - command: "focused smokes and real-scene muster test"
+        result: PASS
+      - command: "full input-driven journey"
+        result: PASS
+  - id: R-5
+    responsibility: "Exercise the encounter through actual engine execution"
+    capability: "OhMyGame Web game_use and native probes"
+    status: completed
+    reason: "Native probes, the revised full journey and the app-managed Web runs pass. The first Web run completed the command and captured the MARKED/gold auras; the second run interrupted the opening Command Roar with Shield Bash and captured the mint VULNERABLE bar. The first Shield Bash attempt failed; the second succeeded."
+    artifact_refs:
+      - docs/pilots/2026-11-27-autonomous-feature-v1.md
+    validation:
+      - command: "native uninterrupted and interrupted probes"
+        result: PASS
+      - command: "revised full journey: enemy_command_mark target Player, two empowered Reavers, completion tick 1094, zero defeats"
+        result: PASS
+      - command: "app-managed Web game_use route and completed-command capture"
+        result: PASS
+      - command: "app-managed Web player Shield Bash on the first cast, first attempt"
+        result: FAIL
+      - command: "app-managed Web player Shield Bash on the opening roar, second run"
+        result: PASS
+  - id: R-6
+    responsibility: "Obtain independent design, UX, engineering and Sensemaking review"
+    capability: "independent subagents"
+    status: completed
+    reason: "Four independent reviews returned: design revise, UX revise, engineering revise, Sensemaking accept-the-loop-with-limits. The candidate was revised (opening command default, ratio/fraction mark, visible Muster, cast ring/bar/notch, COMMAND BROKEN, 2s pause, dead-mark/muster/vulnerability fixes, focused tests)."
+    artifact_refs:
+      - docs/pilots/2026-11-27-autonomous-feature-v1.md
+    validation:
+      - command: "design, UX, engineering and Sensemaking reviews"
+        result: PASS
+      - command: "revisions re-run: cast/responsibility/encounter/warden smokes and full journey"
+        result: PASS
+  - id: R-7
+    responsibility: "Preserve the pilot, Episode 14 receipt, candidate and semantic knowledge"
+    capability: "Git, pilot documentation and receipts"
+    status: in_progress
+    reason: "The pilot and receipts are drafted; the Atlas evidence commit, PR and the OhMyGame docs PR are pending."
+    artifact_refs:
+      - docs/pilots/2026-11-27-autonomous-feature-v1.md
+    validation: []
+findings:
+  - id: F-1
+    statement: "The official ohmygame/godot 1.0.3 plugin still has no native game session, gameUse hook or viewport capture; the app-managed Web game_use path and direct native probes remain the two evidence layers."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-27-atlas-cross-engine-v3.md"
+      - "config/preinstalled-plugins.json"
+    disposition: open
+  - id: F-2
+    statement: "pack.elite contains only the Chain Warden, while Command Roar only empowers nearby Reavers; the intended consequence has no eligible target."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "game/scripts/content/encounter_catalog.gd"
+      - "game/scripts/runtime/enemy_actor.gd"
+    disposition: handed_off
+  - id: F-3
+    statement: "The full input-driven journey kills the 260-HP Warden in 151 physics ticks (about 2.5 s) and the 650-HP Castellan in about 5 s; no enemy_cast event occurs, so neither signature cast is experienced in ordinary play."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "native playthrough telemetry_run_1645.jsonl; physics ticks 815-966 (elite), 1033-1334 (boss)"
+    disposition: handed_off
+  - id: F-4
+    statement: "Companion tactics default focus_interruptible_casts to true; the Ranger companion prioritizes a casting enemy and can interrupt the Warden before the player acts."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "game/scripts/data/companion_tactics_definition.gd"
+      - "game/scripts/runtime/companion_controller.gd"
+    disposition: handed_off
+  - id: F-5
+    statement: "The reviewed OhMyGame knowledge pack was preserved and indexed at dbf985cf; a fresh agent retrieved the three substantive claims and changed the evidence plan to native-first mechanics and Web-first app integration. The index has no Atlas encounter content."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - ".sensemaking/knowledge/godot-development.json"
+      - ".sensemaking/receipts/2026-11-27-autonomous-feature-v1.query.yaml"
+    disposition: handed_off
+  - id: F-6
+    statement: "The implemented Chain Warden candidate opens with Command Roar, musters two Reavers, marks and focuses the lowest-health ally on completion, opens a 3 s vulnerability on interrupt, and uses a scoped 0.6 companion grace."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "Atlas feat/chain-warden-command-roar commits 06a1e79a and 6bb04c4b"
+      - "docs/implementation/chain-warden-command-roar.md"
+    disposition: handed_off
+  - id: F-7
+    statement: "The full input-driven journey now reaches the Warden's Muster and Command Roar: elite ticks 815-1062 (about 4.1 s), Muster and cast at 815, companion interrupt at 886, zero defeats."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "native playthrough telemetry: enemy_muster, enemy_reinforcements_spawned, enemy_cast_started, enemy_cast_interrupted"
+    disposition: handed_off
+  - id: F-8
+    statement: "The native uninterrupted probe reports mark=Player, 2 empowered Reavers, 5.83 s remaining and mark expiry after six seconds; the focused real-scene test reports mark=Sigrid and 2 empowered Reavers."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "tests/causeway_warden_muster_probe.gd output"
+      - "tests/smoke_causeway_warden_encounter.gd: REAL_SCENE_MUSTER_OK"
+    disposition: handed_off
+  - id: F-9
+    statement: "The first app-managed Web game_use attempt failed because the workspace lacked the ohmygame.json project marker; after restoring the marker the app's plugin built and served the Web export. This was a local app-adoption/configuration gap, not a native-engine behavior."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "app preview error: This project's plugin doesn't build a web version"
+      - "preview.ts buildWebPreview and project-types.ts readProjectFile"
+      - "restored ohmygame.json; preview ready; game_use loaded the title at 1280x720"
+    disposition: resolved
+  - id: F-10
+    statement: "The app-managed Web runs clicked Begin, cleared the approach/bridge/courtyard and reached the Elite Gate. The first run captured the completed command with the purple MARKED player and gold Reaver auras; its Shield Bash did not stop the command. The second run interrupted the opening Command Roar with Shield Bash and captured the mint VULNERABLE bar. The preview bridge logged connection failures; the game kept accepting input."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "app conversation 01a21ea3-d421-7419-af34-9cf180fbf778; web-command-roar.jpg, web-marked-complete.jpg, web-marked-pack.jpg, web-vulnerable.jpg"
+      - "app agent messages: first-run completed mark, second-run successful Shield Bash at about 2.9 s"
+    disposition: handed_off
+  - id: F-11
+    statement: "The four independent reviews returned design revise, UX revise, engineering revise and Sensemaking accept-with-limits; the candidate was revised in response (opening command default, ratio/fraction mark, visible Muster, cast ring/bar/notch, COMMAND BROKEN, 2s pause, dead-mark/muster/vulnerability fixes, focused tests)."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-27-autonomous-feature-v1.md"
+      - "Atlas docs/implementation/chain-warden-command-roar.md"
+    disposition: handed_off
+  - id: F-12
+    statement: "The revised full journey records enemy_command_mark with target Player and two empowered Reavers at tick 906, and completes at tick 1094 (about 4.65 s) with zero defeats."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "revised playthrough telemetry, run 1364"
+    disposition: handed_off
+  - id: F-13
+    statement: "The OhMyGame pack gained the scoped platform-native-game-use capability after the Sensemaking review; QY-9 found the pinned-plugin constraint but not the platform claim, and the claim was added. The Atlas encounter lessons remain in the Atlas/pilot record rather than the OhMyGame index."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - ".sensemaking/knowledge/godot-development.json"
+      - ".sensemaking/receipts/2026-11-27-autonomous-feature-v1.query.yaml"
+    disposition: handed_off
+  - id: F-14
+    statement: "Remaining limits: no human/motion qualification; the bot's 4.65 s vs. the 3 s/1.5x reward; the Castellan transfer is structural and its Rupture is often skipped; the Endgame Interlocked Trial's additional-enemy mapping is metadata-only; the first Web Shield Bash failure has no ability-failure feedback; Biomancer/Commander and other Jobs were not separately played; the full verifier was not cleanly completed."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-27-autonomous-feature-v1.md"
+    disposition: open
+open_questions:
+  - id: Q-1
+    question: "Will the MARKED label, mark/aura overlap and the 0.9 s grace window read clearly in human motion at 1280x720?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-autonomous-feature-v1.md
+  - id: Q-3
+    question: "Is a managed native Godot run-game session or a narrow native gameUse adapter warranted beyond the current Web and direct-native layers?"
+    source: repository_evidence
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-autonomous-feature-v1.md
+  - id: Q-4
+    question: "How does the Endgame Interlocked Trial handle the Warden's 420 health and the Muster if its runtime path is ever wired?"
+    source: repository_evidence
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-autonomous-feature-v1.md
+  - id: Q-5
+    question: "Is 60% the right companion interrupt grace, and does the opening command's no-cover rule hold up in human play?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-autonomous-feature-v1.md
+  - id: Q-6
+    question: "Should the game add out-of-range/ability-failure feedback after the first Web Shield Bash failed without explanation?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-autonomous-feature-v1.md
+  - id: Q-7
+    question: "Should the Castellan's Rupture get the same player-first grace, and how should the boss fight be paced so Rupture is actually experienced?"
+    source: repository_evidence
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-autonomous-feature-v1.md
+  - id: Q-8
+    question: "Do Biomancer, Commander and the remaining Jobs have readable answers to the command mark, and is the MARKED vocabulary too close to Commander marks?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-autonomous-feature-v1.md
+stop:
+  disposition: IN_PROGRESS
+  reason: "The four reviews are reconciled and the candidate is revised; the Atlas PR #94 and the OhMyGame pilot/receipts/pack are being finalized."
+next:
+  warranted_responsibility: "Merge the qualified OhMyGame pilot/receipts/pack, retain Atlas PR #94 as a draft, and hand the human/motion, boss-pacing and ability-feedback questions to the next responsibility."
+  blocked_on: []
+claim_ceiling: "Atlas candidate is revised and engine-verified, with app-managed Web evidence for both the completed command and the player interrupt. It is not human-qualified or merge-ready; no OhMyGame product code changed."
+action_authorized_by_receipt: false
+immutable: false
