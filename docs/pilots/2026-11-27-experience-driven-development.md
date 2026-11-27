@@ -1,8 +1,8 @@
 # Experience-driven game development v1
 
 **Date:** 2026-11-27
-**Status:** The game candidate is in draft PR #355 and is not merged. The OhMyGame product repair is a separate branch to be integrated into `dev`.
-**OhMyGame:** `ThorStarlord/ohmygame`, `dev` `b4d778d1bb0e728fba610a0448691daec0238a7f`.
+**Status:** The game candidate is in draft PR #355 and is not merged. The OhMyGame product repair is merged into `dev` via PR #17 at `735380d6d016f8778d43442dec18088f7728eedc`.
+**OhMyGame:** `ThorStarlord/ohmygame`, `dev` `735380d6d016f8778d43442dec18088f7728eedc`.
 **Game:** `ThorStarlord/Superhero-Netorare-Parody`, current `main` `508c94fccdab69ed6912a41808abdae5dcd62ab7`; candidate branch `experience/choice-presentation-v1`.
 
 ## Selected responsibility
@@ -90,6 +90,17 @@ Corresponding checkpoint comparison reported `comparable: true`. The actual app 
 
 The screen now introduces Marcus and the evidence-bound Case View before using route taxonomy. It preserves the first-read framing and the conservative completion hint. The choice still points to the same route and does not add narrative branches. The intended experience is better supported by the composition and copy; this is an evaluated interpretation, not player reception or human artistic approval.
 
+### Independent review
+
+A separate reviewer, given only the before/after frames, the diff, the reusable scenario and the governing contracts, returned **accept — no material revision**. It found that the fresh screen answers the four player questions, the hierarchy and action affordance are materially better, the unlocked two-card state fits, and the spoiler/route/visual contracts are preserved. It called the amber tick sufficient but noted that the amber action text and inset band carry the real affordance.
+
+Residual concerns:
+
+- `true_mc_route_unlocked()` includes the developer bypass, so a fresh developer/QA profile may see `REVISIT PART 1` without prior play. This is developer-only and not release-facing; it was accepted as a QA convenience.
+- Hover and keyboard-focus states were not captured. The unlocked True card is rendered but not clicked by the reusable scenario; it is verified by code and the separate direct SDK probe, not by a click in that scenario.
+- The checkpoints are 1738×977 rather than the 1920×1080 GUI reference, though all comparisons use the same scaled resolution.
+- Two unrelated UI-contract tests and one prologue test fail in unchanged code on current `main`; the touched static test passes.
+
 ## Consequential OhMyGame limitations and repair
 
 The real game exposed two product limitations:
@@ -123,13 +134,15 @@ Reused in the motivating workflow:
 | OhMyGame real-game live open | 41.1 s; `screen=route_choice`; capture; close |
 | OhMyGame typecheck / lint | Passed |
 | OhMyGame host build | Passed |
-| OhMyGame extension-host suite | One timing-sensitive `slowstart` test failed under load; to be rechecked after the app stops |
+| OhMyGame focused product suite after app shutdown | 84 passed, 2 skipped |
+| OhMyGame product PR | #17 merged at `735380d6d016f8778d43442dec18088f7728eedc` |
+| Game candidate PR | #355 draft, checks passed, not merged |
 
 ## Limits
 
 - No human player or human artistic approval; the evaluation is the agent's evidence-grounded interpretation.
 - The game change is a candidate draft PR, not canonical `main`.
-- Keyboard focus traversal, localization fit, text scaling, and first-time-player comprehension remain unverified.
+- Keyboard focus traversal, hover states, localization fit, text scaling, and first-time-player comprehension remain unverified.
 - The live `game_use` runtime can inspect a custom route screen but cannot choose its buttons; that limitation is now visible rather than silently misleading. Scripted scenarios remain the reproducible instrument for this chooser.
 - The game project's lint baseline is not clean, and four static tests fail in unchanged code on the current `main`; no comprehensive remediation is included.
 - The large open still copies the project and takes tens of seconds; the repair is a timeout and visibility fix, not an incremental copy architecture.
@@ -144,4 +157,4 @@ Reused in the motivating workflow:
 - `H:\GithubRepositories\pilot-data\evidence\experience-development\app\route-live.json`
 - `H:\GithubRepositories\pilot-data\evidence\experience-development\app\transition-refusal.json`
 - `C:\Users\Admin\AppData\Local\Temp\route-choice-evidence-20261127\before\` and `\after\`
-- Game draft PR #355; OhMyGame product branch `fix/game-use-large-project`.
+- Game draft PR #355; OhMyGame product PR #17, merged at `735380d6d016f8778d43442dec18088f7728eedc`.
