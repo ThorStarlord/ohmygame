@@ -4,7 +4,7 @@
     {
       "id": "observation:ep14-pre-revision-web-build",
       "kind": "observation",
-      "statement": "In the Episode 14 Chain Warden pilot, the app-managed Web preview served a build produced before the final encounter revisions, so its captures showed earlier behavior than the committed Atlas candidate.",
+      "statement": "In the Episode 14 Chain Warden pilot, the app-managed Web preview served a build produced before the reviewed candidate revisions, so its captures showed earlier behavior than the committed Atlas candidate.",
       "authority_kind": "document",
       "authority_ref": "docs/pilots/2026-11-27-autonomous-feature-v1.md",
       "evidence_refs": [
@@ -13,13 +13,15 @@
       "epistemic_status": "observed",
       "attributes": {
         "scope": "One OhMyGame-managed Godot Web preview during the Episode 14 Atlas pilot.",
+        "original_outcome": "The Web observation was recorded against a build that did not contain the revised candidate behavior.",
+        "revisit_when": "When the preview is rebuilt from the exact committed head and its identity is recorded.",
         "claim_ceiling": "A single observed mismatch; it does not establish whether the cause was a missing product capability or a workflow mistake."
       }
     },
     {
       "id": "lesson:runtime-evidence-is-revision-bound",
       "kind": "lesson",
-      "statement": "Runtime gameplay evidence applies only to the implementation and build that produced it; an observation without a recorded source and build identity cannot establish behavior of a later committed candidate.",
+      "statement": "Runtime gameplay evidence applies only to the implementation and build that produced it; an observation without a recorded source and build identity cannot by itself establish behavior of a later committed candidate.",
       "authority_kind": "document",
       "authority_ref": "docs/pilots/2026-11-27-autonomous-feature-v1.md",
       "evidence_refs": [
@@ -32,14 +34,15 @@
           "The evaluated implementation is a committed source revision.",
           "The runtime artifact can be rebuilt or identified separately from the source revision."
         ],
-        "counterevidence": "A run rebuilt from the exact committed head and recorded with that identity removes the ambiguity for that run.",
+        "counterevidence": "The ambiguity can be removed post hoc when the artifact hash, embedded version, telemetry, or behaviorally identical candidate identifies the build; a run rebuilt from the exact committed head removes it for that run.",
+        "revisit_when": "When the preview or export records source and build identity directly.",
         "claim_ceiling": "One project and one agent session; no claim that a revision-bound product capability is the only or best remedy."
       }
     },
     {
       "id": "observation:ep14-unexplained-shield-bash",
       "kind": "observation",
-      "statement": "In the first Episode 14 app-managed Web run the Shield Bash attempt failed without any player-facing explanation; the same action succeeded on the second run, and the game already emitted a structured ability-failure reason that no player HUD element presented.",
+      "statement": "In the first Episode 14 app-managed Web run the Shield Bash attempt did not stop the Command Roar and produced no player-facing failure explanation; the same action succeeded on the second run. The first failure's cause was not instrumented, and the preview bridge also logged connection failures, so input delivery, range, timing, and acquisition remain indistinguishable.",
       "authority_kind": "document",
       "authority_ref": "docs/pilots/2026-11-27-autonomous-feature-v1.md",
       "evidence_refs": [
@@ -48,13 +51,15 @@
       "epistemic_status": "observed",
       "attributes": {
         "scope": "One Vanguard Shield Bash attempt in the Ruined Causeway Web run.",
-        "claim_ceiling": "The original cause was not instrumented; the run does not distinguish input delivery from range, cost, targeting, or timing."
+        "original_outcome": "The first attempt was unexplained; the second succeeded, but the run could not distinguish which condition changed.",
+        "revisit_when": "When the same action is exercised through an instrumented build that reports delivery, availability, targeting, range, and execution separately.",
+        "claim_ceiling": "One attempt; the original cause was not instrumented and the preview bridge logged connection failures. The Web build was pre-revision, so the failure may not reflect the current candidate's ability behavior."
       }
     },
     {
       "id": "lesson:feedback-separates-execution-from-consequence",
       "kind": "lesson",
-      "statement": "A tactical action's outcome should be distinguishable to the player across input delivery, availability, rejection, execution, and tactical consequence; an executed action without its intended consequence otherwise reads as an unexplained failure.",
+      "statement": "A tactical action's outcome should be distinguishable to the player across input delivery, availability, rejection, execution, and tactical consequence; otherwise an attempted action without its intended consequence reads as an unexplained failure.",
       "authority_kind": "document",
       "authority_ref": "docs/pilots/2026-11-27-autonomous-feature-v1.md",
       "evidence_refs": [
@@ -68,13 +73,14 @@
           "The game can observe the failure stage without exposing raw diagnostics."
         ],
         "counterevidence": "Actions that are intentionally silent, free, or purely expressive may not need failure feedback.",
-        "claim_ceiling": "One observed unexplained failure and no measurement of player comprehension."
+        "revisit_when": "When player comprehension of action failure is measured rather than inferred from agent play.",
+        "claim_ceiling": "One observed unexplained attempt; the five-stage distinction is a design proposal the pilot did not test, and no player comprehension was measured."
       }
     },
     {
       "id": "observation:ep14-companion-covered-opening",
       "kind": "observation",
-      "statement": "In the first Chain Warden candidate the companion auto-interrupted the opening Command Roar, so the player never faced the intended opening decision; the revised candidate made the opening interrupt window player-owned.",
+      "statement": "In the first Chain Warden candidate the companion auto-interrupted the opening Command Roar, so the automated journey never exercised the intended opening decision; the revised candidate made the opening interrupt window player-owned.",
       "authority_kind": "document",
       "authority_ref": "docs/pilots/2026-11-27-autonomous-feature-v1.md",
       "evidence_refs": [
@@ -83,13 +89,15 @@
       "epistemic_status": "observed",
       "attributes": {
         "scope": "One encounter with an automatically acting companion.",
-        "claim_ceiling": "A single design and revision; no human comparison of the two versions."
+        "original_outcome": "The companion's automatic response resolved the opening before the journey reached the player decision.",
+        "revisit_when": "When a human or a different companion configuration exercises the opening.",
+        "claim_ceiling": "One design and revision; no human comparison of the two versions."
       }
     },
     {
       "id": "lesson:assistance-preserves-the-decision",
       "kind": "lesson",
-      "statement": "Automated companion assistance that resolves a designed player decision removes that decision's experiential value; assistance should act as a later or conditional safety net rather than as the first answer to the encounter's defining threat.",
+      "statement": "Automated companion assistance that resolves a designed player decision prevents the encounter from exercising that decision; assistance should act as a later or conditional safety net rather than as the first answer to the encounter's defining threat.",
       "authority_kind": "document",
       "authority_ref": "docs/pilots/2026-11-27-autonomous-feature-v1.md",
       "evidence_refs": [
@@ -103,48 +111,54 @@
           "The assistance can be delayed, conditionally enabled, or made an explicit tradeoff."
         ],
         "counterevidence": "Low-attention play may legitimately delegate a decision when the game presents that delegation as an explicit command, cost, or configuration rather than a silent default.",
-        "claim_ceiling": "One encounter and one revision; not a universal companion architecture or a claim that automation is inherently undesirable."
+        "revisit_when": "When a human plays the encounter with the revised grace and can report whether the decision felt owned.",
+        "claim_ceiling": "One encounter and one revision; not a universal companion architecture or a claim that automation is inherently undesirable. No human playtest or agency measurement."
       }
     },
     {
       "id": "observation:ep14-castellan-rupture-skipped",
       "kind": "observation",
-      "statement": "In the Episode 14 full journey the bot defeated the 650-HP Riftbound Castellan in about five seconds before Rupture occurred, so the Castellan's defining Stability and Rupture interactions were not reached in ordinary play.",
+      "statement": "In the Episode 14 full journey the bot defeated the 650-HP Castellan in about five seconds before the Rupture cast occurred, so the Castellan's Rupture interaction was not reached on that run.",
       "authority_kind": "document",
-      "authority_ref": "docs/pilots/2026-11-27-autonomous-feature-v1.md",
+      "authority_ref": ".sensemaking/receipts/2026-11-27-autonomous-feature-v1.session.yaml",
       "evidence_refs": [
+        "file:.sensemaking/receipts/2026-11-27-autonomous-feature-v1.session.yaml",
         "file:docs/pilots/2026-11-27-autonomous-feature-v1.md"
       ],
       "epistemic_status": "observed",
       "attributes": {
-        "scope": "One fixed-fps input-driven First Journey run with the default party.",
-        "claim_ceiling": "One bot route; no human pacing or frequency data."
+        "scope": "One fixed-fps, bot-optimal First Journey run with the default party.",
+        "original_outcome": "The boss died before the authored Rupture beat, so the interaction was not observable on that route.",
+        "revisit_when": "When a human or a differently paced route reaches the boss.",
+        "claim_ceiling": "One bot-optimal route; the pilot explicitly says the bot speed is not human-tuned; no human pacing or frequency data."
       }
     },
     {
       "id": "lesson:defining-mechanic-needs-opportunity",
       "kind": "lesson",
-      "statement": "A defining mechanic must occur often enough in ordinary play to be recognized, answered, and evaluated; isolated correctness, deterministic probes, or a mechanic that only appears in exceptional play do not establish experiential presence.",
+      "statement": "A defining mechanic that the expected route can bypass is not established as experienced; isolated correctness, deterministic probes, or play that never reaches the mechanic do not show that players will recognize, answer, or evaluate it. The design needs a reachable opportunity in the routes the game expects players to take.",
       "authority_kind": "document",
       "authority_ref": "docs/pilots/2026-11-27-autonomous-feature-v1.md",
       "evidence_refs": [
-        "file:docs/pilots/2026-11-27-autonomous-feature-v1.md"
+        "file:docs/pilots/2026-11-27-autonomous-feature-v1.md",
+        "file:.sensemaking/receipts/2026-11-27-autonomous-feature-v1.session.yaml"
       ],
       "epistemic_status": "declared",
       "attributes": {
-        "scope": "Encounter design where burst damage, ordering, or companion automation can bypass an authored mechanic.",
+        "scope": "Encounter design where burst damage, ordering, or companion automation can bypass an authored mechanic, including fast automated or high-DPS routes.",
         "conditions": [
           "The mechanic carries a defined experiential responsibility rather than optional flavour.",
-          "The ordinary route can be exercised without artificial invulnerability or mandatory waiting."
+          "The mechanic is intended to be experienced in the routes the game expects players to take, not only in an optional or exceptional route."
         ],
-        "counterevidence": "A rare set-piece can be intentionally rare when its rarity is part of the design and the player has other chances to learn it.",
-        "claim_ceiling": "One encounter and one bot route; no frequency threshold is established."
+        "counterevidence": "A rare set-piece can be intentionally rare when its rarity is part of the design and the player has another learning path, or when skipping it is the intended reward for mastery or difficulty.",
+        "revisit_when": "When a human or a different build/route provides pacing and frequency evidence.",
+        "claim_ceiling": "One encounter and one bot-optimal route; no human frequency, pacing, or threshold data."
       }
     },
     {
       "id": "observation:ep14-mark-succeeded-transfer-not",
       "kind": "observation",
-      "statement": "The Episode 14 Warden produced the completed Command Roar, the lowest-ratio mark, and two empowered Reavers, and its focused tests and full journey passed, yet the Warden-to-Castellan transfer remained structural and the Castellan's Rupture still had no grace or player-facing explanation.",
+      "statement": "The Episode 14 Warden produced the completed Command Roar, a mark selected by the lowest-ratio rule, and two empowered Reavers; its focused tests and full journey passed, while the full verifier was not cleanly completed. The pilot records the Castellan as sharing the same cast/vulnerability grammar, but the design review found the Warden-to-Castellan experiential transfer claim unsupported; the Castellan's Rupture remained uncovered by the Warden's grace and was often skipped in the fast boss fight.",
       "authority_kind": "document",
       "authority_ref": "docs/pilots/2026-11-27-autonomous-feature-v1.md",
       "evidence_refs": [
@@ -153,7 +167,9 @@
       "epistemic_status": "observed",
       "attributes": {
         "scope": "One implemented Warden feature and its relationship to the existing Castellan.",
-        "claim_ceiling": "One agent evaluation across two encounters; no controlled comparison or human review."
+        "original_outcome": "The Warden's events and tests passed; the later encounter's defining beat was not reached in the fast journey.",
+        "revisit_when": "When the integrated Warden-to-Castellan route is exercised after the Castellan revision.",
+        "claim_ceiling": "One agent evaluation across two encounters; the full verifier was not cleanly completed; the integrated journey was automated at fixed fps; no controlled comparison or human review."
       }
     },
     {
@@ -173,22 +189,26 @@
           "The feature's purpose depends on a decision, relationship, or transfer of learning."
         ],
         "counterevidence": "A purely mechanical contract can be fully satisfied by deterministic tests when no experiential claim is made.",
-        "claim_ceiling": "One feature and one journey; no claim that tests are unnecessary or that human qualification is always required."
+        "revisit_when": "When an independent evaluation observes the intended experience rather than the event.",
+        "claim_ceiling": "One feature and one journey; no claim that tests are unnecessary, that human qualification is always required, or that player understanding was measured."
       }
     },
     {
       "id": "observation:ep14-evidence-layers-recorded-separately",
       "kind": "observation",
-      "statement": "Episode 14 recorded direct native engine probes, input-driven native journey runs, app-managed Web browser runs, and agent evaluation as separate evidence layers; the Web run's pre-revision build could not be attributed to the final candidate's native behavior.",
+      "statement": "Episode 14 recorded direct native engine probes, input-driven native journey runs, app-managed Web runs, and agent review separately, applying the reviewed v3 distinction that Web game_use establishes app-integrated browser input and observation but not native engine behavior; the Web run's pre-revision build could not be attributed to the final candidate's native behavior.",
       "authority_kind": "document",
       "authority_ref": "docs/pilots/2026-11-27-autonomous-feature-v1.md",
       "evidence_refs": [
-        "file:docs/pilots/2026-11-27-autonomous-feature-v1.md"
+        "file:docs/pilots/2026-11-27-autonomous-feature-v1.md",
+        "file:docs/pilots/2026-11-27-atlas-cross-engine-v3.md"
       ],
       "epistemic_status": "observed",
       "attributes": {
         "scope": "One cross-engine pilot with Web and native Godot execution.",
-        "claim_ceiling": "A single pilot; no claim that the layer vocabulary is complete."
+        "original_outcome": "The evidence layers were kept separate, but the Web run could not speak for the final candidate.",
+        "revisit_when": "When a Web run is rebuilt from the same committed implementation as the native evidence.",
+        "claim_ceiling": "A single pilot; the Web/native layer distinction is inherited from lesson:godot-evidence-layers and is not original to this observation."
       }
     },
     {
@@ -208,13 +228,14 @@
           "The engine limitation may change while the development responsibility remains."
         ],
         "counterevidence": "When the responsibility is itself about the tooling, an engine-specific limitation can be the transferable finding rather than a separate layer.",
-        "claim_ceiling": "One project; no evidence that the distinction improves later retrieval."
+        "revisit_when": "When a later retrieval demonstrates that the separation changed a decision or improved reuse.",
+        "claim_ceiling": "One project; the Web/native layer distinction is inherited from lesson:godot-evidence-layers; this lesson adds the separation from transferable responsibilities, not the original evidence-layer finding, and no retrieval benefit is measured."
       }
     },
     {
       "id": "lesson:isolated-mechanic-correctness-is-not-feature-quality",
       "kind": "lesson",
-      "statement": "Feature quality cannot be assessed only through isolated mechanic correctness; an integrated evaluation is needed to show that the mechanic is reached, understood, and connected to the encounter's other responsibilities.",
+      "statement": "Feature quality cannot be assessed only through isolated mechanic correctness; an integrated evaluation is needed to show that the mechanic is reached and connected to the encounter's other responsibilities. Whether players understand it requires separate player evidence.",
       "authority_kind": "document",
       "authority_ref": "docs/pilots/2026-11-27-autonomous-feature-v1.md",
       "evidence_refs": [
@@ -228,7 +249,8 @@
           "The evaluation can exercise an integrated route rather than only a fixture."
         ],
         "counterevidence": "An isolated mechanic with no integrative claim can be evaluated adequately in isolation.",
-        "claim_ceiling": "One two-encounter pilot; no comparative quality measurement."
+        "revisit_when": "When an independent evaluation covers the integrated route and player comprehension.",
+        "claim_ceiling": "One two-encounter pilot; the integrated journey was automated at fixed fps; no human comprehension or comparative quality measurement."
       }
     }
   ],
@@ -275,6 +297,7 @@
       "predicate": "learned_from",
       "object": "observation:ep14-castellan-rupture-skipped",
       "evidence_refs": [
+        "file:.sensemaking/receipts/2026-11-27-autonomous-feature-v1.session.yaml",
         "file:docs/pilots/2026-11-27-autonomous-feature-v1.md"
       ]
     },
@@ -285,7 +308,10 @@
       "object": "observation:ep14-mark-succeeded-transfer-not",
       "evidence_refs": [
         "file:docs/pilots/2026-11-27-autonomous-feature-v1.md"
-      ]
+      ],
+      "attributes": {
+        "conceptual_relation": "relatedContext"
+      }
     },
     {
       "id": "rel:tests-learned-from-transfer",
@@ -315,21 +341,34 @@
       ]
     },
     {
-      "id": "rel:integrated-quality-depends-on-tests",
+      "id": "rel:integrated-quality-references-tests",
       "subject": "lesson:isolated-mechanic-correctness-is-not-feature-quality",
-      "predicate": "depends_on",
+      "predicate": "references",
       "object": "lesson:tests-do-not-establish-experiential-fulfillment",
       "evidence_refs": [
         "file:docs/pilots/2026-11-27-autonomous-feature-v1.md"
-      ]
+      ],
+      "attributes": {
+        "conceptual_relation": "buildsOn"
+      }
     },
     {
-      "id": "rel:opportunity-depends-on-assistance",
+      "id": "rel:opportunity-references-assistance",
       "subject": "lesson:defining-mechanic-needs-opportunity",
       "predicate": "references",
       "object": "lesson:assistance-preserves-the-decision",
       "evidence_refs": [
         "file:docs/pilots/2026-11-27-autonomous-feature-v1.md"
+      ]
+    },
+    {
+      "id": "rel:ep14-layers-references-godot-evidence-layers",
+      "subject": "observation:ep14-evidence-layers-recorded-separately",
+      "predicate": "references",
+      "object": "lesson:godot-evidence-layers",
+      "evidence_refs": [
+        "file:docs/pilots/2026-11-27-autonomous-feature-v1.md",
+        "file:docs/pilots/2026-11-27-atlas-cross-engine-v3.md"
       ]
     }
   ]
