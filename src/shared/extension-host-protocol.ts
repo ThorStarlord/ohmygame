@@ -77,7 +77,7 @@ export interface WebBuild {
  */
 export type GameUseHookInput =
   /** Left out, the game runs at its own size; report it in the result when known. */
-  | { operation: "open"; viewport?: { width: number; height: number } }
+  | { operation: "open"; viewport?: { width: number; height: number }; start?: string }
   | { operation: "inspect" | "close"; session: string }
   | { operation: "act"; session: string; actions: unknown[] }
   | { operation: "capture"; session: string; output: string }

@@ -163,6 +163,8 @@ export function createAgentTools(
     resolveOpenTarget: (signal?: AbortSignal) => Promise<GameUseOpenTarget>;
     /** The highest frame a plugin's captureFrame takes. */
     maxFrame?: number;
+    /** Whether the plugin's open takes an optional engine start label. */
+    start?: boolean;
   },
   searchWeb?: SearchWeb,
   canvasStore?: CanvasStore,
@@ -1239,7 +1241,7 @@ export function createAgentTools(
       };
     },
   })] : []), ...(playtest?.driver.available && offersGameUse(project, playtest.driver)
-    ? [createGameUseTool(playtest.driver, playtest.resolveOpenTarget, { bridge: project.type === "interactive-story" ? "reset" : "full", maxFrame: playtest.maxFrame })]
+    ? [createGameUseTool(playtest.driver, playtest.resolveOpenTarget, { bridge: project.type === "interactive-story" ? "reset" : "full", maxFrame: playtest.maxFrame, start: playtest.start })]
     : [])]);
 }
 

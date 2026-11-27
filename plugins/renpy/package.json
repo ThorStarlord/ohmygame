@@ -1,6 +1,6 @@
 {
   "name": "@thorstarlord/renpy",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "Ren'Py game projects, native lint/compile/run, and browser previews for OhMyGame.",
   "license": "Apache-2.0",

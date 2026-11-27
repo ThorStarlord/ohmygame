@@ -33,6 +33,8 @@ export interface PluginGameUseSpec {
   operations: readonly PluginGameUseOperation[];
   input?: readonly PluginGameUseInput[];
   maxFrame?: number;
+  /** Whether open takes an optional engine label to start at. */
+  start?: boolean;
 }
 /** The highest frame `captureFrame` may ask for. */
 export const MAX_CAPTURE_FRAME = 100_000;
@@ -152,6 +154,8 @@ export interface GameUseSnapshot {
   capabilities: GameUseCapabilities;
   /** Left out when a plugin's runtime was opened at its own size and hasn't said it. */
   viewport?: PlaytestViewport;
+  /** The engine entry the session was opened at, when the runtime supports one. */
+  start?: string;
   gameState?: unknown;
   bridgeCapabilities?: string[];
 }
@@ -230,8 +234,11 @@ export interface PlaytestWatchState {
 }
 
 export type PlaytestRequest =
-  /** Left out, a plugin's runtime uses the game's own size; the web runtime always gets one. */
-  | { operation: "open"; target: GameUseOpenTarget; viewport?: PlaytestViewport }
+  /**
+   * `start` is an optional engine label for a plugin whose type declares it.
+   * Left out, a plugin's runtime uses the game's own start and size.
+   */
+  | { operation: "open"; target: GameUseOpenTarget; viewport?: PlaytestViewport; start?: string }
   | { operation: "inspect"; sessionId: string }
   | { operation: "act"; sessionId: string; actions: PlaytestAction[] }
   /** `samples` are milliseconds after the start, in increasing order. */

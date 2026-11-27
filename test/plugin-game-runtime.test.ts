@@ -70,6 +70,14 @@ async function open(runtime: PluginGameRuntime | OwnedPlaytestDriver) {
 }
 
 describe("plugin game runtime", () => {
+  it("passes an optional start label to the plugin and reports it", async () => {
+    const { state, runtime } = plugin();
+    const result = await runtime.request({ operation: "open", target: TARGET, start: "arc3_iris_ch4" });
+    if (result.operation !== "open") throw new Error("not opened");
+    expect(state.calls[0]).toMatchObject({ operation: "open", start: "arc3_iris_ch4" });
+    expect(result.snapshot.start).toBe("arc3_iris_ch4");
+  });
+
   it("captures a frame of a fresh run, scaled to fit a model, and leaves no files behind", async () => {
     const { state, runtime } = plugin();
     const sessionId = await open(runtime);

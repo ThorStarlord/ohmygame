@@ -1151,6 +1151,7 @@ export function createApp(options: AppOptions = {}) {
         ? async (): Promise<GameUseOpenTarget> => ({ runtime: "plugin", provider: plugin.provider, projectPath: project.workspacePath })
         : (signal?: AbortSignal) => playtestTarget(project, signal),
       maxFrame: plugin?.spec.maxFrame,
+      start: plugin?.spec.start === true,
     };
   };
   const projectForHostFolder = async (folder: string) => {
