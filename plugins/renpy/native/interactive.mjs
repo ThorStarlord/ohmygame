@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import net from "node:net";
 
-const START_TIMEOUT_MS = 60_000;
+const START_TIMEOUT_MS = 5 * 60_000;
 const ACTION_TIMEOUT_MS = 15_000;
 const MAX_OUTPUT = 16_000;
 const MAX_ACTIONS = 20;
@@ -209,7 +209,23 @@ function adapterSource() {
     "                label = current",
     "            elif isinstance(current, (tuple, list)) and current:",
     "                label = str(current[0])",
-    "            screens = [name for name in ('main_menu', 'say', 'choice', 'quick_menu', 'nvl') if renpy.get_screen(name) is not None]",
+    "            screens = []",
+    "            try:",
+    "                active = sorted(",
+    "                    ((getattr(screen, 'zorder', 0), name) for (name, _variant), screen in renpy.display.screen.screens.items() if screen is not None),",
+    "                    key=lambda item: item[0],",
+    "                    reverse=True,",
+    "                )",
+    "                for _zorder, name in active:",
+    "                    if name not in screens and renpy.get_screen(name) is not None:",
+    "                        screens.append(name)",
+    "            except Exception:",
+    "                screens = []",
+    "            for name in ('main_menu', 'say', 'choice', 'quick_menu', 'nvl'):",
+    "                if name not in screens and renpy.get_screen(name) is not None:",
+    "                    screens.append(name)",
+    "            overlays = {'quick_menu', 'status_case_nav_overlay', 'notify', 'location_label'}",
+    "            primary = next((name for name in screens if name not in overlays), screens[0] if screens else None)",
     "            statement = renpy.get_statement_name()",
     "            main_menu = 'main_menu' in screens",
     "            say_screen = 'say' in screens",
@@ -235,7 +251,7 @@ function adapterSource() {
     "                'interactionId': digest,",
     "                'statement': statement,",
     "                **({'label': label} if label else {}),",
-    "                'screen': screens[0] if screens else None,",
+    "                'screen': primary,",
     "                **({'speaker': str(speaker)} if speaker else {}),",
     "                **({'dialogue': str(what)} if what else {}),",
     "                'choices': items,",

@@ -511,12 +511,17 @@ Two runs are not promised to match.
 
 A type that declares `narrative` input also receives `advance` and `choose`
 actions. Its `gameState` is plugin-defined; the Ren'Py runtime returns the
-current dialogue, choices, screens, state status and an interaction id. A
-`transitioning` state is not awaiting input, and `advance` is refused until
-dialogue is available. A choice carries the interaction id it was observed
-in, so the runtime refuses a stale choice instead of applying it to a
-different screen. A web-build type may keep its Web preview and still use its
-plugin for `game_use`.
+current dialogue, choices, screens, state status and an interaction id. Active
+custom screens are reported in `screens`, but only a standard choice menu's
+captions are actionable through `choose`. A `transitioning` state is not
+awaiting input, and `advance` is refused until dialogue is available. A choice
+carries the interaction id it was observed in, so the runtime refuses a stale
+choice instead of applying it to a different screen. A web-build type may keep
+its Web preview and still use its plugin for `game_use`.
+
+A plugin's `open` can take longer than other calls because it may copy and
+start a real project; the daemon allows five minutes for it while interact,
+act and capture keep the ordinary plugin timeout.
 
 - **Sessions.** The agent sees ids the daemon gives, never the plugin's own.
   Each is tied to the host process that opened it: once that host stops, the
