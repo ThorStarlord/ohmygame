@@ -1,0 +1,187 @@
+artifact_id: sensemaking_session_receipt
+schema_version: 1
+session_ref: 2026-11-27-atlas-cross-engine-v3
+state: final
+created_at: "2026-11-27T13:00:00Z"
+updated_at: "2026-11-27T16:15:00Z"
+target_repository: ThorStarlord/ohmygame
+persistence: committed
+source_identity:
+  start_ref: b8c0252ae6a3e96b2228e68d3ca1b5063890a949
+  end_ref: b8c0252ae6a3e96b2228e68d3ca1b5063890a949
+  worktree_clean_at_end: true
+skill_identity:
+  load_mode: harness_discovered
+  sensemaking_source_ref: "installed 6321125EACC6B61867101674EBA2253EBED278076B07B2BEA0467FAA08A3B014; clean a6291c2d"
+goal:
+  statement: "Use Atlas Midgard to improve one real combat encounter, discover cross-engine OhMyGame limits, and preserve transferable evidence."
+  source: owner_message
+  source_ref: null
+delegation:
+  granted: [read, local_write, run_local_commands, commit, push, open_pr, merge]
+  withheld: [release, deploy, tracker_write, knowledge_edit, external_publication]
+continuity:
+  resumes: 2026-11-27-experience-driven-development-v2
+  campaign_ref: null
+  resolves_questions:
+    - 2026-11-27-experience-driven-development-v2#Q-4
+responsibilities:
+  - id: R-1
+    responsibility: "Verify the Sensemaking toolchain and recover prior understanding"
+    capability: "clean source worktree and current validator"
+    status: completed
+    reason: "Clean a6291c2d accepts the v2 receipt; installed Skill copy differs; older receipts invalid; retrieval was manual."
+    artifact_refs:
+      - docs/pilots/2026-11-27-atlas-cross-engine-v3.md
+      - .sensemaking/receipts/2026-11-27-experience-driven-development-v2.session.yaml
+    validation:
+      - command: "python scripts/validate-receipt.py (clean worktree) on the v2 receipt"
+        result: PASS
+  - id: R-2
+    responsibility: "Recover Atlas encounter identity and select a tactical responsibility"
+    capability: "repository evidence and combat contracts"
+    status: completed
+    reason: "The Ruined Causeway cast/vulnerability loop has explicit cast-marker commitments and a missing player-facing presentation."
+    artifact_refs:
+      - docs/pilots/2026-11-27-atlas-cross-engine-v3.md
+      - docs/renpy-integration.md
+    validation:
+      - command: "Atlas source, tests, and design-document inspection"
+        result: PASS
+  - id: R-3
+    responsibility: "Exercise the actual game and capture the baseline"
+    capability: "OhMyGame Web game_use and direct native probes"
+    status: completed
+    reason: "Web game_use reached title, Begin, Causeway and movement; native probes captured the Warden cast and Castellan vulnerability."
+    artifact_refs:
+      - docs/pilots/2026-11-27-atlas-cross-engine-v3.md
+    validation:
+      - command: "live OhMyGame Web game_use on Atlas"
+        result: PASS
+      - command: "native Warden and Castellan probes"
+        result: PASS
+  - id: R-4
+    responsibility: "Implement and retain the Atlas cast/vulnerability candidate"
+    capability: "presentation-only CastTelegraph plus project tests"
+    status: completed
+    reason: "Cast name, interrupt result, and live vulnerability are visible; no combat numbers changed; Atlas PR #93 is a draft."
+    artifact_refs:
+      - docs/pilots/2026-11-27-atlas-cross-engine-v3.md
+    validation:
+      - command: "godot --headless --script res://tests/smoke_causeway_cast_telegraph.gd"
+        result: PASS
+      - command: "godot --headless --fixed-fps 60 --script res://tests/playthrough_first_journey.gd"
+        result: PASS
+  - id: R-5
+    responsibility: "Evaluate the candidate and obtain independent review"
+    capability: "before/after evidence and independent review"
+    status: completed
+    reason: "Final review accepted the draft with named Warden-content, no-depth/motion, human-evidence, and gauge-direction limitations."
+    artifact_refs:
+      - docs/pilots/2026-11-27-atlas-cross-engine-v3.md
+    validation:
+      - command: "independent review of Atlas PR #93"
+        result: PASS
+  - id: R-6
+    responsibility: "Assess cross-engine transfer and OhMyGame product limits"
+    capability: "Web and native Godot runtime inspection"
+    status: completed
+    reason: "Web game_use is reusable for Godot Web builds; the official 1.0.3 plugin still lacks native game_use, managed game sessions, and viewport capture."
+    artifact_refs:
+      - docs/pilots/2026-11-27-atlas-cross-engine-v3.md
+      - docs/renpy-integration.md
+    validation:
+      - command: "official plugin manifest and upstream distribution inspection"
+        result: PASS
+      - command: "Atlas scripts/verify.ps1 full run attempt"
+        result: FAIL
+  - id: R-7
+    responsibility: "Preserve the pilot, receipt, and separate candidates"
+    capability: "documentation and Git"
+    status: completed
+    reason: "Pilot and receipt are committed in the OhMyGame docs PR; Atlas PR #93 and game #355/#363/#364 remain separate."
+    artifact_refs:
+      - docs/pilots/2026-11-27-atlas-cross-engine-v3.md
+      - .sensemaking/receipts/2026-11-27-atlas-cross-engine-v3.session.yaml
+    validation:
+      - command: "receipt validator"
+        result: PASS
+findings:
+  - id: F-1
+    statement: "The official Godot 1.0.3 plugin has no gameUse, managed game session, or viewport capture; run-in-godot launches the editor; npm and upstream remain at 1.0.3."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "pilot; plugin manifest 1.0.3; upstream PRs #62/#63 open"
+    disposition: open
+  - id: F-2
+    statement: "The app Web game_use reached Atlas title, Begin, Causeway and W/D movement at 1280x720 with zero page console errors; it has no game state/reset and did not reach combat."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "pilot; saved Atlas Web conversation"
+      - "Electron keycode warnings for lowercase w/d"
+    disposition: open
+  - id: F-3
+    statement: "The Warden Command Roar and Castellan Rupture had no player-facing cast marker, and the four-second Castellan vulnerability was invisible."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "pilot; before-warden-cast.png; before-boss-vulnerable.png"
+    disposition: handed_off
+  - id: F-4
+    statement: "The candidate shows cast, interrupt result, and vulnerability cues; its focused test and full input-driven journey pass, and final independent review accepted it with named limitations."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "Atlas PR #93; smoke_causeway_cast_telegraph.gd; playthrough_first_journey.gd"
+    disposition: handed_off
+  - id: F-5
+    statement: "pack.elite contains only the Chain Warden; Command Roar only empowers nearby Reavers, so its intended consequence has no eligible target."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "pilot; encounter_catalog.gd; enemy_actor.gd"
+    disposition: open
+  - id: F-6
+    statement: "The installed Sensemaking Skill differs from clean origin/main and the stale checkout; the v2 receipt validates but the two older receipts do not."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "pilot; installed/clean/stale SHA-256 values; validator output"
+    disposition: open
+  - id: F-7
+    statement: "The independent review requested bar separation, result, priority, progression, and fill-order fixes; the final review accepted the revised draft with named limitations."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "pilot; Atlas PR #93 review chain; focused test"
+    disposition: resolved
+open_questions:
+  - id: Q-1
+    question: "Does the cast/vulnerability marker read clearly in motion and at other aspect ratios without competing with the HUD?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-atlas-cross-engine-v3.md
+  - id: Q-2
+    question: "Should the Elite Command Roar gain an eligible Reaver or a different observable consequence?"
+    source: owner_intent
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-atlas-cross-engine-v3.md
+    options:
+      - option: "Add an eligible Reaver or equivalent consequence"
+        consequence: "Restores the intended empowerment stakes but changes encounter composition and difficulty."
+      - option: "Keep the solo Warden and redesign the roar's effect"
+        consequence: "Preserves the duel but requires a new encounter rule and test."
+  - id: Q-3
+    question: "Is a managed native Godot run-game session warranted for future responsibilities?"
+    source: repository_evidence
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-atlas-cross-engine-v3.md
+  - id: Q-4
+    question: "Does the candidate's Web export render the marker correctly at 1280x720 and in motion?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-atlas-cross-engine-v3.md
+stop:
+  disposition: GOAL_SATISFIED
+  reason: "A real Atlas combat-readability candidate, its before/after engine evidence, cross-engine assessment, independent review, and durable records are complete. Remaining limits are human review, the elite consequence, and native plugin distribution."
+next:
+  warranted_responsibility: "Review the Elite Command Roar's missing consequence; scope a managed Godot run-game session only if native live observation becomes necessary."
+  blocked_on: []
+claim_ceiling: "Atlas PR #93 is a draft, engine-rendered and test-covered, independent-reviewed but not merged or human-validated. Web evidence is app-managed; native frames are direct SDK. OhMyGame code is unchanged. No comparative Sensemaking claim."
+action_authorized_by_receipt: false
+immutable: true
