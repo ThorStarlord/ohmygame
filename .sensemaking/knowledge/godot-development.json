@@ -25,6 +25,19 @@
       "epistemic_status": "observed"
     },
     {
+      "id": "cap:plugin-native-game-use",
+      "kind": "capability",
+      "statement": "OhMyGame's plugin contract supports a contributor-declared native gameUse runtime with inspect, act and capture when a plugin provides it; the pinned official Godot 1.0.3 plugin does not declare it.",
+      "authority_kind": "document",
+      "authority_ref": "docs/plugins.md",
+      "evidence_refs": [
+        "file:docs/plugins.md",
+        "file:config/preinstalled-plugins.json",
+        "file:docs/pilots/2026-11-27-atlas-cross-engine-v3.md"
+      ],
+      "epistemic_status": "observed"
+    },
+    {
       "id": "lesson:godot-evidence-layers",
       "kind": "lesson",
       "statement": "Godot gameplay evidence is layered: OhMyGame-managed Web game_use establishes app-integrated browser input and observation but not native engine behavior; direct native project execution establishes engine-rendered behavior but not OhMyGame-managed native play.",
@@ -53,6 +66,16 @@
       "object": "constraint:godot-plugin-native-game-gap",
       "evidence_refs": [
         "file:docs/pilots/2026-11-27-atlas-cross-engine-v3.md"
+      ]
+    },
+    {
+      "id": "rel:godot-plugin-gap-references-native-game-use",
+      "subject": "constraint:godot-plugin-native-game-gap",
+      "predicate": "references",
+      "object": "cap:plugin-native-game-use",
+      "evidence_refs": [
+        "file:docs/plugins.md",
+        "file:config/preinstalled-plugins.json"
       ]
     }
   ]

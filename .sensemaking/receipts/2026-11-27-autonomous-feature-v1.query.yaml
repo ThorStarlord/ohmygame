@@ -1,0 +1,238 @@
+artifact_id: semantic_query_receipt
+schema_version: 1
+session_ref: 2026-11-27-autonomous-feature-v1
+state: final
+created_at: "2026-11-27T17:20:00Z"
+updated_at: "2026-11-27T18:20:00Z"
+target_repository: ThorStarlord/ohmygame
+modes: [RECALL]
+decision: "Choose how to gather evidence for the Chain Warden combat change: native engine behavior versus app-managed Web presentation."
+cli_identity:
+  sensemaking_source_ref: a6291c2d4815dec585526e3f21f142375169b98c
+  invocation_prefix: "uv tool run --from git+https://github.com/ThorStarlord/sensemaking-skills.git@a6291c2d4815dec585526e3f21f142375169b98c sensemaking-skills semantic"
+  version_output: "sensemaking-skills, version 1.0.0rc5.dev0"
+index:
+  indexed_ref: 4b9b86c5e6a7c219110e84de4a904be661d7086f
+  current_head: 4b9b86c5e6a7c219110e84de4a904be661d7086f
+  worktree_clean: true
+  uncommitted_changes_not_indexed: false
+queries:
+  - id: QY-1
+    operation: search
+    terms: ["Godot", "game_use", "native", "Web"]
+    subject: null
+    query_text: null
+    expect_kinds: []
+    target_ref: dbf985cf21daf34228c52649952a1adf86005216
+    result:
+      hit_count: 19
+      claim_ids:
+        - "cap:godot-web-game-use"
+        - "constraint:godot-plugin-native-game-gap"
+        - "lesson:godot-evidence-layers"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: true
+  - id: QY-2
+    operation: explain
+    terms: []
+    subject: "lesson:godot-evidence-layers"
+    query_text: null
+    expect_kinds: []
+    target_ref: dbf985cf21daf34228c52649952a1adf86005216
+    result:
+      hit_count: 3
+      claim_ids:
+        - "lesson:godot-evidence-layers"
+        - "cap:godot-web-game-use"
+        - "constraint:godot-plugin-native-game-gap"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: true
+  - id: QY-3
+    operation: context-for
+    terms: []
+    subject: "docs/pilots/2026-11-27-atlas-cross-engine-v3.md"
+    query_text: null
+    expect_kinds: []
+    target_ref: dbf985cf21daf34228c52649952a1adf86005216
+    result:
+      hit_count: 2
+      claim_ids:
+        - "constraint:godot-plugin-native-game-gap"
+        - "lesson:godot-evidence-layers"
+      truncated: false
+      not_assessed_kinds: ["ownership", "rules", "contracts", "decisions", "verification"]
+    outcome: PARTIAL
+    decision_relevant: true
+  - id: QY-4
+    operation: search
+    terms: ["headless", "export", "screenshot", "capture", "editor", "plugin"]
+    subject: null
+    query_text: null
+    expect_kinds: []
+    target_ref: dbf985cf21daf34228c52649952a1adf86005216
+    result:
+      hit_count: 107
+      claim_ids: []
+      truncated: true
+      not_assessed_kinds: []
+    outcome: PARTIAL
+    decision_relevant: true
+  - id: QY-5
+    operation: orientation-summary
+    terms: []
+    subject: null
+    query_text: null
+    expect_kinds: []
+    target_ref: dbf985cf21daf34228c52649952a1adf86005216
+    result:
+      hit_count: 0
+      claim_ids: []
+      truncated: false
+      not_assessed_kinds: []
+    outcome: NOT_APPLICABLE
+    decision_relevant: false
+  - id: QY-6
+    operation: snapshot
+    terms: []
+    subject: null
+    query_text: null
+    expect_kinds: []
+    target_ref: dbf985cf21daf34228c52649952a1adf86005216
+    result:
+      hit_count: 0
+      claim_ids: []
+      truncated: false
+      not_assessed_kinds: []
+    outcome: NOT_APPLICABLE
+    decision_relevant: false
+  - id: QY-7
+    operation: contradictions
+    terms: []
+    subject: "lesson:godot-evidence-layers"
+    query_text: null
+    expect_kinds: []
+    target_ref: dbf985cf21daf34228c52649952a1adf86005216
+    result:
+      hit_count: 0
+      claim_ids: []
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: false
+  - id: QY-8
+    operation: impact
+    terms: []
+    subject: "lesson:godot-evidence-layers"
+    query_text: null
+    expect_kinds: []
+    target_ref: dbf985cf21daf34228c52649952a1adf86005216
+    result:
+      hit_count: 3
+      claim_ids:
+        - "lesson:godot-evidence-layers"
+        - "cap:godot-web-game-use"
+        - "constraint:godot-plugin-native-game-gap"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: true
+  - id: QY-9
+    operation: search
+    terms: ["gameUse", "native game", "plugin game runtime"]
+    subject: null
+    query_text: null
+    expect_kinds: []
+    target_ref: dbf985cf21daf34228c52649952a1adf86005216
+    result:
+      hit_count: 1
+      claim_ids:
+        - "constraint:godot-plugin-native-game-gap"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: PARTIAL
+    decision_relevant: true
+  - id: QY-10
+    operation: search
+    terms: ["gameUse", "native game", "plugin game runtime"]
+    subject: null
+    query_text: null
+    expect_kinds: []
+    target_ref: 4b9b86c5e6a7c219110e84de4a904be661d7086f
+    result:
+      hit_count: 2
+      claim_ids:
+        - "cap:plugin-native-game-use"
+        - "constraint:godot-plugin-native-game-gap"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: true
+source_checks:
+  - claim_id: "lesson:godot-evidence-layers"
+    sources:
+      - "docs/pilots/2026-11-27-atlas-cross-engine-v3.md:46-58"
+      - "docs/pilots/2026-11-27-atlas-cross-engine-v3.md:148-157"
+    result: SUPPORTED
+  - claim_id: "cap:godot-web-game-use"
+    sources:
+      - "docs/pilots/2026-11-27-atlas-cross-engine-v3.md:46-58"
+    result: SUPPORTED
+  - claim_id: "constraint:godot-plugin-native-game-gap"
+    sources:
+      - "config/preinstalled-plugins.json"
+      - "docs/pilots/2026-11-27-atlas-cross-engine-v3.md:46-58"
+      - ".runtime/preinstalled-plugin-sources/godot/.ohmygame-plugin/plugin.json"
+    result: SUPPORTED
+  - claim_id: "cap:plugin-native-game-use"
+    sources:
+      - "docs/plugins.md"
+      - "config/preinstalled-plugins.json"
+    result: SUPPORTED
+misses:
+  - id: M-1
+    query_ref: QY-3
+    needed_for: "Atlas Chain Warden encounter architecture, ownership, tests and design context"
+    kind: NOT_ASSESSED
+    resolved_by: "source inspection: Atlas encounter_catalog.gd, enemy_actor.gd, companion_controller.gd and tests"
+    follow_up: DEFERRED
+    proposal_ref: null
+  - id: M-2
+    query_ref: QY-4
+    needed_for: "Reviewed evidence limits of run_headless and the Godot MCP run_project path"
+    kind: NOT_ASSESSED
+    resolved_by: "source inspection: pinned plugin native/index.mjs, godot-game/SKILL.md and docs/runtime.md"
+    follow_up: DEFERRED
+    proposal_ref: null
+  - id: M-3
+    query_ref: QY-9
+    needed_for: "Whether the platform-native gameUse contract changes the pinned-plugin limitation"
+    kind: NOT_ASSESSED
+    resolved_by: "source inspection: docs/plugins.md; the scoped capability claim was added to the pack"
+    follow_up: ADDED
+    proposal_ref: .sensemaking/knowledge/godot-development.json
+  - id: M-4
+    query_ref: QY-4
+    needed_for: "Reviewed claims on Web keyboard mapping and the Electron keycode warnings"
+    kind: NOT_ASSESSED
+    resolved_by: "pilot observation: v3 Electron keycode warnings; the Web run accepted W/D after the schema adjustment"
+    follow_up: DEFERRED
+    proposal_ref: null
+reconcile:
+  - claim_id: "cap:plugin-native-game-use"
+    disposition: ADD
+    applied: true
+    proposal_ref: .sensemaking/knowledge/godot-development.json
+    proposal_check: SEMANTIC_KNOWLEDGE_PROPOSAL_VALID
+  - claim_id: "lesson:godot-evidence-layers"
+    disposition: NO_MODEL_CHANGE
+    applied: false
+    proposal_ref: null
+    proposal_check: NOT_RUN
+persistence: committed
+action_authorized: false
+semantic_truth_established: false
+immutable: true
