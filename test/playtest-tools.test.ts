@@ -141,9 +141,16 @@ describe("game use tool", () => {
 
   it("offers semantic narrative actions to a plugin that declares them", async () => {
     const driver = new FakeDriver(pluginGameCapabilities({ operations: ["inspect", "act", "capture"], input: ["narrative"] }));
-    const tool = createGameUseTool(driver, async () => ({ runtime: "plugin", provider: "a/b:c", projectPath: "/game" }));
+    const tool = createGameUseTool(driver, async () => ({ runtime: "plugin", provider: "a/b:c", projectPath: "/game" }), { start: true });
+    expect(tool.parameters.properties).toHaveProperty("start");
     const actions = (tool.parameters.properties.actions as unknown as { items: { anyOf: { properties: { type: { const: string } } }[] } }).items.anyOf;
     expect(actions.map((action) => action.properties.type.const)).toEqual(["advance", "choose", "wait"]);
+    await tool.execute("open", {
+      operation: "open", start: "arc3_iris_ch4",
+    }, undefined, undefined, {} as never);
+    expect(driver.requests.at(-1)).toMatchObject({
+      operation: "open", target: { runtime: "plugin", provider: "a/b:c", projectPath: "/game" }, start: "arc3_iris_ch4",
+    });
     await tool.execute("advance", {
       operation: "act", sessionId: "session-1",
       actions: [{ type: "advance", interactionId: "interaction-1" }],
@@ -165,6 +172,15 @@ describe("game use tool", () => {
       operation: "act", sessionId: "session-1",
       actions: [{ type: "advance" }],
     }, undefined, undefined, {} as never)).rejects.toThrow("narrative");
+  });
+
+  it("refuses a start label when the type does not advertise one", async () => {
+    const driver = new FakeDriver(pluginGameCapabilities({ operations: ["inspect", "act", "capture"], input: ["narrative"] }));
+    const tool = createGameUseTool(driver, async () => ({ runtime: "plugin", provider: "a/b:c", projectPath: "/game" }));
+    expect(tool.parameters.properties).not.toHaveProperty("start");
+    await expect(tool.execute("open", {
+      operation: "open", start: "arc3_ch10",
+    }, undefined, undefined, {} as never)).rejects.toThrow("does not support a start label");
   });
 
   it("starts the current preview and opens a project-local route", async () => {

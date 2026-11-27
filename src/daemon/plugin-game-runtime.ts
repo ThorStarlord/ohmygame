@@ -75,6 +75,8 @@ interface Session {
   generation: number | undefined;
   release: (() => void) | undefined;
   viewport: PlaytestViewport | undefined;
+  /** The engine entry the plugin was asked to open at, when it supports one. */
+  start: string | undefined;
   /** Requests run one at a time. */
   queue: Promise<unknown>;
   idle: ReturnType<typeof setTimeout> | undefined;
@@ -114,7 +116,7 @@ export class PluginGameRuntime implements GameRuntimeAdapter {
     if (request.operation === "open") {
       if (request.target.runtime !== "plugin" || request.target.provider !== this.#options.provider)
         throw new Error(`This game runtime opens ${this.#options.provider}`);
-      return { operation: "open", snapshot: await this.#open(request.viewport, signal) };
+      return { operation: "open", snapshot: await this.#open(request.viewport, request.start, signal) };
     }
     if (request.operation === "actTogether") throw new Error(`${this.#options.provider} does not support actTogether in game_use`);
     // Closing a session that already ended, by expiring or its host stopping, is done.
@@ -159,8 +161,10 @@ export class PluginGameRuntime implements GameRuntimeAdapter {
     void this.#closeAll();
   }
 
-  async #open(viewport: PlaytestViewport | undefined, signal?: AbortSignal): Promise<GameUseSnapshot> {
+  async #open(viewport: PlaytestViewport | undefined, start: string | undefined, signal?: AbortSignal): Promise<GameUseSnapshot> {
     if (viewport) validateViewport(viewport);
+    if (start !== undefined && (typeof start !== "string" || !start || start.length > 200))
+      throw new Error("start must be a non-empty engine label of at most 200 characters");
     if (this.#sessions.size + this.#opening >= MAX_SESSIONS)
       throw new Error(`At most ${MAX_SESSIONS} game sessions can be open in a project; close one first`);
     // The slot stays taken until the session is registered or closed. The
@@ -170,7 +174,11 @@ export class PluginGameRuntime implements GameRuntimeAdapter {
     let abandoned = false;
     const opening = (async () => {
       try {
-        const result = await this.#call(viewport ? { operation: "open", viewport } : { operation: "open" }) as Partial<GameUseHookResults["open"]> | undefined;
+        const result = await this.#call({
+          operation: "open",
+          ...(viewport ? { viewport } : {}),
+          ...(start ? { start } : {}),
+        }) as Partial<GameUseHookResults["open"]> | undefined;
         const plugin = result?.session;
         if (typeof plugin !== "string" || !plugin || plugin.length > MAX_SESSION_ID)
           throw new Error(`${this.#options.provider} opened the game without naming its session`);
@@ -180,6 +188,7 @@ export class PluginGameRuntime implements GameRuntimeAdapter {
           generation: await this.#options.hooks.generation(),
           release: await this.#options.hooks.hold(),
           viewport: viewportOf(result?.viewport) ?? viewport,
+          start,
           queue: Promise.resolve(),
           idle: undefined,
         };
@@ -280,6 +289,7 @@ export class PluginGameRuntime implements GameRuntimeAdapter {
       runtime: "plugin",
       capabilities: this.capabilities,
       ...(session.viewport ? { viewport: session.viewport } : {}),
+      ...(session.start ? { start: session.start } : {}),
       ...(result?.gameState === undefined ? {} : { gameState: result.gameState }),
     };
   }

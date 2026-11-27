@@ -263,11 +263,16 @@ const ProjectType = Type.Object(
           maxFrame: Type.Optional(
             Type.Integer({ minimum: 1, maximum: MAX_CAPTURE_FRAME }),
           ),
+          start: Type.Optional(
+            Type.Boolean({
+              description: "Whether open takes an optional engine label to start at",
+            }),
+          ),
         },
         {
           additionalProperties: false,
           description:
-            "A native or web-build type's game that game_use can open through the plugin's gameUse hook: the operations besides open and close it supports, the input act takes (including narrative actions), and the highest frame captureFrame may ask for",
+            "A native or web-build type's game that game_use can open through the plugin's gameUse hook: the operations besides open and close it supports, the input act takes (including narrative actions), whether open accepts an engine start label, and the highest frame captureFrame may ask for",
         },
       ),
     ),

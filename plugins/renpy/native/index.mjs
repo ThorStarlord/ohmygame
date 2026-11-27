@@ -37,6 +37,7 @@ export function activate(context) {
       interactiveGameUse(await requireSdk(call), project(), input, {
         signal: call?.signal,
         env: {},
+        label: input?.start,
       }),
   });
   context.onDispose(() => closeAllInteractiveSessions());

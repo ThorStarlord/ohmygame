@@ -521,7 +521,10 @@ its Web preview and still use its plugin for `game_use`.
 
 A plugin's `open` can take longer than other calls because it may copy and
 start a real project; the daemon allows five minutes for it while interact,
-act and capture keep the ordinary plugin timeout.
+act and capture keep the ordinary plugin timeout. A type that declares
+`gameUse.start` accepts an optional engine label at open; the runtime validates
+it, refuses a missing label, and reports the requested `start` with the actual
+state. A label is direct entry, not state restoration.
 
 - **Sessions.** The agent sees ids the daemon gives, never the plugin's own.
   Each is tied to the host process that opened it: once that host stops, the

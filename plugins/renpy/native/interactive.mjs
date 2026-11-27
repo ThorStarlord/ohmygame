@@ -262,9 +262,12 @@ function adapterSource() {
     "            }",
     "",
     "        def start(self, label):",
+    "            target = label or 'start'",
+    "            if not renpy.has_label(target):",
+    "                raise ValueError(\"start label '%s' does not exist\" % target)",
     "            if renpy.get_screen('main_menu') is None:",
     "                return {'alreadyStarted': True}",
-    "            renpy.jump_out_of_context(label or 'start')",
+    "            renpy.jump_out_of_context(target)",
     "",
     "        def advance(self, interaction):",
     "            current = self.state()",
@@ -404,6 +407,8 @@ async function waitForGame(session) {
 }
 
 async function startSession(command, project, options) {
+  if (options.label !== undefined && (typeof options.label !== "string" || !options.label || options.label.length > 200))
+    throw new Error("The Ren'Py start label must be a non-empty label of at most 200 characters");
   const isolated = await interactiveProject(project);
   const token = randomBytes(24).toString("hex");
   const session = {
@@ -530,7 +535,11 @@ function validateAction(action) {
 export async function interactiveGameUse(command, project, input, options = {}) {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("Invalid Ren'Py playtest request");
   const session = input.session === undefined ? undefined : sessions.get(String(input.session));
-  if (input.operation === "open") return startSession(command, project, options);
+  if (input.operation === "open")
+    return startSession(command, project, {
+      ...options,
+      label: typeof input.start === "string" ? input.start : options.label,
+    });
   if (!session) throw new Error("The Ren'Py playtest session is no longer open");
   if (input.operation === "inspect") return { gameState: sanitizeState(await request(session, "inspect")) };
   if (input.operation === "act") {

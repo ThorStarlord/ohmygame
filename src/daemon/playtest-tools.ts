@@ -99,6 +99,7 @@ const fullParameters = Type.Object({
   operation: Type.Union(GAME_USE_OPERATIONS.map((operation) => Type.Literal(operation)) as [ReturnType<typeof Type.Literal<GameUseOperation>>]),
   path: Type.Optional(Type.String()),
   viewport: Type.Optional(viewportSchema),
+  start: Type.Optional(Type.String()),
   sessionId: Type.Optional(Type.String()),
   actions: Type.Optional(Type.Array(actionSchema)),
   players: Type.Optional(Type.Array(Type.Object({ sessionId: Type.String(), actions: Type.Array(actionSchema) }))),
@@ -122,12 +123,13 @@ const catalogParameters = gameUseParameters(webActionSchema, GAME_USE_OPERATIONS
 function gameUseParameters(
   action: TSchema,
   operations: readonly GameUseOperation[],
-  { path, frame }: { path?: boolean; frame?: number } = {},
+  { path, frame, start }: { path?: boolean; frame?: number; start?: boolean } = {},
 ): GameUseToolInput {
   return Type.Object({
     operation: Type.Union(operations.map((operation) => Type.Literal(operation))),
     ...(path ? { path: Type.Optional(Type.String({ maxLength: 1_000, description: "Path, query, or hash within a web game target; used only by open" })) } : {}),
     viewport: Type.Optional(viewportSchema),
+    ...(start ? { start: Type.Optional(Type.String({ minLength: 1, maxLength: 200, description: "An engine label to start at instead of the game's normal opening; used only by open. The label must be meaningful without unstated player state." })) } : {}),
     sessionId: Type.Optional(Type.String({ minLength: 1, maxLength: 100, description: "Session returned by open; required for every operation but open and actTogether" })),
     ...(operations.includes("act") ? { actions: Type.Optional(Type.Array(action, { minItems: 1, maxItems: 20, description: "Actions to run; required for act" })) } : {}),
     ...(operations.includes("actTogether") ? {
@@ -152,7 +154,7 @@ function gameUseParameters(
  * The tool's input for a plugin's runtime: only the operations and input it
  * declares, clicks at a point, and no bridge.
  */
-function pluginParameters(driver: GameRuntimeAdapter, maxFrame: number | undefined) {
+function pluginParameters(driver: GameRuntimeAdapter, maxFrame: number | undefined, start: boolean) {
   const operations = GAME_USE_OPERATIONS.filter((operation) => supportsGameUseOperation(driver.capabilities, operation));
   const input = driver.capabilities.input;
   const actions = [
@@ -163,7 +165,7 @@ function pluginParameters(driver: GameRuntimeAdapter, maxFrame: number | undefin
       return type === "wait" || (type === "press" && input.includes("keyboard")) || (type === "touch" && input.includes("touch")) || (type === "resize" && input.includes("resize"));
     }),
   ];
-  return gameUseParameters(Type.Union(actions), operations, { frame: operations.includes("captureFrame") ? maxFrame ?? 1 : undefined });
+  return gameUseParameters(Type.Union(actions), operations, { frame: operations.includes("captureFrame") ? maxFrame ?? 1 : undefined, start });
 }
 
 export function createGameUseTool(
@@ -173,12 +175,15 @@ export function createGameUseTool(
     bridge = "full",
     catalog = false,
     maxFrame,
+    start = false,
   }: {
     bridge?: "full" | "reset";
     /** List every operation any runtime has, as an outside agent's catalog does. */
     catalog?: boolean;
     /** The highest frame a plugin's captureFrame takes. */
     maxFrame?: number;
+    /** Whether open takes an optional engine start label. */
+    start?: boolean;
   } = {},
 ): ToolDefinition<GameUseToolInput> {
   const plugin = driver.capabilities.runtime === "plugin";
@@ -197,6 +202,7 @@ export function createGameUseTool(
           "Use game_use to see the game after changing it; a successful build alone is not a playtest",
           ...(frames ? ["captureFrame runs the game again from its start and captures that frame; it does not show what an open session shows now, and two runs may differ. Pick a frame after the game has loaded, and try a later one if the capture is blank or still loading"] : []),
           ...(driver.capabilities.input.includes("narrative") ? ["When gameState.kind is renpy, read its dialogue and choices, then use advance or choose with the latest interactionId; inspect again after each action. A transitioning state is not awaiting input: inspect again rather than sending input. A stale interactionId is refused rather than applied to a different screen, and an uncertain action is not retried."] : []),
+          ...(start ? ["A type that advertises start lets open take an engine label. Use it only when the target is meaningful without unstated player state; a label is not state restoration, and report any synthetic preparation or remaining context difference."] : []),
           "Close game sessions when finished",
         ]
       : [
@@ -206,7 +212,7 @@ export function createGameUseTool(
           "Capture screenshots for Canvas or WebGL verification and close playtest sessions when finished",
           "Record video only when the person asks for a clip or a video of the game: recordStart, then act, then recordStop. A recording lasts at most 60 seconds, goes to the Library, and is not something you can watch, so use screenshots for your own verification",
         ],
-    parameters: catalog ? catalogParameters : plugin ? pluginParameters(driver, maxFrame) : bridge === "reset" ? resetOnlyParameters : parameters,
+    parameters: catalog ? catalogParameters : plugin ? pluginParameters(driver, maxFrame, start) : bridge === "reset" ? resetOnlyParameters : parameters,
     executionMode: "sequential",
     execute: async (_toolCallId, input, signal) => {
       if (!driver.available) throw new Error("Game use is not available in this environment");
@@ -222,6 +228,7 @@ export function createGameUseTool(
         if (target.runtime !== driver.capabilities.runtime) {
           throw new Error(`Game target runtime ${target.runtime} does not match adapter runtime ${driver.capabilities.runtime}`);
         }
+        if (input.start !== undefined && !start) throw new Error("This project's game runtime does not support a start label");
         const resolvedTarget = input.path
           ? withOpenPath(target, input.path)
           : target;
@@ -230,6 +237,7 @@ export function createGameUseTool(
           target: resolvedTarget,
           // A plugin's game runs at its own size unless asked for another.
           ...(input.viewport ? { viewport: input.viewport } : plugin ? {} : { viewport: { width: 1280, height: 720 } }),
+          ...(input.start ? { start: input.start } : {}),
         }, signal);
         if (result.operation !== "open") throw new Error("Unexpected game use response");
         return snapshotResult(result.snapshot);
