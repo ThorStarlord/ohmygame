@@ -1,0 +1,88 @@
+artifact_id: sensemaking_session_receipt
+schema_version: 1
+session_ref: 2026-11-27-experience-driven-development
+state: completed
+created_at: "2026-11-27T04:10:00Z"
+updated_at: "2026-11-27T04:10:00Z"
+target_repository: ThorStarlord/ohmygame
+source_identity:
+  start_ref: b4d778d1bb0e728fba610a0448691daec0238a7f
+  end_ref: 5d7cbf952689e43ebddfcf9bc533619abc3072f2
+  worktree_clean_at_end: true
+skill_identity:
+  load_mode: harness_discovered
+  sensemaking_source_ref: c5b8feead0e11369e31463d0439f313d358ca051
+goal:
+  statement: "Use OhMyGame to improve a real game experience, discover product limitations through use, repair them, and continue the game-development workflow."
+  source: owner_message
+  source_ref: null
+delegation:
+  granted: [read, local_write, run_local_commands, commit, push, open_pr, merge]
+  withheld: [release, deploy, tracker_write, knowledge_edit]
+continuity:
+  resumes: 2026-11-26-interactive-playtesting
+  campaign_ref: null
+  resolves_questions:
+    - "Whether the game's actual player decision can be improved through OhMyGame."
+    - "Whether live game_use can open a large real project and report its custom screen."
+    - "Whether a game candidate can be retained without merging creative content."
+responsibilities:
+  - responsibility: "Understand the game's real choice and intended experience"
+    status: completed
+    artifact: "The game has no in-story standard menu choices; the custom route_choice screen is the actual decision. Recovered False-MC-first access, retrospective unlock, spoiler boundary and high-salience UI commitments."
+    evidence: "10_Human_Docs/09_Player_Route_Access_And_Reconstruction_Contract.md; 10_Human_Docs/04_Production_And_Release/49_UI_Interaction_Contract.md"
+  - responsibility: "Experience the existing game through OhMyGame"
+    status: completed_with_limitation
+    artifact: "First live open exceeded 60 s; retry reached the route screen. The custom screen was not named by the old adapter and had no choose actions. A native route_choice_presentation scenario reproduced fresh, unlocked and first-Meridian states."
+    evidence: "app/route-live.json; before-route-choice.png; game/tests/route_choice_test.rpy"
+  - responsibility: "Improve the route-choice presentation"
+    status: completed
+    artifact: "Reused the title skyline, made a deliberate single-entry composition, moved the amber action inside its card, clarified the Case View copy and completion hint, and preserved route/unlock logic. Game candidate draft PR #355, not merged."
+    evidence: "final/fresh-route-choice.png; final/unlocked-route-choice.png; game/scripts/ui/player_navigation.rpy"
+  - responsibility: "Evaluate the resulting experience"
+    status: completed_with_limits
+    artifact: "Scenario passed with three comparable checkpoints; first Meridian frame byte-identical. Perceptual order, action affordance and title continuity improved. No human player or artistic approval claimed."
+    evidence: "run c335c4af-e35c-4151-9d6d-ddc37c1eb936; checkpoint hashes; independent evaluation pending"
+  - responsibility: "Repair consequential OhMyGame limitations"
+    status: completed
+    artifact: "Open now allows five minutes for a copied project; the Ren'Py adapter names active custom screens and their primary screen. Product branch fix/game-use-large-project, commit 5d7cbf95."
+    evidence: "src/daemon/project-types.ts; plugins/renpy/native/interactive.mjs; test/plugin-game-hooks.test.ts"
+  - responsibility: "Use the repaired capability in the motivating workflow"
+    status: completed
+    artifact: "The current app opened the 256 MB game in 41.1 s on the first attempt, reported route_choice in screen/screens, captured and closed. A current-app probe observed transitioning, refused advance, recovered dialogue, advanced and closed."
+    evidence: "app/route-live.json; app/transition-refusal.json; app/route-choice-live-after.jpg"
+findings:
+  - statement: "The game's only real player decision is the custom route_choice screen; a traditional dialogue-to-choice sequence does not exist in the current story."
+    evidence: "Repository search found only two developer QA menu blocks and no story menu blocks; label start calls route_choice."
+    confidence: high
+  - statement: "The old fresh route screen made the primary action visually ambiguous by placing its label outside the card surface and led with internal taxonomy."
+    evidence: "before-route-choice.png; player_navigation.rpy before diff."
+    confidence: high
+  - statement: "A large real project can exceed the ordinary plugin call timeout; the measured open was 79.9 s against a 60 s limit."
+    evidence: "direct time-live-open probe; daemon log 'Plugin call timed out after 60000 ms'."
+    confidence: high
+  - statement: "The live adapter previously named only quick_menu at the custom route screen; active-screen enumeration now reports route_choice without pretending the screen is actionable."
+    evidence: "app route-live.json and later app route live with screen=route_choice."
+    confidence: high
+  - statement: "The first Meridian frame is unchanged byte-for-byte, while the chooser composition and copy improved."
+    evidence: "foundation-opening before/after SHA-256 74e2070af006aee9d79bb46cf11c2929a493e9a0bf2cabe8a384c38b502cf64d; new fresh/unlocked frames."
+    confidence: high
+  - statement: "The four game pytest failures are in unchanged review/prologue checks and reproduce against the original source; they are not caused by the candidate."
+    evidence: "Agent baseline probe; failure in start review text outside the changed files."
+    confidence: medium_high
+open_questions:
+  - "First-time-player comprehension, keyboard focus traversal, localization fit, and human artistic reception remain unverified."
+  - "The game change is a draft candidate and must not be merged into canonical main under this mission."
+  - "Live game_use can inspect a custom choice screen but cannot choose its buttons; scripted scenarios remain required."
+  - "The large open still copies the project and takes tens of seconds; the fix is timeout and visibility, not an incremental copy architecture."
+  - "Independent review of the final game frames is pending at receipt time."
+stop:
+  disposition: COMPLETE
+  reason: "A real game-presentation improvement, its before/after evidence, a reviewable game candidate, two consequential product repairs, and their reintegration are complete. Remaining items are explicit limits or independent review."
+next:
+  warranted_responsibility: "Continue with a bounded narrative or presentation improvement that requires live state-dependent choice, or improve custom-screen action support only if another real development task proves the limitation blocks the work. Do not add more runtime surface without that evidence."
+  blocked_on: []
+persistence: committed
+claim_ceiling: "The change is engine-rendered and app-exercised. It is not human-approved, not player-validated, and not merged into the game's canonical main. The product fix is locally verified and awaits integration to dev."
+action_authorized_by_receipt: false
+immutable: false

@@ -76,6 +76,8 @@ const WEB_BUILD_TIMEOUT_MS = 10 * 60_000;
  * the game loads, can take as long as a build.
  */
 const CAPTURE_FRAME_TIMEOUT_MS = WEB_BUILD_TIMEOUT_MS;
+/** A real project is copied and started for open, so it can exceed the default call timeout. */
+const GAME_USE_OPEN_TIMEOUT_MS = 5 * 60_000;
 /** Recognizing a folder never reads more than these files' metadata. */
 const RECOGNIZE_FILES_MAX = 10;
 
@@ -457,7 +459,9 @@ export function projectGameHooks(
         timeoutMs:
           input.operation === "captureFrame"
             ? CAPTURE_FRAME_TIMEOUT_MS
-            : undefined,
+            : input.operation === "open"
+              ? GAME_USE_OPEN_TIMEOUT_MS
+              : undefined,
       }),
     generation: () => services.native.hostGeneration(folder),
     hold: () => services.native.holdHost(folder),
