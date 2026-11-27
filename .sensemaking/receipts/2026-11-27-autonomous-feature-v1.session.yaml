@@ -1,15 +1,15 @@
 artifact_id: sensemaking_session_receipt
 schema_version: 1
 session_ref: 2026-11-27-autonomous-feature-v1
-state: in_progress
+state: final
 created_at: "2026-11-27T17:00:00Z"
-updated_at: "2026-11-27T17:00:00Z"
+updated_at: "2026-11-27T18:25:00Z"
 target_repository: ThorStarlord/ohmygame
-persistence: pending
+persistence: committed
 source_identity:
   start_ref: 6e47ed154965866bf8d9c4a9db48550bdcfa4e6b
-  end_ref: null
-  worktree_clean_at_end: false
+  end_ref: 4b9b86c5e6a7c219110e84de4a904be661d7086f
+  worktree_clean_at_end: true
 skill_identity:
   load_mode: harness_discovered
   sensemaking_source_ref: "clean a6291c2d4815dec585526e3f21f142375169b98c via pinned uv tool; installed copy 6321125E"
@@ -75,7 +75,7 @@ responsibilities:
     responsibility: "Exercise the encounter through actual engine execution"
     capability: "OhMyGame Web game_use and native probes"
     status: completed
-    reason: "Native probes, the revised full journey and the app-managed Web runs pass. The first Web run completed the command and captured the MARKED/gold auras; the second run interrupted the opening Command Roar with Shield Bash and captured the mint VULNERABLE bar. The first Shield Bash attempt failed; the second succeeded."
+    reason: "Native probes, the revised journey and the Web runs pass. The first Web run completed the command and marked the player; the second interrupted the opening roar with Shield Bash and captured the mint vulnerability. The first Shield Bash failed; the second succeeded."
     artifact_refs:
       - docs/pilots/2026-11-27-autonomous-feature-v1.md
     validation:
@@ -93,7 +93,7 @@ responsibilities:
     responsibility: "Obtain independent design, UX, engineering and Sensemaking review"
     capability: "independent subagents"
     status: completed
-    reason: "Four independent reviews returned: design revise, UX revise, engineering revise, Sensemaking accept-the-loop-with-limits. The candidate was revised (opening command default, ratio/fraction mark, visible Muster, cast ring/bar/notch, COMMAND BROKEN, 2s pause, dead-mark/muster/vulnerability fixes, focused tests)."
+    reason: "Four independent reviews: design revise, UX revise, engineering revise, Sensemaking accept-with-limits. Revisions: opening command default, ratio/fraction mark, visible Muster, cast ring/bar/notch, COMMAND BROKEN, 2 s pause, dead-mark/muster/vulnerability fixes, focused tests."
     artifact_refs:
       - docs/pilots/2026-11-27-autonomous-feature-v1.md
     validation:
@@ -104,11 +104,15 @@ responsibilities:
   - id: R-7
     responsibility: "Preserve the pilot, Episode 14 receipt, candidate and semantic knowledge"
     capability: "Git, pilot documentation and receipts"
-    status: in_progress
-    reason: "The pilot and receipts are drafted; the Atlas evidence commit, PR and the OhMyGame docs PR are pending."
+    status: completed
+    reason: "The pilot, receipts, assets and platform-gameUse claim are committed on docs/autonomous-feature-v1 at 4b9b86c5. The Atlas candidate is draft PR #94 at bac5f3b plus the review-revision docs. The docs PR merge is the remaining governance step."
     artifact_refs:
       - docs/pilots/2026-11-27-autonomous-feature-v1.md
-    validation: []
+      - .sensemaking/receipts/2026-11-27-autonomous-feature-v1.session.yaml
+      - .sensemaking/receipts/2026-11-27-autonomous-feature-v1.query.yaml
+    validation:
+      - command: "session and query receipt validators"
+        result: PASS
 findings:
   - id: F-1
     statement: "The official ohmygame/godot 1.0.3 plugin still has no native game session, gameUse hook or viewport capture; the app-managed Web game_use path and direct native probes remain the two evidence layers."
@@ -173,14 +177,14 @@ findings:
       - "restored ohmygame.json; preview ready; game_use loaded the title at 1280x720"
     disposition: resolved
   - id: F-10
-    statement: "The app-managed Web runs clicked Begin, cleared the approach/bridge/courtyard and reached the Elite Gate. The first run captured the completed command with the purple MARKED player and gold Reaver auras; its Shield Bash did not stop the command. The second run interrupted the opening Command Roar with Shield Bash and captured the mint VULNERABLE bar. The preview bridge logged connection failures; the game kept accepting input."
+    statement: "The app-managed Web runs reached the Elite Gate. The first completed the command and marked the player with gold Reaver auras; its Shield Bash failed. The second interrupted the opening roar with Shield Bash and captured the mint vulnerability. The bridge logged connection failures; input continued."
     epistemic_status: OBSERVED
     evidence_refs:
       - "app conversation 01a21ea3-d421-7419-af34-9cf180fbf778; web-command-roar.jpg, web-marked-complete.jpg, web-marked-pack.jpg, web-vulnerable.jpg"
       - "app agent messages: first-run completed mark, second-run successful Shield Bash at about 2.9 s"
     disposition: handed_off
   - id: F-11
-    statement: "The four independent reviews returned design revise, UX revise, engineering revise and Sensemaking accept-with-limits; the candidate was revised in response (opening command default, ratio/fraction mark, visible Muster, cast ring/bar/notch, COMMAND BROKEN, 2s pause, dead-mark/muster/vulnerability fixes, focused tests)."
+    statement: "Four independent reviews returned design revise, UX revise, engineering revise and Sensemaking accept-with-limits; the candidate was revised (opening command default, ratio/fraction mark, visible Muster, cast ring/bar/notch, COMMAND BROKEN, 2 s pause, focused tests)."
     epistemic_status: OBSERVED
     evidence_refs:
       - "docs/pilots/2026-11-27-autonomous-feature-v1.md"
@@ -200,7 +204,7 @@ findings:
       - ".sensemaking/receipts/2026-11-27-autonomous-feature-v1.query.yaml"
     disposition: handed_off
   - id: F-14
-    statement: "Remaining limits: no human/motion qualification; the bot's 4.65 s vs. the 3 s/1.5x reward; the Castellan transfer is structural and its Rupture is often skipped; the Endgame Interlocked Trial's additional-enemy mapping is metadata-only; the first Web Shield Bash failure has no ability-failure feedback; Biomancer/Commander and other Jobs were not separately played; the full verifier was not cleanly completed."
+    statement: "Remaining: no human/motion qualification; bot-speed 4.65 s vs. the 3 s/1.5x reward; the Castellan transfer and Rupture pacing; the endgame metadata-only; the first Web Shield Bash failure's ability-feedback gap; Job coverage; full verifier not cleanly completed."
     epistemic_status: OBSERVED
     evidence_refs:
       - "docs/pilots/2026-11-27-autonomous-feature-v1.md"
@@ -242,11 +246,11 @@ open_questions:
     blocking: false
     durable_ref: docs/pilots/2026-11-27-autonomous-feature-v1.md
 stop:
-  disposition: IN_PROGRESS
-  reason: "The four reviews are reconciled and the candidate is revised; the Atlas PR #94 and the OhMyGame pilot/receipts/pack are being finalized."
+  disposition: GOAL_SATISFIED
+  reason: "The Atlas candidate is revised and reviewable; the Web run covers both outcomes; the four reviews are reconciled; the pilot, receipts and platform claim are committed. Human/motion and boss-pacing work remain separate."
 next:
   warranted_responsibility: "Merge the qualified OhMyGame pilot/receipts/pack, retain Atlas PR #94 as a draft, and hand the human/motion, boss-pacing and ability-feedback questions to the next responsibility."
   blocked_on: []
 claim_ceiling: "Atlas candidate is revised and engine-verified, with app-managed Web evidence for both the completed command and the player interrupt. It is not human-qualified or merge-ready; no OhMyGame product code changed."
 action_authorized_by_receipt: false
-immutable: false
+immutable: true
