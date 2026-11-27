@@ -5,7 +5,7 @@
 
 **OhMyGame:** `ThorStarlord/ohmygame`, start `ca190e7cdf64df35f5a74fae453fbaaa883dc92d`, end `8ca9492da357e9c54421becce5bf38e96a3b50f6`.
 **Game:** `ThorStarlord/Superhero-Netorare-Parody`, investigation baseline `a9a875e68cda9313b77ac60c065c535801495e73`; canonical `main` later advanced to `113e21ae25d83bb69f7c174c36df3b228c45f8ac` without touching the candidate files.
-**Game candidates:** #364 `experience/narrative-investigation-v2` at `2da66a1cf7ad2a0d615d746c61c2ec56bc32d33a`; #363 `fix/arc3-iris-expression-ids` at `23b7f084f903d377f2dbd7c4b0269dbf450d1cbf`; #355 remains the separate draft presentation candidate at `e84b6122e57c34b5f9f2d7b62010e26d0e6e459a`.
+**Game candidates:** #364 `experience/narrative-investigation-v2` at `270150dc2aaf33c69c974f09ca515eae89cea209`; #363 `fix/arc3-iris-expression-ids` at `23b7f084f903d377f2dbd7c4b0269dbf450d1cbf`; #355 remains the separate draft presentation candidate at `e84b6122e57c34b5f9f2d7b62010e26d0e6e459a`.
 
 ## Selected responsibility
 
@@ -23,6 +23,10 @@ Recovered commitments:
 - Selected judgment: repair the integrated assets and display tags rather than redesign the NVL layout or rewrite dialogue.
 
 Iris `arc3_iris_ch4` was the strongest alternative because it has an approved `quiet_vulnerability` expression at its emotional climax. It was not selected: the chapter has deeper manuscript, outfit-continuity, background and chronology concerns, and its canonical expression IDs did not even resolve at runtime. That missing declaration is a real, separate defect, preserved as PR #363 rather than folded into the ch10 candidate.
+
+### Repository governance
+
+The game repository's `AGENTS.md` currently places adult D1-D8 manuscript reconstruction ahead of native QA and presentation queues, and defers new native QA or Ren'Py adaptation unless a new owner request or stable narrative boundary warrants it. This mission is that explicit owner request. The ch10 and Iris candidates remain isolated drafts and do not displace the story-first priority.
 
 ## Entry and context
 
@@ -50,15 +54,15 @@ The first live ch10 session exposed two independent presentation failures:
 1. **Shared display tag.** `show sprite marcus m1` and `show sprite hw h1` both used the `sprite` tag, so the second replaced the first. The live agent saw only one card at a time. When Marcus spoke, HW was absent; when the state changed, the other card disappeared.
 2. **Inverted alpha.** The four 512x680 PNGs had opaque card backdrops and transparent character pixels. Faces, hair and torsos revealed the bridge behind them; the cards read as framed panels with hard black bands, not as people in the scene.
 
-The first QA capture also appeared to show only Marcus because it paused 1.0 s after starting; the scene's fade plus two dissolves needed longer. The visual assertion was corrected to wait 2.0 s, and later captures show both figures.
+A later QA capture at 1.0 s still appeared to show only Marcus; increasing the wait to 2.0 s produced both figures, consistent with the sequential fade and dissolve timing. The capture timing was corrected, not the scene.
 
-After the alpha inversion, a solid black strip remained below the busts (the baked bottom 80 px of the cards; 70 px on `hw_h2`). Thin pure-black vertical slivers also rose from the hair to the image top on three assets. Both were asset residue, not scene content.
+After the alpha inversion, a solid black strip remained below the busts (the baked bottom 80 px of the cards; 70 px on `hw_h2`). Thin pure-black vertical slivers also rose from the hair to the image top on three assets, and a later review found semi-transparent black residue still above the hair on all four. These were asset residue, not scene content.
 
 ## Opportunities considered
 
 1. **Add distinct tags only.** Fixes coexistence but leaves transparent faces and black card bars. Rejected as incomplete.
 2. **Regenerate the four state images.** The assets were already human-approved and had a documented production path. Rejected in favor of repair.
-3. **Alpha-only repair, distinct tags, and removal of the baked bands/slivers.** Selected. It preserves RGB, dimensions, character placement, narrative text and the existing composition contract.
+3. **Alpha-only repair, distinct tags, same-tag crossfades, and removal of the baked bands/residue.** Selected. It preserves RGB, dimensions, character placement, narrative text and the existing composition contract.
 4. **Redesign the NVL layout or move the whole confrontation to ADV.** The opening is NVL by design; the argument turns already use ADV and read. A global layout change would exceed the scene and needs stronger evidence. Deferred.
 5. **Rewrite dialogue or manuscript.** Out of scope; the scene's text and character commitments are preserved.
 6. **Add generic state injection to reach the chapter.** Rejected. An optional engine label is the smaller, truthful capability.
@@ -67,38 +71,42 @@ After the alpha inversion, a solid black strip remained below the busts (the bak
 
 In `game/scripts/arc3/ch10.rpy`:
 
-- `show sprite marcus m1 as marcus`, `show sprite hw h1 as hw`, and the matching hides/state changes. The two characters now have independent tags.
+- `show sprite marcus m1 as marcus`, `show sprite hw h1 as hw`, and the matching state changes. The two characters now have independent tags.
+- The M2/H2 changes replace the same tag with `with dissolve` instead of hiding first, so the old state does not disappear for a frame before the new one fades in.
 
 In the four `game/images/sprites/part1_position165/*.png` assets:
 
 - `ALPHA_INVERSION_ONLY`: `255 - alpha`, RGB and dimensions unchanged;
 - `LETTERBOX_ALPHA_CLEAR`: cleared only the opaque black bottom band rows;
-- `TOP_SLIVER_ALPHA_CLEAR`: cleared only connected pure-black sliver pixels above the hair.
+- `TOP_SLIVER_ALPHA_CLEAR`: cleared only connected pure-black sliver pixels above the hair;
+- `TOP_RESIDUE_ALPHA_CLEAR`: cleared only rows wholly above the first non-black hair pixels, removing the remaining semi-transparent black residue.
 
 The repair chain and before/after hashes are recorded in `state/expression_production/position165/`:
 
 - `state_asset_alpha_repair_v1.json`
 - `state_asset_letterbox_repair_v1.json`
 - `state_asset_top_sliver_repair_v1.json`
+- `state_asset_top_residue_repair_v1.json`
 
 Final asset hashes:
 
 | State | SHA-256 |
 |---|---|
-| Marcus M1 | `E672140F4D8AD1C75B050B058E07C4B3FD00BD8BB9AACE7FDCA799D50665DB2F` |
-| Marcus M2 | `9F7E137BED5DE5B19C25790E1104794EBA4278F2B75612E3741AE97A2379715E` |
-| HW H1 | `00BF4E5EF76C2DC07D84C976C018CFE933DC59E676D9D880013D763A0421B850` |
-| HW H2 | `09A06D3ACE16FD8729F43C44D902E8A3E610FFA9D400BAE3207DFE1F09179E7D` |
+| Marcus M1 | `980278763D4A63550FCC191A39FFCCCD33B69D6E206BF2E3AE5213375628BB9D` |
+| Marcus M2 | `2C24EBDE2D2829881F1F57C0F6E4620CFA2897F128B8B887371E9488D8F0EE87` |
+| HW H1 | `8D2CBD3217F2ED313A2EF265CD4BD90A1C1E08351AA03FA56E8DFEA8E6B945CF` |
+| HW H2 | `ACB73F317FFC8E056F15B70683FAF84780CE751C1C9D2D035512759FB8B170FF` |
 
 `trackers/TRUE_MC_POSITION_165_PRESENTATION_CONTRACT.md` records the repairs and final hashes.
 
-`game/tests/arc3_ch10_presentation_test.rpy` is a retained engine-native scenario. It waits for the full entrance, asserts both tags, and captures the opening, Marcus M2, and HW H2 at their argument turns. It creates no canonical baselines.
+`game/tests/arc3_ch10_presentation_test.rpy` is a retained engine-native scenario. It waits for the full entrance, asserts both tags and the exact state attributes, and captures the opening, the bright M1/H1 pair, Marcus M2, and HW H2 at their argument turns. It creates no canonical baselines.
 
 ## After observations
 
-The final scenario run `296fde11-1ee2-40db-82cc-25c9b4ec465b` passed with three checkpoints:
+The final scenario run `893313f6-f225-42d3-ab0e-2bdd5a1188c0` passed with four checkpoints and 12 assertions:
 
-- `arc3-ch10/01-opening-both` - both figures visible, intact faces, no black strip or sliver;
+- `arc3-ch10/01-opening-both` - both figures present under the NVL plate, no black strip or top residue; this particular capture does not show the first line because of test timing, while the live session did;
+- `arc3-ch10/01b-bright-m1h1` - the bright M1/H1 pair in ADV, both faces readable;
 - `arc3-ch10/02-marcus-m2` - Marcus M2 while HW H1 remains;
 - `arc3-ch10/03-hw-h2` - HW H2 while Marcus M2 remains.
 
@@ -106,21 +114,27 @@ The live agent's after-repair report: "Both Marcus and HW are visible and legibl
 
 ### Technical
 
-- The QA scenario passed all three checkpoints and its assertions.
-- The four assets resolve at 512x680 with transparent surroundings; the display tags no longer replace each other.
+- The QA scenario passed all four checkpoints and 12 assertions, including the exact `marcus/m1`, `hw/h1`, `marcus/m2` and `hw/h2` attributes.
+- The four assets resolve at 512x680 with transparent surroundings; the display tags no longer replace each other, and the state swaps crossfade instead of hiding first.
 - No story text, route logic, save data or branching changed.
-- The candidate was authored on game `main` `a9a875e68`; later canonical `main` `113e21ae2` changes editorial manuscripts and status docs, not the candidate's touched files. The draft PR is mergeable.
+- The candidate was authored on game `main` `a9a875e68`; later canonical `main` `113e21ae2` changes editorial manuscripts and status docs, not the candidate's touched files. The draft PR is mergeable at `270150dc`.
 
 ### Perceptual
 
-- The opening now shows Marcus left and HW right on the maintenance span.
-- The M2/H2 frames show both figures with readable eyes and faces; the bridge is no longer visible through them.
-- The black strip and top slivers are gone.
-- The full-screen NVL plate still dims the opening figures heavily. The argument turns are in ADV, where the bottom dialogue panel covers Marcus's mouth/chin and the lower torsos but leaves the faces readable. The opening's dimness remains a real atmospheric limit, not something this candidate claims to solve.
+- The bright M1/H1 capture shows Marcus left and HW right on the maintenance span with readable eyes and faces.
+- The M2/H2 frames keep both figures on stage; the bridge is no longer visible through their faces, and the black strip and top residue are gone.
+- The full-screen NVL plate still leaves the opening figures close to silhouettes. The argument turns are in ADV, where the dialogue panel covers Marcus's mouth/chin and the lower torsos but leaves the faces readable. The opening's dimness remains a real atmospheric limit.
+- The busts are still hard card cutouts: the bottom cut and the left/right asset edges clip the torsos and shoulders, and the semi-transparent panel only partly hides the bottom boundary.
 
 ### Creative
 
-The repair makes the contract's two simultaneous facts visible and lets the state changes land as argument turns rather than card swaps. It does not establish that a player will feel the intended wound, jurisdiction or self-audit; that needs human reception. The dialogue, character commitments and bridge setting are preserved. The NVL dimness may still weaken the opening's emotional legibility.
+The repair makes the contract's two simultaneous facts present and lets the state changes land as argument turns rather than card swaps. It does not establish that a player will feel the intended wound, jurisdiction or self-audit; that needs human reception. The dialogue, character commitments and bridge setting are preserved. M1 does not visibly carry the manuscript's torn cape or face dust, and H2 reads more stern/defensive than self-auditing.
+
+### Independent review
+
+A separate senior reviewer checked the contract, hashes, RGB/alpha arithmetic, tag usage, captures, wardrobe and cut edges. Verdict: **accept with a named limitation** - the repair is a real, proportionate fix for a previously unusable scene, but it is not presentation-complete.
+
+The reviewer's strongest additional finding was a **wardrobe discontinuity**: H1 has a crossbody strap, a SENTINEL chest patch and a low ID badge; H2 has none of those and a different badge/pouch. At the H2 turn in bright ADV this reads as a continuity error and distracts from the self-audit beat. The approved assets would need art revision; this candidate does not alter them. The reviewer also confirmed the NVL near-silhouette opening, the hard cutout edges, and the subtle H2 read. No human visual or player pass was performed.
 
 ## Consequential OhMyGame limitation and repair
 
@@ -164,17 +178,20 @@ The OhMyGame repository has no numbered episode ledger. This record uses **Episo
 
 **Which consequential decisions it influenced.** The prior record informed the decision to investigate a real chapter through live state-dependent play rather than build more infrastructure, to implement the smallest targeted-entry capability instead of state injection, to distinguish direct entry from normal progression, and to keep the ch10, Iris and #355 candidates separate. It also supported the decision not to redesign the NVL layout without stronger evidence.
 
-**What new knowledge was preserved.** The ch10 failure modes (shared tag, inverted alpha, baked letterbox and top slivers), the repair procedure and hashes, the targeted-entry contract and its refusal path, and the Atlas Midgard recommendation below.
+**What new knowledge was preserved.** The ch10 failure modes (shared tag, inverted alpha, baked letterbox, top slivers and semi-transparent residue), the repair procedure and final hashes, the same-tag crossfade and exact-attribute QA, the targeted-entry contract and its refusal path, and the Atlas Midgard recommendation below.
 
-**Where Sensemaking was insufficient.** Retrieval was manual. The receipt format is typed but the episode series is not represented in the repository. No automatic continuity or comparative cognitive improvement was demonstrated. The local Sensemaking checkout is `9ae5338b9f5be80cec3af02b7fed30965b7a7503`, behind `origin/main` by 349 commits and carrying unrelated local modifications; the exact loaded revision is not established beyond the harness copy. These remain Sensemaking-process opportunities, not changes made here.
+**Where Sensemaking was insufficient.** Retrieval was manual. The receipt format is typed but the episode series is not represented in the repository. The current validator reports both earlier OhMyGame receipts as invalid against the evolved schema (missing IDs, enums and typed fields); they remain immutable historical records, so continuity is manual rather than machine-readable. The new Episode 12 receipt validates. No automatic continuity or comparative cognitive improvement was demonstrated. The local Sensemaking checkout is `9ae5338b9f5be80cec3af02b7fed30965b7a7503`, behind `origin/main` by 349 commits and carrying unrelated local modifications; the exact loaded revision is not established beyond the harness copy. These remain Sensemaking-process opportunities, not changes made here.
 
 **What ordinary engineering and creative reasoning accomplished independently.** The visual diagnosis, the decision that alpha inversion was the correct repair, the narrative candidate comparison, the product implementation, and the judgment that the NVL dimness should be reported rather than redesigned were ordinary development reasoning, checked against engine-rendered evidence.
 
 ## Remaining limitations
 
-- The game candidates are draft PRs; nothing was merged into the game's canonical `main`. #355 remains a separate draft.
-- No human player, artistic approval or player-value measurement. The evaluation is the agent's evidence-grounded interpretation.
-- The opening NVL plate still dims the figures; the ADV panel covers Marcus's mouth/chin and the lower torsos. Motion, transition timing and audio were not evaluated.
+- The game candidates are draft PRs; nothing was merged into the game's canonical `main`. #355 remains a separate draft. The candidate is not presentation-complete.
+- No human player, artistic approval or player-value measurement. The evaluation is the agent's and independent reviewer's evidence-grounded interpretation.
+- The opening NVL plate leaves both figures close to silhouettes; the ADV panel covers Marcus's mouth/chin and the lower torsos. Motion, transition timing and audio were not evaluated.
+- H1 -> H2 is a wardrobe change, not only an expression change; the approved assets would need art revision. The H2 expression is subtler and reads more stern/defensive than self-auditing.
+- The busts remain hard card cutouts: the bottom cut and the left/right asset edges clip the torsos and shoulders, and the semi-transparent panel only partly hides the bottom boundary.
+- The first NVL line can overlap the location label depending on the existing inset latch timing; the global UI was not changed.
 - Direct entry omits ch9 setup, route music and the normal call stack. It is not equivalent to player progression.
 - The game `main` advanced after the investigation; the candidate was not rebased, though the later changes do not overlap its files.
 - OhMyGame has no remote CI on this fork; the focused checks, host build and live app execution are the local evidence. The full suite was not rerun.
@@ -186,12 +203,13 @@ The OhMyGame repository has no numbered episode ledger. This record uses **Episo
 Root: `H:\GithubRepositories\pilot-data\evidence\experience-v2\`
 
 - `ch10-live/` - before-repair live captures and the first ch10 session.
-- `ch10-final3/` - final engine-rendered checkpoints.
+- `ch10-final5/` - final engine-rendered checkpoints, including the bright M1/H1 pair.
+- `ch10-final3/` - earlier checkpoints before the top-residue and crossfade refinements.
 - `qa/` and `iris-fix/` - Iris expression captures before and after the declaration fix.
 - `app-conversations/` - saved ch4, ch10 and packaged-0.3.1 conversation JSON.
 - `final/` - earlier Iris scene captures.
 
-Key runs: ch10 QA `296fde11-1ee2-40db-82cc-25c9b4ec465b`; Iris QA `e9f10308-a758-413d-9181-90933a0360eb`.
+Key runs: ch10 QA `893313f6-f225-42d3-ab0e-2bdd5a1188c0` (4 checkpoints, 12 assertions); Iris QA `e9f10308-a758-413d-9181-90933a0360eb`.
 
 ## Next warranted responsibility
 
