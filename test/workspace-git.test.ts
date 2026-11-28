@@ -18,6 +18,7 @@ import { createApp } from "../src/daemon/app.js";
 import {
   listWorkspaceGitChanges,
   readWorkspaceGitFile,
+  readWorkspaceGitIdentity,
 } from "../src/daemon/workspace-git.js";
 import type { ProjectState } from "../src/shared/contracts.js";
 
@@ -77,6 +78,23 @@ describe("read-only workspace Git changes", () => {
     expect(await listWorkspaceGitChanges(workspace)).toEqual({
       available: false,
       changes: [],
+    });
+  });
+
+  it("reports the workspace revision and whether it differs, without reading a full diff", async () => {
+    await write("game.ts", "game\n");
+    expect(await readWorkspaceGitIdentity(workspace)).toBeUndefined();
+    await git("init", "-q");
+    await commit();
+    const head = (await git("rev-parse", "HEAD")).stdout.trim();
+    expect(await readWorkspaceGitIdentity(workspace)).toEqual({
+      head,
+      dirty: false,
+    });
+    await write("game.ts", "changed\n");
+    expect(await readWorkspaceGitIdentity(workspace)).toEqual({
+      head,
+      dirty: true,
     });
   });
 

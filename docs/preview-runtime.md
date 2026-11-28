@@ -237,6 +237,16 @@ editor, cancels. The daemon validates and bounds the report and publishes
 `preview.picked`, and the chat adds it as a `preview-element` context chip. A
 game drawn into one canvas only offers the `<canvas>` element.
 
+## Source identity
+
+When a preview starts, the daemon records the workspace Git HEAD as
+`preview.sourceRevision` and whether tracked or untracked files differed from
+it as `preview.sourceDirty`. Both are absent for a non-Git workspace or before
+the start. They describe the source the build started from, not the bytes that
+were served; a build that copies or transforms sources still needs its own
+artifact identity for full provenance. `engine_observations` reports the same
+fields.
+
 ## Native plugin preview
 
 A plugin project type with `preview: "native"`, such as
