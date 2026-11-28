@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "claims": [
+    {
+      "id": "observation:app-managed-cast-window-unreachable",
+      "kind": "observation",
+      "statement": "In the Episode 16 OhMyGame-managed Web session, the Castellan's 3.8-second first Rupture was not reliably captured: the Web game load varied from about 5 to 30 seconds, fixed waits missed the cast, and the scenario exposed no ready event or paused opening.",
+      "authority_kind": "document",
+      "authority_ref": "docs/pilots/2026-11-28-autonomous-gameplay-investigation-v1.md",
+      "evidence_refs": [
+        "file:docs/pilots/2026-11-28-autonomous-gameplay-investigation-v1.md"
+      ],
+      "epistemic_status": "observed",
+      "attributes": {
+        "scope": "One app-managed Godot Web investigation of the Atlas Castellan opening in Episode 16.",
+        "original_outcome": "The managed loop reached the scenario, but the first 1.8-second cast and its 4-second interrupt were not captured.",
+        "revisit_when": "When a ready signal, held opening or paused cast makes the first decision observable through the managed runtime.",
+        "claim_ceiling": "One project, one session and one timing window; the load-time range is observed, not a general Web-load benchmark."
+      }
+    },
+    {
+      "id": "observation:temporal-hold-enabled-cast-investigation",
+      "kind": "observation",
+      "statement": "In Episode 17, a project-owned ready hold, a pause at the first Rupture and F10 reset made the real Castellan cast observable and repeatable through OhMyGame's managed Web runtime; A interrupted from the held cast for the real 4-second window, B accepted the Rupture and earned the 2-second outside-cast recovery, and C reached the later cast with the 60% cover notch, which completed without companion cover.",
+      "authority_kind": "document",
+      "authority_ref": "docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md",
+      "evidence_refs": [
+        "file:docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md"
+      ],
+      "epistemic_status": "observed",
+      "attributes": {
+        "scope": "One app-managed Web encounter, three controlled investigations and two source revisions.",
+        "original_outcome": "The first cast interrupt, accepted-cast recovery and later-cast cover notch became observable; the later 2-second cancel did not resolve.",
+        "revisit_when": "When a natural-speed or human run measures answerability, readability or cover under the unheld window.",
+        "claim_ceiling": "A/B used a6ddcb8 and C used dd91a5c; both sourceDirty=false. A and B held the cast; C used a support party. No human qualification or natural-route evidence."
+      }
+    },
+    {
+      "id": "lesson:investigation-needs-temporal-opportunity",
+      "kind": "lesson",
+      "statement": "An interaction that resolves faster than the investigator's end-to-end observe-reason-act cycle, including build, load, capture and tool latency, cannot be reliably investigated from an uncontrolled real-time run; the development environment needs an explicit, reversible temporal control that reaches and holds the interaction without changing its rules. Where the hold is placed determines what it preserves: a hold before the action can preserve execution timing while extending decision time; a hold during the action preserves neither. The controlled observation establishes the interaction's presentation, rules and consequences, not natural-speed answerability, readability, player experience or natural-route frequency.",
+      "authority_kind": "document",
+      "authority_ref": "docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md",
+      "evidence_refs": [
+        "file:docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md",
+        "file:docs/pilots/2026-11-28-autonomous-gameplay-investigation-v1.md"
+      ],
+      "epistemic_status": "declared",
+      "attributes": {
+        "scope": "Development-environment design for investigating transient, time-bounded gameplay interactions, especially agent-driven or tool-mediated playtesting of combat, narrative or UI states that resolve faster than the investigator can observe and act.",
+        "conditions": [
+          "The question depends on observing a transient rendered state or its resolution, not only an event log or deterministic contract.",
+          "The investigator's cycle exceeds the interaction window, or the window's timing is otherwise uncontrollable.",
+          "A development-only control can hold the state without changing the interaction's rules, cooldowns, damage, AI or companion behavior; the held state is reachable on the natural route, and entry into the hold is verified against an unheld run.",
+          "The control is selectable, so the same scenario can produce held and unheld observations; the control, its placement and the build identity are recorded.",
+          "A readiness signal or deterministic entry point replaces fixed waits.",
+          "The control does not reveal hidden state the player could not see, when the question is about player-readable information."
+        ],
+        "counterevidence": "A mechanical-contract question is adequately answered by telemetry or a deterministic probe; a hold adds fidelity cost without benefit. When the interaction's meaning is its time pressure (parry, multiplayer, horror), a hold removes the phenomenon and can show the rule but not the experience. A technically unfaithful hold (network, timers, animation, party pressure) can create a state the game cannot produce. When the natural route already reaches the interaction reliably, the hold may be unnecessary and may introduce lab artifacts. An intentionally rare interaction is not a defect; a controlled scenario is the right tool, not a design change.",
+        "revisit_when": "A human or natural-speed run measures readability or answerability under the real window; the harness supports deterministic replay or event-level inspection without pausing; or a held and an unheld investigation of the same interaction disagree.",
+        "claim_ceiling": "One encounter, one engine and three controlled investigations (A/B/C); no human play; A/B and C used different source revisions and parties; the hold's effect on readability and feasibility was not measured; the later 60% cover was observed but did not resolve."
+      }
+    }
+  ],
+  "relations": [
+    {
+      "id": "rel:temporal-opportunity-learned-from-cast-window",
+      "subject": "lesson:investigation-needs-temporal-opportunity",
+      "predicate": "learned_from",
+      "object": "observation:app-managed-cast-window-unreachable",
+      "evidence_refs": [
+        "file:docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md"
+      ]
+    },
+    {
+      "id": "rel:temporal-opportunity-contrasts-player-opportunity",
+      "subject": "lesson:investigation-needs-temporal-opportunity",
+      "predicate": "references",
+      "object": "lesson:defining-mechanic-needs-opportunity",
+      "evidence_refs": [
+        "file:docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md"
+      ],
+      "attributes": {
+        "conceptual_relation": "contrastsWith"
+      }
+    },
+    {
+      "id": "rel:temporal-opportunity-references-tests",
+      "subject": "lesson:investigation-needs-temporal-opportunity",
+      "predicate": "references",
+      "object": "lesson:tests-do-not-establish-experiential-fulfillment",
+      "evidence_refs": [
+        "file:docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md"
+      ],
+      "attributes": {
+        "conceptual_relation": "buildsOn"
+      }
+    }
+  ]
+}
