@@ -366,6 +366,21 @@ describe("game use tool", () => {
     expect(target?.url?.endsWith("#scenario=castellan")).toBe(true);
   });
 
+  it("asks the desktop app to show the playtest window when open asks for it", async () => {
+    const driver = new FakeDriver(WEB_GAME_USE_CAPABILITIES);
+    const tool = createGameUseTool(driver, async () => ({
+      runtime: "web",
+      url: "http://127.0.0.1:43210/index.html",
+    }));
+
+    await tool.execute("open-visible", {
+      operation: "open",
+      visible: true,
+    }, undefined, undefined, {} as never);
+
+    expect(driver.requests[0]).toMatchObject({ operation: "open", visible: true });
+  });
+
   it("does not apply web preview paths to non-web targets", async () => {
     const driver = new FakeDriver({
       ...WEB_GAME_USE_CAPABILITIES,

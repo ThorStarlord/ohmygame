@@ -427,7 +427,11 @@ tool `game_use`. This is an OhMyGame core capability rather than a Plugin:
    coordinates, and returned to the model as JPEG image content. Every later
    request resends them, so they stay small.
 
-The tool supports `open`, `inspect`, `act`, `capture`, and `close`. Runtime
+The tool supports `open`, `inspect`, `act`, `capture`, and `close`. `open`
+accepts `visible: true` to show the playtest window for real-time
+investigation; a hidden Chromium window can heavily throttle animation even
+with background throttling off. The Preview toolbar's watch mode does the same
+for sessions that are already open. Runtime
 adapters receive a typed open target; the Web adapter uses a Preview URL while
 other adapters can use their project or process identity. Actions
 cover semantic or coordinate clicks, text input, instant or held key presses,
