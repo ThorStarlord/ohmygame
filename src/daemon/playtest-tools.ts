@@ -105,30 +105,32 @@ const fullParameters = Type.Object({
   players: Type.Optional(Type.Array(Type.Object({ sessionId: Type.String(), actions: Type.Array(actionSchema) }))),
   samples: Type.Optional(Type.Array(Type.Integer())),
   frame: Type.Optional(Type.Integer()),
+  visible: Type.Optional(Type.Boolean()),
 });
 type GameUseToolInput = typeof fullParameters;
 
-const parameters = gameUseParameters(webActionSchema, WEB_OPERATIONS, { path: true });
+const parameters = gameUseParameters(webActionSchema, WEB_OPERATIONS, { path: true, visible: true });
 
 /**
  * The Playable Nodes player's bridge only resets, so its agent is not offered
  * setSeed or step; a web game may implement all of them.
  */
-const resetOnlyParameters = gameUseParameters(Type.Union([...inputActions, resetBridgeAction]), WEB_OPERATIONS, { path: true });
+const resetOnlyParameters = gameUseParameters(Type.Union([...inputActions, resetBridgeAction]), WEB_OPERATIONS, { path: true, visible: true });
 
 
 /** What an outside agent's catalog lists: every operation any runtime has, checked again when called. */
-const catalogParameters = gameUseParameters(webActionSchema, GAME_USE_OPERATIONS, { path: true, frame: MAX_CAPTURE_FRAME });
+const catalogParameters = gameUseParameters(webActionSchema, GAME_USE_OPERATIONS, { path: true, frame: MAX_CAPTURE_FRAME, visible: true });
 
 function gameUseParameters(
   action: TSchema,
   operations: readonly GameUseOperation[],
-  { path, frame, start }: { path?: boolean; frame?: number; start?: boolean } = {},
+  { path, frame, start, visible }: { path?: boolean; frame?: number; start?: boolean; visible?: boolean } = {},
 ): GameUseToolInput {
   return Type.Object({
     operation: Type.Union(operations.map((operation) => Type.Literal(operation))),
     ...(path ? { path: Type.Optional(Type.String({ maxLength: 1_000, description: "Path, query, or hash within a web game target; used only by open" })) } : {}),
     viewport: Type.Optional(viewportSchema),
+    ...(visible ? { visible: Type.Optional(Type.Boolean({ description: "Show the playtest window; used only by open. A hidden window can be throttled, so use this when real-time observation matters." })) } : {}),
     ...(start ? { start: Type.Optional(Type.String({ minLength: 1, maxLength: 200, description: "An engine label to start at instead of the game's normal opening; used only by open. The label must be meaningful without unstated player state." })) } : {}),
     sessionId: Type.Optional(Type.String({ minLength: 1, maxLength: 100, description: "Session returned by open; required for every operation but open and actTogether" })),
     ...(operations.includes("act") ? { actions: Type.Optional(Type.Array(action, { minItems: 1, maxItems: 20, description: "Actions to run; required for act" })) } : {}),
@@ -209,6 +211,7 @@ export function createGameUseTool(
           "Use game_use for game runtime or visual verification; a successful build alone is not a playtest",
           "Batch adjacent input and wait steps into one act call; open and act already return fresh state, so inspect only when a separate refresh is needed",
           "For a multiplayer game, open one session per player: each is a separate browser and so a separate guest. Use actTogether to give several players input at the same time, such as moving toward each other, and samples to compare every player's game state while they move; act moves one player while the others wait",
+          "Set visible: true on open when the game must run at real time for an investigation; a hidden playtest window can be heavily throttled",
           "Capture screenshots for Canvas or WebGL verification and close playtest sessions when finished",
           "Record video only when the person asks for a clip or a video of the game: recordStart, then act, then recordStop. A recording lasts at most 60 seconds, goes to the Library, and is not something you can watch, so use screenshots for your own verification",
         ],
@@ -229,6 +232,7 @@ export function createGameUseTool(
           throw new Error(`Game target runtime ${target.runtime} does not match adapter runtime ${driver.capabilities.runtime}`);
         }
         if (input.start !== undefined && !start) throw new Error("This project's game runtime does not support a start label");
+        if (input.visible !== undefined && driver.capabilities.runtime !== "web") throw new Error("This project's game runtime does not support a visible playtest window");
         const resolvedTarget = input.path
           ? withOpenPath(target, input.path)
           : target;
@@ -238,6 +242,7 @@ export function createGameUseTool(
           // A plugin's game runs at its own size unless asked for another.
           ...(input.viewport ? { viewport: input.viewport } : plugin ? {} : { viewport: { width: 1280, height: 720 } }),
           ...(input.start ? { start: input.start } : {}),
+          ...(input.visible !== undefined ? { visible: input.visible } : {}),
         }, signal);
         if (result.operation !== "open") throw new Error("Unexpected game use response");
         return snapshotResult(result.snapshot);

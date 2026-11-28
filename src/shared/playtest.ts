@@ -238,7 +238,8 @@ export type PlaytestRequest =
    * `start` is an optional engine label for a plugin whose type declares it.
    * Left out, a plugin's runtime uses the game's own start and size.
    */
-  | { operation: "open"; target: GameUseOpenTarget; viewport?: PlaytestViewport; start?: string }
+  /** `visible` asks the desktop app to show the playtest window; a hidden window can be throttled. */
+  | { operation: "open"; target: GameUseOpenTarget; viewport?: PlaytestViewport; start?: string; visible?: boolean }
   | { operation: "inspect"; sessionId: string }
   | { operation: "act"; sessionId: string; actions: PlaytestAction[] }
   /** `samples` are milliseconds after the start, in increasing order. */

@@ -96,7 +96,13 @@ export class ElectronPlaytestDriver implements GameRuntimeAdapter {
   async request(request: PlaytestRequest, signal?: AbortSignal): Promise<PlaytestResult> {
     signal?.throwIfAborted();
     switch (request.operation) {
-      case "open": return { operation: "open", snapshot: await this.#open(request.target, request.viewport ?? { width: 1280, height: 720 }, signal) };
+      case "open": {
+        const snapshot = await this.#open(request.target, request.viewport ?? { width: 1280, height: 720 }, signal);
+        // A visible window keeps the game at full speed; hidden Chromium
+        // windows can throttle animation even with backgroundThrottling off.
+        if (request.visible) this.setVisible(true);
+        return { operation: "open", snapshot };
+      }
       case "inspect": return { operation: "inspect", snapshot: await this.#inspect(this.#activeSession(request.sessionId), signal) };
       case "act": return { operation: "act", snapshot: await this.#act(this.#activeSession(request.sessionId), request.actions, signal) };
       case "actTogether": return { operation: "actTogether", ...await this.#actTogether(request.players, request.samples ?? [], signal) };
