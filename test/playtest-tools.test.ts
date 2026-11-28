@@ -348,6 +348,24 @@ describe("game use tool", () => {
     expect(driver.requests).toHaveLength(0);
   });
 
+  it("keeps the playtest query when a web open path is a hash", async () => {
+    const driver = new FakeDriver(WEB_GAME_USE_CAPABILITIES);
+    const tool = createGameUseTool(driver, async () => ({
+      runtime: "web",
+      url: "http://127.0.0.1:43210/index.html?__ohmygame_view=playtest&__ohmygame_client=abc",
+    }));
+
+    await tool.execute("open-hash", {
+      operation: "open",
+      path: "#scenario=castellan",
+    }, undefined, undefined, {} as never);
+
+    const target = (driver.requests[0] as { target?: { url?: string } } | undefined)?.target;
+    expect(target?.url).toContain("__ohmygame_view=playtest");
+    expect(target?.url).toContain("__ohmygame_client=abc");
+    expect(target?.url?.endsWith("#scenario=castellan")).toBe(true);
+  });
+
   it("does not apply web preview paths to non-web targets", async () => {
     const driver = new FakeDriver({
       ...WEB_GAME_USE_CAPABILITIES,
