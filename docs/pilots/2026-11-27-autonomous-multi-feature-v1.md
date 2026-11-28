@@ -7,11 +7,11 @@ Not merged into Atlas `main`, not human-playtested. OhMyGame changes reviewed
 and merged into `dev` where stated.
 
 **OhMyGame:** `ThorStarlord/ohmygame`, `dev` at
-`cb23541756a83a89768d770b2e9464707b8c90bb` (after PR #25 and PR #26).
-**Atlas Midgard:** canonical `main`
+`6aaa03bead9b947ba35b421cabd46306109adb15` (after PR #25, #26 and this
+pilot's PR #27). **Atlas Midgard:** canonical `main`
 `5aab42d03b16cb8467822f195a45daedb33c42cc`; cast-visibility PR #93 at
 `2e8d6e8`; Chain Warden PR #94 at `6a150e4`; the Castellan candidate PR #95
-at `9e4e463`.
+at `4ffa931` (code `d7a6a06`).
 **Preserved:** Superhero-Netorare-Parody #355 `e84b6122`, #363 `23b7f084`,
 #364 `270150dc`; unchanged.
 
@@ -29,28 +29,31 @@ stress."
 The Warden is the command encounter. It opens with Command Roar, musters two
 Reavers in view, marks the lowest-health-ratio ally on completion, forces the
 pack onto the mark, rewards an interrupt with a 3 s / 1.5x window and a 2 s
-pause, and gives later commands a 60% companion cover. The full journey
-records the completed command, the mark, and two empowered Reavers.
+pause, and gives later commands a 60% companion cover. The final journey
+records the completed command and two empowered Reavers; the mark is verified
+by the focused real-scene test, not by that journey run.
 
 The Castellan is the application exam. It now opens with **Fracture Brand ->
-Heavy Line -> Rupture** (Rupture at about 3.0 s) instead of scheduling Rupture
+Heavy Line -> Rupture** (Rupture at about 3.8 s) instead of scheduling Rupture
 after the fast kill. The first Rupture is the player's: the companion cannot
 cover it, and Stability damage is locked during the cast so passive party
 pressure cannot cancel the exam. Later Ruptures show the Warden's 60% notch
 and allow the Stability answer. While Stability is intact and the boss is not
 vulnerable, health damage is multiplied by 0.2; the vulnerability windows are
-the damage phases. The player has three answers:
+the damage phases. The first Rupture is interrupt-or-accept; later Ruptures
+offer all three answers:
 
 | Answer | What it spends | Result |
 | --- | --- | --- |
 | Interrupt | Interrupt cooldown, position, range | `RUPTURE BROKEN`; 4.0 s / 1.5x; 2 s pause |
-| Break Stability during the cast | Party pressure and uptime | `STABILITY BROKEN`; cast cancelled; 2.0 s / 1.5x |
+| Break Stability on a later cast | Party pressure and uptime | `STABILITY BROKEN`; cast cancelled; 2.0 s / 1.5x |
 | Accept the Rupture | Position and recovery | 3 m area strike after 0.65 s; move out or Guard |
 
 A Castellan-only steel `STABILITY` bar makes the alternate visible. The
 interrupt resolves before Stability damage in the same hit, so a combined hit
-keeps the 4 s window. Fracture is the party-responsibility beat: the Acolyte
-cleanses it and the HUD says so. The player HUD also explains failed actions:
+keeps the 4 s window. Fracture is a companion support beat on the default
+route: the Acolyte cleanses it and the HUD says so; it is not a player decision
+there. The player HUD also explains failed actions:
 `out of range`, `not enough stamina/Guard`, `recharging`, `no target in
 reach`, `no cast to interrupt`, `nothing to cleanse`.
 
