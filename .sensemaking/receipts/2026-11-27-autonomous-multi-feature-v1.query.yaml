@@ -1,0 +1,276 @@
+artifact_id: semantic_query_receipt
+schema_version: 1
+session_ref: 2026-11-27-autonomous-multi-feature-v1
+state: final
+created_at: "2026-11-27T20:00:00Z"
+updated_at: "2026-11-27T22:30:00Z"
+target_repository: ThorStarlord/ohmygame
+modes: [RECALL]
+decision: "Evaluate whether the Warden's interrupt lesson transfers to the Castellan and choose the strongest next evaluation step."
+cli_identity:
+  sensemaking_source_ref: a6291c2d4815dec585526e3f21f142375169b98c
+  invocation_prefix: "uv tool run --from git+https://github.com/ThorStarlord/sensemaking-skills.git@a6291c2d4815dec585526e3f21f142375169b98c sensemaking-skills semantic"
+  version_output: "sensemaking-skills, version 1.0.0rc5.dev0"
+index:
+  indexed_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+  current_head: 27149afbe14774ec3fecd643e887320e8feacb39
+  worktree_clean: true
+  uncommitted_changes_not_indexed: false
+queries:
+  - id: QY-1
+    operation: orientation-summary
+    terms: []
+    subject: null
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 0
+      claim_ids: []
+      truncated: false
+      not_assessed_kinds: []
+    outcome: NOT_APPLICABLE
+    decision_relevant: false
+  - id: QY-2
+    operation: search
+    terms: ["game_use", "playtest IPC", "Web export"]
+    subject: null
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 3
+      claim_ids:
+        - "cap:godot-web-game-use"
+        - "lesson:godot-evidence-layers"
+        - "observation:ep14-evidence-layers-recorded-separately"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: true
+  - id: QY-3
+    operation: snapshot
+    terms: []
+    subject: null
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 0
+      claim_ids: []
+      truncated: false
+      not_assessed_kinds: []
+    outcome: NOT_APPLICABLE
+    decision_relevant: false
+  - id: QY-4
+    operation: search
+    terms: ["human", "readability", "playtest", "evidence", "test"]
+    subject: null
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 7
+      claim_ids:
+        - "lesson:godot-evidence-layers"
+        - "lesson:isolated-mechanic-correctness-is-not-feature-quality"
+        - "lesson:runtime-evidence-is-revision-bound"
+        - "lesson:separate-engine-findings-from-transferable-responsibility"
+        - "lesson:tests-do-not-establish-experiential-fulfillment"
+        - "observation:ep14-evidence-layers-recorded-separately"
+        - "observation:ep14-mark-succeeded-transfer-not"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: true
+  - id: QY-5
+    operation: explain
+    terms: []
+    subject: "lesson:tests-do-not-establish-experiential-fulfillment"
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 3
+      claim_ids:
+        - "lesson:tests-do-not-establish-experiential-fulfillment"
+        - "lesson:isolated-mechanic-correctness-is-not-feature-quality"
+        - "observation:ep14-mark-succeeded-transfer-not"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: true
+  - id: QY-6
+    operation: explain
+    terms: []
+    subject: "lesson:runtime-evidence-is-revision-bound"
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 3
+      claim_ids:
+        - "lesson:runtime-evidence-is-revision-bound"
+        - "observation:ep14-evidence-layers-recorded-separately"
+        - "observation:ep14-pre-revision-web-build"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: true
+  - id: QY-7
+    operation: explain
+    terms: []
+    subject: "lesson:isolated-mechanic-correctness-is-not-feature-quality"
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 3
+      claim_ids:
+        - "lesson:isolated-mechanic-correctness-is-not-feature-quality"
+        - "lesson:tests-do-not-establish-experiential-fulfillment"
+        - "observation:ep14-mark-succeeded-transfer-not"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: true
+  - id: QY-8
+    operation: search
+    terms: ["Castellan", "Warden", "transfer", "app-managed"]
+    subject: null
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 8
+      claim_ids:
+        - "observation:ep14-mark-succeeded-transfer-not"
+        - "observation:ep14-pre-revision-web-build"
+        - "lesson:separate-engine-findings-from-transferable-responsibility"
+        - "lesson:tests-do-not-establish-experiential-fulfillment"
+        - "observation:ep14-castellan-rupture-skipped"
+        - "observation:ep14-companion-covered-opening"
+        - "observation:ep14-evidence-layers-recorded-separately"
+        - "observation:ep14-unexplained-shield-bash"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: true
+  - id: QY-9
+    operation: term
+    terms: []
+    subject: "game_use"
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 0
+      claim_ids: []
+      truncated: false
+      not_assessed_kinds: []
+    outcome: NOT_ASSESSED
+    decision_relevant: false
+  - id: QY-10
+    operation: search
+    terms: ["Castellan", "Rupture", "guard", "interrupt"]
+    subject: null
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 2
+      claim_ids:
+        - "observation:ep14-castellan-rupture-skipped"
+        - "observation:ep14-companion-covered-opening"
+      truncated: false
+      not_assessed_kinds: ["implementation", "verification"]
+    outcome: PARTIAL
+    decision_relevant: true
+source_checks:
+  - claim_id: "lesson:runtime-evidence-is-revision-bound"
+    sources:
+      - "docs/pilots/2026-11-27-autonomous-feature-v1.md"
+    result: SUPPORTED
+  - claim_id: "lesson:feedback-separates-execution-from-consequence"
+    sources:
+      - "docs/pilots/2026-11-27-autonomous-feature-v1.md"
+    result: SUPPORTED
+  - claim_id: "lesson:assistance-preserves-the-decision"
+    sources:
+      - "docs/pilots/2026-11-27-autonomous-feature-v1.md"
+    result: SUPPORTED
+  - claim_id: "lesson:defining-mechanic-needs-opportunity"
+    sources:
+      - "docs/pilots/2026-11-27-autonomous-feature-v1.md"
+      - ".sensemaking/receipts/2026-11-27-autonomous-feature-v1.session.yaml"
+    result: SUPPORTED
+  - claim_id: "lesson:tests-do-not-establish-experiential-fulfillment"
+    sources:
+      - "docs/pilots/2026-11-27-autonomous-feature-v1.md"
+    result: SUPPORTED
+  - claim_id: "lesson:isolated-mechanic-correctness-is-not-feature-quality"
+    sources:
+      - "docs/pilots/2026-11-27-autonomous-feature-v1.md"
+    result: SUPPORTED
+  - claim_id: "lesson:separate-engine-findings-from-transferable-responsibility"
+    sources:
+      - "docs/pilots/2026-11-27-autonomous-feature-v1.md"
+      - "docs/pilots/2026-11-27-atlas-cross-engine-v3.md"
+    result: SUPPORTED
+misses:
+  - id: M-1
+    query_ref: QY-10
+    needed_for: "Atlas Castellan implementation, tests and this mission's design rationale"
+    kind: NOT_ASSESSED
+    resolved_by: "source inspection: Atlas PR #95 code, docs and telemetry"
+    follow_up: DEFERRED
+    proposal_ref: null
+  - id: M-2
+    query_ref: QY-9
+    needed_for: "Human readability, understanding and transfer evidence"
+    kind: NOT_ASSESSED
+    resolved_by: "not available; recorded as Q-1/Q-2 and the next responsibility"
+    follow_up: DEFERRED
+    proposal_ref: null
+  - id: M-3
+    query_ref: QY-10
+    needed_for: "Whether app-managed game_use was exercised in this mission"
+    kind: NOT_ASSESSED
+    resolved_by: "the desktop app/playtest IPC were not running; Chromium/CDP was used and labelled"
+    follow_up: DEFERRED
+    proposal_ref: null
+reconcile:
+  - claim_id: "lesson:runtime-evidence-is-revision-bound"
+    disposition: CONFIRM
+    applied: true
+    proposal_ref: .sensemaking/knowledge/development-methodology.json
+    proposal_check: SEMANTIC_KNOWLEDGE_PROPOSAL_VALID
+  - claim_id: "lesson:assistance-preserves-the-decision"
+    disposition: CONFIRM
+    applied: true
+    proposal_ref: .sensemaking/knowledge/development-methodology.json
+    proposal_check: SEMANTIC_KNOWLEDGE_PROPOSAL_VALID
+  - claim_id: "lesson:feedback-separates-execution-from-consequence"
+    disposition: CONFIRM
+    applied: true
+    proposal_ref: .sensemaking/knowledge/development-methodology.json
+    proposal_check: SEMANTIC_KNOWLEDGE_PROPOSAL_VALID
+  - claim_id: "lesson:defining-mechanic-needs-opportunity"
+    disposition: CONFIRM
+    applied: true
+    proposal_ref: .sensemaking/knowledge/development-methodology.json
+    proposal_check: SEMANTIC_KNOWLEDGE_PROPOSAL_VALID
+  - claim_id: "observation:ep14-castellan-rupture-skipped"
+    disposition: SUPERSEDE
+    applied: false
+    proposal_ref: .sensemaking/knowledge/development-methodology.json
+    proposal_check: NOT_RUN
+  - claim_id: "lesson:tests-do-not-establish-experiential-fulfillment"
+    disposition: CONFIRM
+    applied: true
+    proposal_ref: .sensemaking/knowledge/development-methodology.json
+    proposal_check: SEMANTIC_KNOWLEDGE_PROPOSAL_VALID
+persistence: committed
+action_authorized: false
+semantic_truth_established: false
+immutable: true
