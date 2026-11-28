@@ -1,0 +1,243 @@
+artifact_id: semantic_query_receipt
+schema_version: 1
+session_ref: 2026-11-28-autonomous-gameplay-investigation-v1
+state: final
+created_at: "2026-11-28T01:00:00Z"
+updated_at: "2026-11-28T02:30:00Z"
+target_repository: ThorStarlord/ohmygame
+modes: [RECALL]
+decision: "Choose the strongest bounded gameplay investigation for the Castellan guard economy and scenario entry."
+cli_identity:
+  sensemaking_source_ref: a6291c2d4815dec585526e3f21f142375169b98c
+  invocation_prefix: "uv tool run --from git+https://github.com/ThorStarlord/sensemaking-skills.git@a6291c2d4815dec585526e3f21f142375169b98c sensemaking-skills semantic"
+  version_output: "sensemaking-skills, version 1.0.0rc5.dev0"
+index:
+  indexed_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+  current_head: 27149afbe14774ec3fecd643e887320e8feacb39
+  worktree_clean: true
+  uncommitted_changes_not_indexed: false
+queries:
+  - id: QY-1
+    operation: search
+    terms: ["game_use", "playtest", "scenario"]
+    subject: null
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 3
+      claim_ids:
+        - "cap:godot-web-game-use"
+        - "lesson:godot-evidence-layers"
+        - "observation:ep14-evidence-layers-recorded-separately"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: true
+  - id: QY-2
+    operation: explain
+    terms: []
+    subject: "lesson:runtime-evidence-is-revision-bound"
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 3
+      claim_ids:
+        - "lesson:runtime-evidence-is-revision-bound"
+        - "observation:ep14-pre-revision-web-build"
+        - "observation:ep14-evidence-layers-recorded-separately"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: true
+  - id: QY-3
+    operation: search
+    terms: ["Castellan", "Warden", "transfer", "app-managed"]
+    subject: null
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 8
+      claim_ids:
+        - "observation:ep14-mark-succeeded-transfer-not"
+        - "observation:ep14-pre-revision-web-build"
+        - "lesson:separate-engine-findings-from-transferable-responsibility"
+        - "lesson:tests-do-not-establish-experiential-fulfillment"
+        - "observation:ep14-castellan-rupture-skipped"
+        - "observation:ep14-companion-covered-opening"
+        - "observation:ep14-evidence-layers-recorded-separately"
+        - "observation:ep14-unexplained-shield-bash"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: true
+  - id: QY-4
+    operation: explain
+    terms: []
+    subject: "lesson:defining-mechanic-needs-opportunity"
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 3
+      claim_ids:
+        - "lesson:defining-mechanic-needs-opportunity"
+        - "observation:ep14-castellan-rupture-skipped"
+        - "observation:ep14-mark-succeeded-transfer-not"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: true
+  - id: QY-5
+    operation: product-outline
+    terms: []
+    subject: null
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 0
+      claim_ids: []
+      truncated: false
+      not_assessed_kinds: ["goals", "opportunities"]
+    outcome: NOT_ASSESSED
+    decision_relevant: false
+  - id: QY-6
+    operation: explain
+    terms: []
+    subject: "lesson:assistance-preserves-the-decision"
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 2
+      claim_ids:
+        - "lesson:assistance-preserves-the-decision"
+        - "observation:ep14-companion-covered-opening"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: true
+  - id: QY-7
+    operation: explain
+    terms: []
+    subject: "lesson:feedback-separates-execution-from-consequence"
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 2
+      claim_ids:
+        - "lesson:feedback-separates-execution-from-consequence"
+        - "observation:ep14-unexplained-shield-bash"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: true
+  - id: QY-8
+    operation: search
+    terms: ["test", "probe", "controlled", "scenario"]
+    subject: null
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 4
+      claim_ids:
+        - "lesson:defining-mechanic-needs-opportunity"
+        - "lesson:tests-do-not-establish-experiential-fulfillment"
+        - "lesson:runtime-evidence-is-revision-bound"
+        - "observation:ep14-evidence-layers-recorded-separately"
+      truncated: false
+      not_assessed_kinds: []
+    outcome: HIT
+    decision_relevant: true
+  - id: QY-9
+    operation: term
+    terms: []
+    subject: "guard"
+    query_text: null
+    expect_kinds: []
+    target_ref: 27149afbe14774ec3fecd643e887320e8feacb39
+    result:
+      hit_count: 0
+      claim_ids: []
+      truncated: false
+      not_assessed_kinds: []
+    outcome: NOT_ASSESSED
+    decision_relevant: false
+source_checks:
+  - claim_id: "lesson:runtime-evidence-is-revision-bound"
+    sources:
+      - "docs/pilots/2026-11-27-autonomous-multi-feature-v1.md"
+    result: SUPPORTED
+  - claim_id: "lesson:defining-mechanic-needs-opportunity"
+    sources:
+      - "docs/pilots/2026-11-27-autonomous-multi-feature-v1.md"
+    result: SUPPORTED
+  - claim_id: "lesson:assistance-preserves-the-decision"
+    sources:
+      - "docs/pilots/2026-11-27-autonomous-multi-feature-v1.md"
+    result: SUPPORTED
+  - claim_id: "lesson:feedback-separates-execution-from-consequence"
+    sources:
+      - "docs/pilots/2026-11-27-autonomous-multi-feature-v1.md"
+    result: SUPPORTED
+  - claim_id: "lesson:tests-do-not-establish-experiential-fulfillment"
+    sources:
+      - "docs/pilots/2026-11-27-autonomous-multi-feature-v1.md"
+    result: SUPPORTED
+misses:
+  - id: M-1
+    query_ref: QY-5
+    needed_for: "Reviewed OhMyGame goals or opportunities for scenario-directed investigation"
+    kind: NOT_ASSESSED
+    resolved_by: "source inspection: OhMyGame runtime/preview/playtest code"
+    follow_up: DEFERRED
+    proposal_ref: null
+  - id: M-2
+    query_ref: QY-9
+    needed_for: "Reviewed Castellan guard-economy claims"
+    kind: NOT_ASSESSED
+    resolved_by: "Atlas probe and docs; the OhMyGame index has no Atlas combat content"
+    follow_up: DEFERRED
+    proposal_ref: null
+  - id: M-3
+    query_ref: QY-9
+    needed_for: "App-managed first-cast timing and human readability"
+    kind: NOT_ASSESSED
+    resolved_by: "not available; recorded as Q-1 and the next responsibility"
+    follow_up: DEFERRED
+    proposal_ref: null
+reconcile:
+  - claim_id: "lesson:runtime-evidence-is-revision-bound"
+    disposition: CONFIRM
+    applied: true
+    proposal_ref: .sensemaking/knowledge/development-methodology.json
+    proposal_check: SEMANTIC_KNOWLEDGE_PROPOSAL_VALID
+  - claim_id: "lesson:defining-mechanic-needs-opportunity"
+    disposition: CONFIRM
+    applied: true
+    proposal_ref: .sensemaking/knowledge/development-methodology.json
+    proposal_check: SEMANTIC_KNOWLEDGE_PROPOSAL_VALID
+  - claim_id: "lesson:assistance-preserves-the-decision"
+    disposition: CONFIRM
+    applied: true
+    proposal_ref: .sensemaking/knowledge/development-methodology.json
+    proposal_check: SEMANTIC_KNOWLEDGE_PROPOSAL_VALID
+  - claim_id: "lesson:feedback-separates-execution-from-consequence"
+    disposition: CONFIRM
+    applied: true
+    proposal_ref: .sensemaking/knowledge/development-methodology.json
+    proposal_check: SEMANTIC_KNOWLEDGE_PROPOSAL_VALID
+  - claim_id: "observation:ep14-castellan-rupture-skipped"
+    disposition: SUPERSEDE
+    applied: false
+    proposal_ref: .sensemaking/knowledge/development-methodology.json
+    proposal_check: NOT_RUN
+persistence: committed
+action_authorized: false
+semantic_truth_established: false
+immutable: true
