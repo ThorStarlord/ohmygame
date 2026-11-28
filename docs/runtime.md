@@ -488,7 +488,7 @@ is enabled, or when the project's plugin type brings a runtime of its own
 The shipped adapter is `web` for `web-game`, `interactive-story` (the story
 opens its own page through the preview; one made before web stories is
 refused until the Story editor upgrades it), and configured Web previews in `general` projects
-and uses Electron's bundled Chromium. Godot and Unity projects do not receive this tool yet. Their
+and uses Electron's bundled Chromium. A General project with its Web preview enabled receives this Web adapter even when the workspace is a Godot project; a Godot plugin type's `web-build` preview does not use it yet. Unity projects do not receive this tool yet. Their
 runtime bridges can come as [plugin game runtimes](#plugin-game-runtimes),
 for launch or attach, input, screenshots, state and shutdown. An editor MCP connection alone is not a runtime adapter and
 must not be presented as gameplay verification.
