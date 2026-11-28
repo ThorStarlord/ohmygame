@@ -9,7 +9,8 @@ human-qualified. OhMyGame changes merged into `dev`.
 `a0096d3bab8fc7d854b54449fd69511f3817de4b` (after PR #28, #29, #30 and #31).
 **Atlas Midgard:** canonical `main`
 `5aab42d03b16cb8467822f195a45daedb33c42cc`; PR #93 `2e8d6e8`; PR #94
-`6a150e4`; PR #95 `4ffa931`; PR #96 `ca8acf5` (control code `da217e8`).
+`6a150e4`; PR #95 `4ffa931`; PR #96 `505c8e7` (control code `da217e8`;
+guard-probe rerun `02de282`; review fixes `77fab7f`; docs `505c8e7`).
 **Preserved:** Superhero-Netorare-Parody #355 `e84b6122`, #363 `23b7f084`,
 #364 `270150dc`; unchanged.
 
@@ -109,13 +110,15 @@ Line); the interrupt was real input after the held observation.
 
 A fresh run under the same source/build held the same opening. The player
 resumed, stepped out of the strike, returned to melee and did not interrupt.
-The logs show `DEV_CAST_COMPLETED cast=RUPTURE index=1
-vulnerability=4.0`, then `DEV_STABILITY_BROKEN cast_active=false index=1` and
-`DEV_VULNERABILITY duration=2.0 remaining=2.0`. The boss survived the shorter
-window and restored Stability. A and B distinguish the player-owned 4-second
-interrupt from the 2-second accepted-and-broken recovery.
+The logs show `DEV_CAST_COMPLETED cast=RUPTURE index=1`, then
+`DEV_STABILITY_BROKEN cast_active=false index=1` and
+`DEV_VULNERABILITY duration=2.0 remaining=2.0`. The run's completion line
+printed the old fallback `vulnerability=4.0`; the actual recovery is the later
+2.0 `DEV_VULNERABILITY`. The boss survived the shorter window and restored
+Stability. A and B distinguish the player-owned 4-second interrupt from the
+2-second accepted-and-broken recovery.
 
-### C: later Rupture and 60% cover
+### C: later Rupture and 60% notch
 
 The default party killed the Castellan before its second Rupture. The Acolyte
 support party lost the player at about 9 seconds. The Vanguard + Eira support
@@ -133,7 +136,10 @@ pacing/party-pressure boundary, not evidence that the mechanic is absent.
 
 ## Guard and vulnerability economy
 
-The earlier high-DPS probe reported 0.20/0.35/0.50. A lower-DPS control
+The earlier high-DPS probe reported 0.20/0.35/0.50. The probe now starts with
+`pause=none`, commences explicitly and resets between runs; the rerun at
+`02de282` reproduced 0.20 at 5.78 s interrupt / 9.80 s outside break, 0.35 at
+5.50/9.00 s and 0.50 at 5.00/7.40 s. A lower-DPS control
 (`tests/castellan_guard_low_dps.gd`, attack once per second, no Shield Bash,
 party kept alive) now separates the guard from the race:
 
@@ -150,18 +156,26 @@ probe, not natural play.
 
 ## Godot plugin Web export diagnosis
 
-The plugin Web build's PCK contains a zero-byte `project.binary`; the consumer
-export contains the 20,321-byte `ECFG` binary. The plugin preset excludes
-`.ohmygame/*` while exporting into `.ohmygame/build/web/index.html`; Godot
-writes a temporary `project.binary` into that output folder, and the exclude
-filter removes it from the pack. A controlled export to the same output with
-`exclude_filter=""` contains a 20,269-byte `ECFG` `project.binary`; the narrow
-filter `.ohmygame/local/*, .ohmygame/settings.json, .ohmygame/.gitignore` does
-too. The repair candidate is
-`docs/implementation/godot-plugin-web-export-fix.patch`. It is not applied
-because the plugin is a preinstalled product package; the consumer static
-preview remains the supported development path until the plugin is repaired.
-No external publication was made.
+The plugin Web build's PCK contained a zero-byte `project.binary`; the
+consumer export contains the 20,321-byte `ECFG` binary. The initial filter
+hypothesis was **rejected** by independent reproduction. A minimal project and
+a fresh Atlas copy exported with the exact plugin preset (`exclude_filter=
+".ohmygame/*"`, output under `.ohmygame/build/web`) both produced valid
+`ECFG` binaries (313 and 20,269 bytes). Forcing the shared
+`tmpproject.binary` temp write to fail produced zero bytes with every filter
+and output location, while the exporter still exited 0.
+
+The demonstrated mechanism is a failed `ProjectSettings::save_custom`
+write/read that Godot packs as an empty entry; a leftover
+`tmpproject.binary8267349.tmp` is consistent with a Windows safe-save/rename
+problem, but the exact original trigger is unresolved. The filter is not
+causal. The evidence-grounded repair candidate is
+`docs/implementation/godot-plugin-web-export-repair.md`: isolate
+`TEMP`/`TMP` per export, validate the PCK `project.binary` after export, and
+fail or retry on a zero-byte/non-`ECFG` entry. It is not applied because the
+plugin is a preinstalled product package; the consumer static preview remains
+the supported development path until the plugin is repaired. No external
+publication was made.
 
 ## OhMyGame retained capability
 
@@ -229,10 +243,31 @@ fallback a tempo payoff; those are preserved as the next systemic direction,
 not rushed into this temporal-agency episode. The ×0.2 guard is retained; the
 critic would test ×0.35 at low DPS before changing it.
 
-Independent engineering and Godot-integration reviews were also commissioned.
-Their findings and the resulting revisions are recorded in the final episode
-reconciliation. No review grants authority to merge Atlas #93–#96 into
-canonical `main`.
+**Engineering critique (revise).** The review found and this episode fixed:
+ordinary-play F10 was not gated and could corrupt the scenario autoload; the
+support party left a freed Sigrid in `PartyController`; the high/low guard
+probes no longer matched the controlled lifecycle and the low probe failed on
+its second factor; the temporal image links were one directory short; the
+guard prose still said an outside break always opens 4 s; and
+`restore_live_profile` reported success after a failed reload. The fixes are
+at Atlas `77fab7f`: F10/no-request gating and validation, party-controller
+pruning and validity guards, `pause=none`/commence/reset probe reruns, image
+links, corrected 2 s first-cast recovery text, profile restore rollback and a
+failure-path restore, current-vulnerability telemetry, pause telemetry,
+cast-pause recheck and honest later-cast wording. The docs/evidence follow-up
+is `505c8e7`. The line-strike console
+error, Endgame Castellan runtime test, and post-interrupt Stability edge remain
+open and are documented. No review grants authority to merge Atlas #93–#96
+into canonical `main`.
+
+**Godot-integration critique (alternative).** The initial plugin diagnosis
+blamed the `.ohmygame/*` exclude filter. The independent reproduction rejected
+that: the exact preset produced valid `ECFG` binaries, and forcing the shared
+`tmpproject.binary` temp write to fail reproduced the zero-byte entry under
+every filter and output location. The repair candidate is now temp isolation
+plus post-export PCK validation, not a filter change. The pilot supersedes the
+initial F-8 filter claim; the immutable session receipt is left as a historical
+record and should be read with this correction.
 
 ## Limitations
 
@@ -243,6 +278,9 @@ canonical `main`.
   observed but did not resolve in the managed run.
 - Default-party pacing kills the Castellan before its second cast; the support
   party that reaches it is a controlled composition, not the default route.
+  The C run predates the `PartyController` prune fix; a freed Sigrid remained
+  in party commands even though the encounter reached the later cast. The fix
+  is tested at the current Atlas head; C's cast observation is unaffected.
 - The low-DPS guard probe keeps the party alive and attacks on a fixed cadence;
   it is a mechanical control, not natural play.
 - The hidden-window throttling is mitigated by `visible:true`; the app still
@@ -269,11 +307,12 @@ loop no longer needs a standalone qualification milestone.
 
 ## Artifacts and revisions
 
-- Atlas PR #96, `feat/dev-scenario-entry`, head `ca8acf5`; control code
-  `da217e8`; base PR #95 `4ffa931`; #94 `6a150e4`; #93 `2e8d6e8`.
+- Atlas PR #96, `feat/dev-scenario-entry`, head `505c8e7`; control code
+  `da217e8`; guard-probe rerun `02de282`; review fixes `77fab7f`; docs
+  `505c8e7`; base PR #95 `4ffa931`; #94 `6a150e4`; #93 `2e8d6e8`.
 - Atlas captures: `docs/assets/temporal-investigation/`.
 - Atlas plugin repair candidate:
-  `docs/implementation/godot-plugin-web-export-fix.patch`.
+  `docs/implementation/godot-plugin-web-export-repair.md`.
 - OhMyGame PR #31, `feat/game-use-visible`, merged into `dev`
   `a0096d3b`; `game_use open visible:true`, test and runtime docs.
 - Episode 17 session and query receipts under `.sensemaking/receipts/`.
