@@ -1,0 +1,242 @@
+artifact_id: sensemaking_session_receipt
+schema_version: 1
+session_ref: 2026-11-27-autonomous-multi-feature-v1
+state: final
+created_at: "2026-11-27T20:00:00Z"
+updated_at: "2026-11-27T22:30:00Z"
+target_repository: ThorStarlord/ohmygame
+persistence: committed
+source_identity:
+  start_ref: cea3572a270b6b8c9993b7ad9586910f631fe71b
+  end_ref: cb23541756a83a89768d770b2e9464707b8c90bb
+  worktree_clean_at_end: true
+skill_identity:
+  load_mode: harness_discovered
+  sensemaking_source_ref: "clean a6291c2d4815dec585526e3f21f142375169b98c via pinned uv tool; installed copy 6321125E"
+goal:
+  statement: "Develop the Ruined Causeway into a coherent Warden-to-Castellan tactical progression around player responsibility, companion assistance and recoverable counterplay, and advance OhMyGame's revision-bound gameplay evaluation and cumulative understanding."
+  source: owner_message
+  source_ref: null
+delegation:
+  granted: [read, local_write, run_local_commands, commit, push, open_pr, merge, knowledge_edit]
+  withheld: [release, deploy, external_publication]
+continuity:
+  resumes: 2026-11-27-autonomous-feature-v1
+  campaign_ref: null
+  resolves_questions:
+    - 2026-11-27-autonomous-feature-v1#Q-6
+    - 2026-11-27-autonomous-feature-v1#Q-7
+responsibilities:
+  - id: R-1
+    responsibility: "Verify repository state and recover the previous encounter evidence"
+    capability: "Git, PR inspection and the Episode 14 pilot/receipt"
+    status: completed
+    reason: "OhMyGame dev was cea3572a; Atlas main 5aab42d0; PR #93 2e8d6e8; PR #94 6a150e4; preserved game PRs unchanged."
+    artifact_refs:
+      - docs/pilots/2026-11-27-autonomous-multi-feature-v1.md
+    validation:
+      - command: "git/gh state inspection"
+        result: PASS
+  - id: R-2
+    responsibility: "Investigate the integrated Warden-Castellan progression"
+    capability: "independent gameplay-architecture investigation"
+    status: completed
+    reason: "Selected The Branded Opening; rejected HP/phase-gate, Stability-gated Rupture and two-simultaneous-responsibility designs."
+    artifact_refs:
+      - docs/pilots/2026-11-27-autonomous-multi-feature-v1.md
+    validation:
+      - command: "independent design report against the committed scene and trace"
+        result: PASS
+  - id: R-3
+    responsibility: "Implement the Castellan opening, assistance and action feedback"
+    capability: "Atlas combat, presentation, HUD and tests"
+    status: completed
+    reason: "Opening Fracture/Heavy/Rupture; first cast interrupt-only and Stability-locked; 0.2 guard; later 2 s Stability cancel; guard bar; INTERRUPT ONLY cue; HUD failure/status/assist lines."
+    artifact_refs:
+      - docs/pilots/2026-11-27-autonomous-multi-feature-v1.md
+    validation:
+      - command: "Castellan contract, feedback, telegraph, Warden and combat smokes"
+        result: PASS
+      - command: "full input-driven journey"
+        result: PASS
+  - id: R-4
+    responsibility: "Exercise the revised experience natively and through a Web export"
+    capability: "pinned Godot 4.7.2, native probes, Web export, Chromium/CDP"
+    status: completed
+    reason: "Journey at d7a6a06 records Fracture 1162/1174, Rupture 1390, completion 1498, Stability break 1526, boss completion 1686; Web builds from 640bfdc8 and d7a6a06 were hashed."
+    artifact_refs:
+      - docs/pilots/2026-11-27-autonomous-multi-feature-v1.md
+    validation:
+      - command: "full journey 3/3 Sagas, zero defeats"
+        result: PASS
+      - command: "Chromium/CDP Web run at 1280x720"
+        result: PASS
+      - command: "final Web export replayed"
+        result: NOT_RUN
+  - id: R-5
+    responsibility: "Add a bounded revision-bound evaluation capability to OhMyGame"
+    capability: "preview source identity"
+    status: completed
+    reason: "preview.sourceRevision/sourceDirty recorded at preview start and exposed through engine_observations; PR #26 merged at cb235417."
+    artifact_refs:
+      - src/daemon/workspace-git.ts
+      - src/daemon/preview.ts
+      - docs/preview-runtime.md
+    validation:
+      - command: "vitest test/workspace-git.test.ts"
+        result: PASS
+  - id: R-6
+    responsibility: "Preserve methodological lessons and run a fresh beneficiary retrieval"
+    capability: "pinned Sensemaking CLI, knowledge pack, independent review"
+    status: completed
+    reason: "PR #25 merged a 13-claim/13-relation pack at 27149afb after review and two revisions; a fresh agent retrieved it, judged applicability and found the duration and journey-assertion defects."
+    artifact_refs:
+      - .sensemaking/knowledge/development-methodology.json
+      - .sensemaking/receipts/2026-11-27-autonomous-multi-feature-v1.query.yaml
+    validation:
+      - command: "knowledge-proposal-check and knowledge-build"
+        result: PASS
+      - command: "fresh-context knowledge-query retrieval"
+        result: PASS
+  - id: R-7
+    responsibility: "Obtain and reconcile independent design/UX and engineering review"
+    capability: "independent subagents"
+    status: completed
+    reason: "Both reviews returned revise; first-cast ownership, guard, window duration, bar layout, journey assertion, Package 6, HUD noise and cover checks were revised. Four window-truncation and readability gaps remain."
+    artifact_refs:
+      - docs/pilots/2026-11-27-autonomous-multi-feature-v1.md
+    validation:
+      - command: "design/UX and engineering reviews against PR #95"
+        result: PASS
+      - command: "revisions re-run: contract, feedback, telegraph, Warden, journey"
+        result: PASS
+  - id: R-8
+    responsibility: "Preserve the pilot, receipts, Atlas candidate and next responsibility"
+    capability: "Git, PRs and semantic receipts"
+    status: completed
+    reason: "Atlas PR #95 is a draft stacked on #94 at 4ffa931; the pilot and Episode 15 receipts are on a docs branch; the semantic pack and preview identity are merged."
+    artifact_refs:
+      - docs/pilots/2026-11-27-autonomous-multi-feature-v1.md
+      - .sensemaking/receipts/2026-11-27-autonomous-multi-feature-v1.session.yaml
+      - .sensemaking/receipts/2026-11-27-autonomous-multi-feature-v1.query.yaml
+    validation:
+      - command: "session and query receipt validators"
+        result: PASS
+findings:
+  - id: F-1
+    statement: "The Castellan opens Fracture -> Heavy -> Rupture; the first Rupture is interrupt-only and Stability-locked, later Ruptures use 60% cover, interrupt grants 4 s, and a later Stability cancel grants 2 s."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "Atlas PR #95, docs/implementation/castellan-branded-opening.md"
+    disposition: handed_off
+  - id: F-2
+    statement: "A 0.2 guard multiplier while Stability is intact and not vulnerable makes the vulnerability windows the damage phases; the first cast's Stability lock prevents passive party pressure from answering the exam."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "Atlas PR #95 tests/smoke_causeway_castellan_encounter.gd"
+    disposition: handed_off
+  - id: F-3
+    statement: "The full journey at d7a6a06 (candidate_sha recorded) passed 3/3 Sagas with zero defeats; Causeway ticks: Fracture 1162/1174, Rupture 1390 grace 1.0, completion 1498, Stability break 1526, boss completion 1686."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "native telemetry_run_2661.jsonl"
+    disposition: handed_off
+  - id: F-4
+    statement: "The bot did not interrupt the first Castellan Rupture; the 4 s player-controller interrupt and 2 s later-cast cancel are established by the focused contract, not the ordinary route."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "Atlas tests/smoke_causeway_castellan_encounter.gd; native telemetry_run_2661.jsonl"
+    disposition: open
+  - id: F-5
+    statement: "The 4 s vulnerability window was truncated by the boss's death at 2.67 s; the second Rupture, 60% cover and later Fracture persistence are not reached in the fast first journey."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "native telemetry_run_2661.jsonl"
+    disposition: open
+  - id: F-6
+    statement: "The 640bfdc8 Web export showed Shield Bash no-target/recharging, Eira Cleanse, MARKED 76% and STABILITY 236/320; the final d7a6a06 export was hashed but not replayed."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-27-autonomous-multi-feature-v1.md"
+    disposition: handed_off
+  - id: F-7
+    statement: "The Web run was not app-managed game_use; the desktop app and playtest IPC were not running, so the new preview source-identity field was not exercised in the run."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "src/daemon/preview.ts; docs/pilots/2026-11-27-autonomous-multi-feature-v1.md"
+    disposition: open
+  - id: F-8
+    statement: "OhMyGame records preview.sourceRevision/sourceDirty and exposes both through engine_observations; the new workspace-git test passed, while the suite's symlink fixture failed with an inherited Windows EPERM."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "src/daemon/workspace-git.ts; test/workspace-git.test.ts; OhMyGame PR #26"
+    disposition: handed_off
+  - id: F-9
+    statement: "The reviewed methodology pack has 13 claims and 13 relations at 27149afb with a cross-pack reference to lesson:godot-evidence-layers; the index has 17 claims/16 relations."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - ".sensemaking/knowledge/development-methodology.json; OhMyGame PR #25"
+    disposition: handed_off
+  - id: F-10
+    statement: "A fresh beneficiary applied revision-bound/tests-vs-experience/integrated-evaluation, rejected the old Rupture-skip observation, changed the plan to an exact-HEAD transfer-first run, and found the 4 s duration and journey-assertion defects."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - ".sensemaking/receipts/2026-11-27-autonomous-multi-feature-v1.query.yaml; docs/pilots/2026-11-27-autonomous-multi-feature-v1.md"
+    disposition: handed_off
+  - id: F-11
+    statement: "Independent design/UX and engineering reviews returned revise; revisions addressed first-cast ownership, guard, duration, bar layout, journey assertion, canonical Package 6, HUD noise and companion cover checks."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-27-autonomous-multi-feature-v1.md; Atlas PR #95"
+    disposition: handed_off
+  - id: F-12
+    statement: "Remaining: no human/motion qualification, 4 s truncation, Fracture's 0.2 s dwell, small Stability label, dead-boss cast cleanup, HUD width/late companion binding, un-replayed final Web build, inherited verifier warning, default party only."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-27-autonomous-multi-feature-v1.md"
+    disposition: open
+open_questions:
+  - id: Q-1
+    question: "Does the first Rupture read as a player decision in human play, and is the INTERRUPT ONLY cue enough without a cover notch?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-autonomous-multi-feature-v1.md
+  - id: Q-2
+    question: "Do the 4 s interrupt and 2 s Stability windows feel meaningfully different, and should the boss survive the full 4 s window?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-autonomous-multi-feature-v1.md
+  - id: Q-3
+    question: "Does the guard multiplier make the fight a readable stagger loop or an opaque damage sponge?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-autonomous-multi-feature-v1.md
+  - id: Q-4
+    question: "Should the exact-HEAD transfer-first run use app-managed game_use now that preview source identity exists?"
+    source: repository_evidence
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-autonomous-multi-feature-v1.md
+  - id: Q-5
+    question: "Does Eira's automatic cleanse communicate a party responsibility, or should the cleanse be delayed/commanded so the status is readable?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-autonomous-multi-feature-v1.md
+  - id: Q-6
+    question: "How should a Castellan killed mid-cast clear its cast timer and area strike?"
+    source: repository_evidence
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-autonomous-multi-feature-v1.md
+  - id: Q-7
+    question: "Do the Rift Echo and Interlocked Trial inherit the opening/bar coherently, and is the extra enemy still metadata-only?"
+    source: repository_evidence
+    blocking: false
+    durable_ref: docs/pilots/2026-11-27-autonomous-multi-feature-v1.md
+stop:
+  disposition: GOAL_SATISFIED
+  reason: "The progression is coherent; the defining interaction occurs; the player interrupt and 2 s cancel are contract-tested; preview source identity and the reviewed pack are merged; reviews were reconciled. Human/motion and the final app-managed Web run remain."
+next:
+  warranted_responsibility: "Run the exact-HEAD candidate through app-managed game_use with preview source identity, capture the player interrupt and later 2 s/60% cover branches, then do a human/motion pass on the guard bar and first-cast pressure."
+  blocked_on: []
+claim_ceiling: "Atlas candidate is implemented, engine-verified and Web-fidelity observed, with independent reviews and a fresh retrieval. It is a draft, not merged into canonical main, not human-qualified, and the final Web export was not replayed. No causal learning claim."
+action_authorized_by_receipt: false
+immutable: true
