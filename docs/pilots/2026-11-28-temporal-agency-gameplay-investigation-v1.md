@@ -204,14 +204,35 @@ The beneficiary's strongest counterexample is the fidelity paradox: the
 Castellan's first Rupture is defining because it is time-bounded; holding it
 proves the reward wiring, not that a player can answer it. The lesson is
 therefore preserved with explicit conditions and claim ceiling, not as a
-universal rule and not as an amendment to the player-side lesson.
+universal rule and not as an amendment to the player-side lesson. A detached
+`knowledge-proposal-check` returned `SEMANTIC_KNOWLEDGE_PROPOSAL_VALID`
+(3 claims, 3 relations) before the new pack was committed as
+`.sensemaking/knowledge/temporal-gameplay-investigation.json`; it is
+**declared** knowledge, not retrieved truth or a promoted replacement for the
+reviewed pack.
 
 ## Independent review
 
-Independent engineering, experiential and Godot-integration reviews were
-commissioned against the candidate. Their findings and the resulting revisions
-are recorded in the final episode reconciliation. No review grants authority
-to merge Atlas #93–#96 into canonical `main`.
+**Experiential critique (needs refinement).** The managed A/B pair is a clean
+controlled contrast: a real `r` interrupt opens 4 s and kills; accepting the
+cast and breaking Stability outside opens 2 s and the boss survives. The
+critic found the economy coherent as a **first-cast exam plus window-dominant
+economy**, not yet as a three-answer fight. The 2 s is a fallback, not a
+competing decision, because the 4 s interrupt dominates when it is available.
+C shows the 60% notch but no cover event; the default party kills the boss
+before the second Rupture, and the support party that reaches it does not
+produce a cover. The critic also flagged the `LOCKED` bar before the exam, the
+duplicate `STABILITY BROKEN` labels, and the thin unlabeled 60% notch. The doc
+and pilot now state the cover and later cancel as contract-only. The critic
+recommended phase-gating or reordering the second Rupture and giving the 2 s
+fallback a tempo payoff; those are preserved as the next systemic direction,
+not rushed into this temporal-agency episode. The ×0.2 guard is retained; the
+critic would test ×0.35 at low DPS before changing it.
+
+Independent engineering and Godot-integration reviews were also commissioned.
+Their findings and the resulting revisions are recorded in the final episode
+reconciliation. No review grants authority to merge Atlas #93–#96 into
+canonical `main`.
 
 ## Limitations
 

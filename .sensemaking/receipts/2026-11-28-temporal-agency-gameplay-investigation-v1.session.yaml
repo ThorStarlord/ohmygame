@@ -1,0 +1,244 @@
+artifact_id: sensemaking_session_receipt
+schema_version: 1
+session_ref: 2026-11-28-temporal-agency-gameplay-investigation-v1
+state: final
+created_at: "2026-11-28T05:00:00Z"
+updated_at: "2026-11-28T06:00:00Z"
+target_repository: ThorStarlord/ohmygame
+persistence: committed
+source_identity:
+  start_ref: 6d3b692bbca750025db41f573ee3cf166b5abde7
+  end_ref: a0096d3bab8fc7d854b54449fd69511f3817de4b
+  worktree_clean_at_end: true
+skill_identity:
+  load_mode: harness_discovered
+  sensemaking_source_ref: "clean a6291c2d4815dec585526e3f21f142375169b98c via pinned uv tool; installed copy 6321125E"
+goal:
+  statement: "Establish Temporal Agency for Gameplay Investigation: observable scenario readiness, controlled commencement, repeatable reset, isolated development scenarios, and a decisive managed A/B/C investigation of the Castellan opening."
+  source: owner_message
+  source_ref: null
+delegation:
+  granted: [read, local_write, run_local_commands, commit, push, open_pr, merge, knowledge_edit]
+  withheld: [release, deploy, external_publication]
+continuity:
+  resumes: 2026-11-28-autonomous-gameplay-investigation-v1
+  campaign_ref: null
+  resolves_questions:
+    - 2026-11-28-autonomous-gameplay-investigation-v1#Q-1
+    - 2026-11-28-autonomous-gameplay-investigation-v1#Q-2
+responsibilities:
+  - id: R-1
+    responsibility: "Recover the Episode 16 timing limitation and select the smallest temporal capability"
+    capability: "repository state, pilot/receipt recovery, existing app-managed loop"
+    status: completed
+    reason: "The 5-30 s Web load and 3.8 s first decision were confirmed; ready hold + controlled start + reset was selected over a generalized simulation-control framework."
+    artifact_refs:
+      - docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md
+    validation:
+      - command: "git/PR inspection and Episode 16 evidence review"
+        result: PASS
+  - id: R-2
+    responsibility: "Implement the ready hold, controlled start, cast pause and reset"
+    capability: "Atlas dev scenario bootstrap, pause modes, overlay, telemetry"
+    status: completed
+    reason: "The scenario now draws the ready frame, holds the boss before its first decision, starts on Enter, pauses the first and optional later Ruptures, and returns to ready on F10."
+    artifact_refs:
+      - docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md
+    validation:
+      - command: "Godot headless dev lifecycle/later tests"
+        result: PASS
+      - command: "app-managed ready/cast pause captures"
+        result: PASS
+  - id: R-3
+    responsibility: "Isolate and production-gate development scenarios"
+    capability: "disposable ProgressionService profile, build feature, non-persistent Job, progression skip"
+    status: completed
+    reason: "The scenario uses a unique dev-* profile, equip(..., false), encounter progression skip and the atlas_dev_scenarios feature; the consumer preview opts in."
+    artifact_refs:
+      - docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md
+    validation:
+      - command: "smoke_dev_scenarios profile/ready assertions"
+        result: PASS
+      - command: "export build with atlas_dev_scenarios"
+        result: PASS
+  - id: R-4
+    responsibility: "Exercise the opening interrupt and an alternative through actual game_use"
+    capability: "OhMyGame desktop, external MCP, game_use, captures, source identity"
+    status: completed
+    reason: "A used a real r interrupt for the 4 s window; B accepted the cast and observed the 2 s outside-cast recovery; C reached the later index-2 cast with the 60% notch in a support party."
+    artifact_refs:
+      - docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md
+    validation:
+      - command: "game_use open/act/capture/close at a6ddcb8 and dd91a5c"
+        result: PASS
+      - command: "engine_observations sourceDirty=false"
+        result: PASS
+  - id: R-5
+    responsibility: "Investigate the guard and vulnerability economy at lower DPS"
+    capability: "deterministic guard probes, managed A/B comparison"
+    status: completed
+    reason: "The lower-DPS control shows 0.50 does break (11.0 s, 584 guarded/66 vulnerable) and 0.20 keeps the larger vulnerable share (15.7 s, 301/349). The high-DPS zero-break was a race."
+    artifact_refs:
+      - docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md
+    validation:
+      - command: "castellan_guard_low_dps factor 0.20/0.50"
+        result: PASS
+  - id: R-6
+    responsibility: "Diagnose the Godot plugin Web export defect and preserve a repair candidate"
+    capability: "PCK inspection, controlled Godot exports, plugin source reading"
+    status: completed
+    reason: "The plugin PCK has a zero-byte project.binary because the temporary output inside .ohmygame/build/web is excluded by .ohmygame/*; a narrow filter or empty filter produces the ECFG binary. The repair patch is preserved; the consumer preview remains supported."
+    artifact_refs:
+      - docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md
+    validation:
+      - command: "PCK entry inspection and controlled export"
+        result: PASS
+  - id: R-7
+    responsibility: "Retain the smallest OhMyGame capability exposed by managed execution"
+    capability: "game_use open visible option, desktop driver, tests, docs"
+    status: completed
+    reason: "A hidden playtest window throttles animation; PR #31 adds visible:true, shows the session and documents it. Unit tests/typecheck pass; the live app watch state changed false->true."
+    artifact_refs:
+      - docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md
+    validation:
+      - command: "vitest playtest-tools and typecheck"
+        result: PASS
+      - command: "app-managed game_use open visible:true"
+        result: PASS
+  - id: R-8
+    responsibility: "Retrieve prior understanding and evaluate the temporal lesson"
+    capability: "pinned Sensemaking CLI, fresh beneficiary, semantic proposal"
+    status: completed
+    reason: "The beneficiary rejected the candidate as a restatement, adapted it into an investigator-side lesson with conditions/counterevidence/claim ceiling, and produced a validated 3-claim/3-relation detached proposal."
+    artifact_refs:
+      - .sensemaking/knowledge/temporal-gameplay-investigation.json
+      - .sensemaking/receipts/2026-11-28-temporal-agency-gameplay-investigation-v1.query.yaml
+    validation:
+      - command: "knowledge-proposal-check"
+        result: PASS
+      - command: "knowledge-query retrieval and applicability report"
+        result: PASS
+  - id: R-9
+    responsibility: "Reconcile independent review and preserve the next responsibility"
+    capability: "independent subagents, pilot, receipts, Git/PR"
+    status: completed
+    reason: "The experiential review found the economy coherent as a first-cast exam/window-dominant economy but not a three-answer fight; the C cover and later cancel are now labeled contract-only. Engineering and plugin reviews are recorded in the final reconciliation."
+    artifact_refs:
+      - docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md
+    validation:
+      - command: "independent experiential critique"
+        result: PASS
+findings:
+  - id: F-1
+    statement: "The ready hold and explicit commencement made the Castellan opening reachable without racing engine startup: the app logged DEV_SCENARIO_READY and DEV_SCENARIO_COMMENCED, and the ready capture showed full HP with no Fracture."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md"
+    disposition: handed_off
+  - id: F-2
+    statement: "The managed A run used a real r input after the investigative pause and recorded DEV_CAST_INTERRUPTED cast=RUPTURE index=1 vulnerability=4.0; the boss was defeated in the 4 s window."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md"
+    disposition: handed_off
+  - id: F-3
+    statement: "The managed B run accepted the first cast, broke Stability outside it, and recorded DEV_VULNERABILITY duration=2.0 remaining=2.0; the boss survived and restored Stability."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md"
+    disposition: handed_off
+  - id: F-4
+    statement: "The later Rupture was reached only with a Vanguard + Eira support party; it paused at index 2 with grace=0.60 and hint=INTERRUPT / STABILITY, then completed without a cover event. The later 2 s cancel is contract-only."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md"
+    disposition: open
+  - id: F-5
+    statement: "The default party kills the Castellan before its second Rupture; the Acolyte support party loses its player; the Vanguard support party reaches it. Later-cast reachability and cover are composition-dependent."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md"
+    disposition: open
+  - id: F-6
+    statement: "At the lower-DPS guard control, 0.20 is 15.7 s with 301 guarded/349 vulnerable and 0.50 is 11.0 s with 584/66; both break. The high-DPS 0.50 zero-break was a race. The x0.2 guard is retained."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md"
+    disposition: handed_off
+  - id: F-7
+    statement: "Development scenarios use a unique disposable dev-* profile, non-persistent Job selection, encounter progression skip and the atlas_dev_scenarios build feature; an ordinary release export without the feature leaves the hash inert."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md"
+    disposition: resolved
+  - id: F-8
+    statement: "The official Godot plugin's Web PCK contains a zero-byte project.binary; the consumer PCK contains the 20,321-byte ECFG binary. The plugin preset's .ohmygame/* exclude matches the temporary project.binary under the .ohmygame/build/web output; a narrow or empty filter restores ECFG."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md"
+    disposition: open
+  - id: F-9
+    statement: "OhMyGame PR #31 adds game_use open visible:true; a hidden playtest window can heavily throttle animation. The live app watch state changed false->true through the managed call; unit tests and typecheck pass."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md"
+    disposition: resolved
+  - id: F-10
+    statement: "The fresh Sensemaking beneficiary rejected the candidate as a restatement, adapted it into an investigator-side temporal-opportunity lesson, and produced a validated detached 3-claim/3-relation proposal. The reviewed pack remains unchanged; the new claim is a proposal, not retrieved truth."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md"
+      - ".sensemaking/knowledge/temporal-gameplay-investigation.json"
+    disposition: handed_off
+  - id: F-11
+    statement: "The experiential critic judged the economy coherent as a first-cast exam plus window-dominant economy, not yet a three-answer fight; the 2 s is a fallback, the 60% cover and later cancel are contract-only, and the LOCKED bar/notch need human readability validation."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md"
+    disposition: open
+  - id: F-12
+    statement: "The temporal loop is sufficiently established for encounter-level investigation; the next capability need is a disposable profile that can record isolated progression so persistent systems (rewards, Hearth, history, equipment) can be investigated without touching the live save."
+    epistemic_status: INFERRED
+    evidence_refs:
+      - "docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md"
+    disposition: open
+open_questions:
+  - id: Q-1
+    question: "Should the second Rupture be reordered or phase-gated so the default party reaches it, and does the cover then fire?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md
+  - id: Q-2
+    question: "Is the 2 s fallback a legitimate choice or only a failure cushion; does it need a tempo payoff such as a cooldown refund?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md
+  - id: Q-3
+    question: "Does x0.35 at low DPS/default cadence preserve a meaningful vulnerable share, or is x0.2 the only tested coherent value?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md
+  - id: Q-4
+    question: "How should a disposable profile record isolated progression so Hearth, history and equipment can be investigated without contaminating live saves?"
+    source: repository_evidence
+    blocking: false
+    durable_ref: docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md
+  - id: Q-5
+    question: "Should the official Godot plugin Web build be repaired upstream or the consumer static preview remain the supported development path?"
+    source: repository_evidence
+    blocking: false
+    durable_ref: docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md
+  - id: Q-6
+    question: "Can a human read the LOCKED bar, the 60% notch and the 4 s vs 2 s distinction at 1280x720 under real time?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-28-temporal-agency-gameplay-investigation-v1.md
+stop:
+  disposition: GOAL_SATISFIED
+  reason: "Readiness, commencement, cast pause, reset, isolation, A/B/C managed evidence, the lower-DPS guard control, plugin diagnosis, the visible capability and the Sensemaking adaptation are established. The later cancel/cover and human readability remain contract or qualification gaps."
+next:
+  warranted_responsibility: "Give the disposable development profile isolated progression, then investigate Job/party/companion responsibilities across the Warden-Castellan progression, including later-cast reachability and the 2 s fallback."
+  blocked_on: []
+claim_ceiling: "A/B source a6ddcb8, C source dd91a5c, both sourceDirty=false, 1280x720. A/B held the first cast; C used a support party and no cover fired. No human play or natural-speed answerability. Later cancel/cover are contract-only. The lesson is a validated proposal, not reviewed pack truth."
+action_authorized_by_receipt: false
+immutable: true
