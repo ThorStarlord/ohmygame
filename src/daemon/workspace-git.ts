@@ -100,6 +100,25 @@ export async function listWorkspaceGitChanges(
   return { available: true, head: repo.head, changes: await readChanges(repo) };
 }
 
+/** The workspace revision a build started from, without reading a full diff. */
+export interface WorkspaceGitIdentity {
+  head?: string;
+  dirty: boolean;
+}
+
+export async function readWorkspaceGitIdentity(
+  workspace: string,
+): Promise<WorkspaceGitIdentity | undefined> {
+  const repo = await repository(workspace);
+  if (!repo) return;
+  const status = await git(repo.root, [
+    "status",
+    "--porcelain=v1",
+    "--untracked-files=normal",
+  ]);
+  return { head: repo.head, dirty: status.length > 0 };
+}
+
 async function readChanges(
   repo: { root: string; head?: string },
   filePath?: string,

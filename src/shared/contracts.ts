@@ -487,6 +487,10 @@ export interface PreviewRuntimeState {
   manager?: ProjectPackageManager;
   managerSource?: string;
   revision?: number;
+  /** The workspace Git HEAD the preview started from, when the workspace is a repository. */
+  sourceRevision?: string;
+  /** Whether the workspace differed from sourceRevision when the preview started. */
+  sourceDirty?: boolean;
   pages?: { client: string; source: import("./preview-page.js").PreviewPageSource; path: string }[];
   stopReason?: "manual" | "idle" | "settings" | "recovery";
   /** What the waiting or failed preview is about, when the app knows: the folder holds no web project. */

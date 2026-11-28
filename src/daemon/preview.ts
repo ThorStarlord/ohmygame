@@ -24,6 +24,7 @@ import {
 import { ensureProjectDependencies } from "./project-dependencies.js";
 import { projectProcessEnvironment } from "./project-process.js";
 import { ProjectWorkspaceError, resolvePreviewWorkspace } from "./projects.js";
+import { readWorkspaceGitIdentity } from "./workspace-git.js";
 import {
   registerProjectProcess,
   terminateProjectProcess,
@@ -410,12 +411,20 @@ export class PreviewManager {
       await this.#stopping.get(project.id);
       assertCurrent();
       began = true;
+      const sourceIdentity = await readWorkspaceGitIdentity(
+        project.workspacePath,
+      ).catch(() => undefined);
+      assertCurrent();
       project.preview = {
         status: "starting",
         phase: "checking",
         startedAt: new Date().toISOString(),
         directory: workspace.relativePath,
         logs: "",
+        ...(sourceIdentity?.head
+          ? { sourceRevision: sourceIdentity.head }
+          : {}),
+        ...(sourceIdentity ? { sourceDirty: sourceIdentity.dirty } : {}),
       };
       this.#publish(project);
       assertCurrent();

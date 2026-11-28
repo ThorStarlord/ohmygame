@@ -1511,6 +1511,8 @@ export class PluginServices {
       historyRetention: "daemon-memory",
       preview: {
         status: preview.status, phase: preview.phase, revision: preview.revision, startedAt: preview.startedAt,
+        ...(preview.sourceRevision ? { sourceRevision: preview.sourceRevision } : {}),
+        ...(preview.sourceDirty !== undefined ? { sourceDirty: preview.sourceDirty } : {}),
         ...(preview.error ? { error: redact(preview.error).slice(0, 4_000) } : {}),
         diagnostics: (preview.diagnostics ?? (preview.diagnostic ? [preview.diagnostic] : [])).slice(0, 50).map((item) => ({
           kind: item.kind, message: redact(item.message), ...(item.source ? { source: item.source } : {}),

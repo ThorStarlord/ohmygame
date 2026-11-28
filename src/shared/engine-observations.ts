@@ -216,7 +216,7 @@ export interface EngineObservationSnapshot {
   projectId: string;
   observedAt: number;
   historyRetention: "daemon-memory";
-  preview: Pick<PreviewRuntimeState, "status" | "phase" | "revision" | "startedAt" | "error"> & { diagnostics: PreviewDiagnostic[] };
+  preview: Pick<PreviewRuntimeState, "status" | "phase" | "revision" | "startedAt" | "error" | "sourceRevision" | "sourceDirty"> & { diagnostics: PreviewDiagnostic[] };
   nativeSessions: NativeSessionView[];
   captures: NativeWindowCaptureSummary[];
   observationGrants: ObservationGrantSummary[];
