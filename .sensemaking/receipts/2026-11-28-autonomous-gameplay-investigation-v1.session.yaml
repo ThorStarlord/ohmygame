@@ -1,0 +1,228 @@
+artifact_id: sensemaking_session_receipt
+schema_version: 1
+session_ref: 2026-11-28-autonomous-gameplay-investigation-v1
+state: final
+created_at: "2026-11-28T01:00:00Z"
+updated_at: "2026-11-28T02:30:00Z"
+target_repository: ThorStarlord/ohmygame
+persistence: committed
+source_identity:
+  start_ref: 6aaa03bead9b947ba35b421cabd46306109adb15
+  end_ref: 40c1aa0febba9f78116082c2e039cc5d86b59a04
+  worktree_clean_at_end: true
+skill_identity:
+  load_mode: harness_discovered
+  sensemaking_source_ref: "clean a6291c2d4815dec585526e3f21f142375169b98c via pinned uv tool; installed copy 6321125E"
+goal:
+  statement: "Establish an authentic OhMyGame-managed gameplay loop, reach the Castellan through a consumer-owned scenario, investigate the guard/vulnerability economy and alternative decisions, and preserve revision-bound evidence and methodological understanding."
+  source: owner_message
+  source_ref: null
+delegation:
+  granted: [read, local_write, run_local_commands, commit, push, open_pr, merge, knowledge_edit]
+  withheld: [release, deploy, external_publication]
+continuity:
+  resumes: 2026-11-27-autonomous-multi-feature-v1
+  campaign_ref: null
+  resolves_questions:
+    - 2026-11-27-autonomous-multi-feature-v1#Q-1
+    - 2026-11-27-autonomous-multi-feature-v1#Q-4
+responsibilities:
+  - id: R-1
+    responsibility: "Verify state and reconcile the Episode 15 summary/detail contradiction"
+    capability: "Git, PR inspection and pilot evidence"
+    status: completed
+    reason: "PR #28 corrected the summary. The d7a6a06 journey did not mark; the 9f92c7d journey does, and the focused real-scene test verifies the mark."
+    artifact_refs:
+      - docs/pilots/2026-11-28-autonomous-gameplay-investigation-v1.md
+    validation:
+      - command: "git/gh and telemetry inspection"
+        result: PASS
+  - id: R-2
+    responsibility: "Establish the desktop app, preview, playtest IPC and game_use loop"
+    capability: "OhMyGame desktop, daemon, preview, external MCP"
+    status: completed
+    reason: "The app launched, the external MCP endpoint published, the project loaded, and game_use opened a managed Web session. The Godot plugin Web build was broken; a consumer static preview established the loop."
+    artifact_refs:
+      - docs/pilots/2026-11-28-autonomous-gameplay-investigation-v1.md
+    validation:
+      - command: "app-managed game_use open/capture/close"
+        result: PASS
+      - command: "engine_observations source identity"
+        result: PASS
+  - id: R-3
+    responsibility: "Add consumer-owned scenario entry and exercise it"
+    capability: "Atlas dev bootstrap, OhMyGame path/hash"
+    status: completed
+    reason: "Web hash and native command-line entry start the Castellan; the app log reports DEV_SCENARIO and the captures show the banner, locked guard, cleanse and out-of-range feedback."
+    artifact_refs:
+      - docs/pilots/2026-11-28-autonomous-gameplay-investigation-v1.md
+    validation:
+      - command: "smoke_dev_scenarios and native env/cmdline runs"
+        result: PASS
+      - command: "app-managed hash entry"
+        result: PASS
+  - id: R-4
+    responsibility: "Investigate the guard and vulnerability economy"
+    capability: "deterministic guard probe, native journey, app captures"
+    status: completed
+    reason: "The probe compared 0.20/0.35/0.50; 0.20 had the longest outside-break fight and largest vulnerable share. The 0.50 zero-break is a high-DPS race. The 2 s later-cast cancel is not in the probe."
+    artifact_refs:
+      - docs/pilots/2026-11-28-autonomous-gameplay-investigation-v1.md
+    validation:
+      - command: "castellan_guard_economy"
+        result: PASS
+      - command: "full journey at 9f92c7d"
+        result: PASS
+  - id: R-5
+    responsibility: "Implement warranted Atlas refinements"
+    capability: "Castellan, scenario and presentation changes"
+    status: completed
+    reason: "First cast interrupt-only and Stability-locked; 2 s post-cast recovery; LOCKED cue and per-frame refresh; in-range scenario start; non-persistent job; progression skip; static preview."
+    artifact_refs:
+      - docs/pilots/2026-11-28-autonomous-gameplay-investigation-v1.md
+    validation:
+      - command: "Castellan contract and dev scenario smoke"
+        result: PASS
+  - id: R-6
+    responsibility: "Advance revision-bound gameplay evidence"
+    capability: "preview source identity, artifact hashes, app observations"
+    status: completed
+    reason: "The app reported sourceRevision 961d2b4 and sourceDirty false; the manual static build hashes were recorded. The plugin build's corrupted PCK is a separate blocker."
+    artifact_refs:
+      - docs/pilots/2026-11-28-autonomous-gameplay-investigation-v1.md
+    validation:
+      - command: "engine_observations and artifact hashes"
+        result: PASS
+  - id: R-7
+    responsibility: "Retrieve prior understanding through a fresh beneficiary"
+    capability: "pinned Sensemaking CLI and reviewed pack"
+    status: completed
+    reason: "The beneficiary applied revision-bound/feedback/assistance/opportunity, rejected the old Rupture-skip observation, and moved the plan to exact-HEAD app-managed transfer-first."
+    artifact_refs:
+      - .sensemaking/receipts/2026-11-28-autonomous-gameplay-investigation-v1.query.yaml
+    validation:
+      - command: "knowledge-query retrieval and applicability report"
+        result: PASS
+  - id: R-8
+    responsibility: "Reconcile independent review and preserve outcomes"
+    capability: "engineering/design review, Git, pilot and receipts"
+    status: completed
+    reason: "The engineering review's profile-mutation, probe-label and lock findings were addressed; the remaining first-cast/app-capture, plugin-build, public-hash and low-DPS gaps are recorded."
+    artifact_refs:
+      - docs/pilots/2026-11-28-autonomous-gameplay-investigation-v1.md
+      - .sensemaking/receipts/2026-11-28-autonomous-gameplay-investigation-v1.session.yaml
+    validation:
+      - command: "session and query receipt validators"
+        result: PASS
+findings:
+  - id: F-1
+    statement: "The app-managed game_use path was established with a consumer static preview after the official Godot plugin's Web build produced a corrupted project.binary/PCK and could not run."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "runtime logs: Corrupted header in binary project.binary; Couldn't load project data at path /"
+      - "Atlas scripts/serve-web.mjs, package.json, ohmygame.json"
+    disposition: open
+  - id: F-2
+    statement: "The app-managed session reported sourceRevision 961d2b4 and sourceDirty false; the playtest URL retained __ohmygame_view, __ohmygame_client and the #scenario=castellan hash."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "engine_observations snapshot"
+      - "game_use open URL"
+    disposition: handed_off
+  - id: F-3
+    statement: "The consumer-owned scenario starts the Castellan, labels the HUD, locks the opening guard, cleanses Fracture and reports out-of-range Shield Bash through a real input."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "app-managed captures under the session temp directory"
+      - "DEV_SCENARIO=castellan JOB=job.vanguard"
+    disposition: handed_off
+  - id: F-4
+    statement: "The first 3.8 s app-managed cast was not reliably captured because the Web game load varied from about 5 to 30 seconds; the scenario exposes no ready event or paused opening."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "app-managed capture timing; runtime DEV_SCENARIO log"
+    disposition: open
+  - id: F-5
+    statement: "The scenario first placed the player outside Shield Bash's 2.2 m range; it now starts the party inside the encounter's melee space. The LOCKED suffix was stale after the first cast; it now refreshes per frame."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "app-managed Shield Bash - out of range capture"
+      - "Atlas dev_scenario_bootstrap.gd and stability_telegraph.gd"
+    disposition: resolved
+  - id: F-6
+    statement: "At 0.20 the guard probe's outside-break fight is 9.85 s with 296 guarded/354 vulnerable; 0.35 is 9.00 s with 519/131; 0.50 in this high-DPS profile is 7.45 s with 650/0 and no break."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "tests/castellan_guard_economy.gd output"
+    disposition: handed_off
+  - id: F-7
+    statement: "The probe does not exercise the later-cast 2 s cancel: every break-mode run has completed=1 and cancelled=0. The 2 s cancel is a contract test."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "guard probe output; smoke_causeway_castellan_encounter.gd"
+    disposition: open
+  - id: F-8
+    statement: "The canonical journey at 9f92c7d records the Warden mark at 906, Castellan Fracture 1162/1174, Rupture 1390/1498, Stability break 1740 and boss completion 1878."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "native telemetry_run_2401.jsonl"
+    disposition: handed_off
+  - id: F-9
+    statement: "The first cast's outside-cast break now gives 2 s, not 4 s; the 4 s reward stays tied to the interrupt. The measured recovery window was nearly full at 2.30 s."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "castellan_boss.gd; native telemetry_run_2401.jsonl"
+    disposition: handed_off
+  - id: F-10
+    statement: "A fresh beneficiary retrieved the reviewed pack, applied revision-bound/feedback/assistance/opportunity, rejected the old Rupture-skip observation, and changed the plan to exact-HEAD app-managed transfer-first."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - ".sensemaking/receipts/2026-11-28-autonomous-gameplay-investigation-v1.query.yaml"
+    disposition: handed_off
+  - id: F-11
+    statement: "The engineering review found the dev scenario wrote the live profile/Job and could mint progression; the scenario now uses non-persistent job selection and skips encounter progression."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-28-autonomous-gameplay-investigation-v1.md"
+    disposition: resolved
+  - id: F-12
+    statement: "Remaining: app-managed first cast/interrupt capture, plugin Web build defect, public scenario hash, high-DPS-only 0.50 result, contract-only 2 s cancel/60% cover, no human/motion qualification."
+    epistemic_status: OBSERVED
+    evidence_refs:
+      - "docs/pilots/2026-11-28-autonomous-gameplay-investigation-v1.md"
+    disposition: open
+open_questions:
+  - id: Q-1
+    question: "How should a scenario announce readiness so an agent can act inside a short opening window?"
+    source: repository_evidence
+    blocking: false
+    durable_ref: docs/pilots/2026-11-28-autonomous-gameplay-investigation-v1.md
+  - id: Q-2
+    question: "Should the official Godot plugin Web build be repaired, or are consumer static previews the supported development path?"
+    source: repository_evidence
+    blocking: false
+    durable_ref: docs/pilots/2026-11-28-autonomous-gameplay-investigation-v1.md
+  - id: Q-3
+    question: "Does the 0.20 guard remain coherent at natural DPS, and does 0.35 preserve the window?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-28-autonomous-gameplay-investigation-v1.md
+  - id: Q-4
+    question: "Is the first-cast interrupt load-bearing in human play, or does accepting and recovering still dominate?"
+    source: empirical
+    blocking: false
+    durable_ref: docs/pilots/2026-11-28-autonomous-gameplay-investigation-v1.md
+  - id: Q-5
+    question: "Should the development scenario hash be gated or removed in a release build?"
+    source: repository_evidence
+    blocking: false
+    durable_ref: docs/pilots/2026-11-28-autonomous-gameplay-investigation-v1.md
+stop:
+  disposition: GOAL_SATISFIED
+  reason: "The app-managed session, scenario entry, guard investigation, 2 s recovery, lock cue, profile isolation and static preview are established; prior understanding was retrieved and applied; reviews were reconciled. The first-cast app capture and plugin build remain."
+next:
+  warranted_responsibility: "Add a scenario-ready signal or paused opening, capture the app-managed first-cast interrupt and 4 s window, then a later 2 s cancel and 60% cover; resolve the plugin Web build versus consumer static preview boundary."
+  blocked_on: []
+claim_ceiling: "App-managed Web play and scenario entry observed at source 961d2b4 with sourceDirty false; native journey at 9f92c7d. The first cast, plugin build, 2 s cancel and 60% cover are not app-qualified; no human or causal learning claim."
+action_authorized_by_receipt: false
+immutable: true
